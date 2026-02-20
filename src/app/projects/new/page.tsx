@@ -94,7 +94,7 @@ export default function NewProjectPage() {
     };
 
     return (
-        <div className="animate-fade-in max-w-2xl mx-auto">
+        <div className="animate-fade-in max-w-2xl mx-auto" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-6)' }}>
             <Link
                 href="/projects"
                 className="inline-flex items-center gap-1 text-sm mb-6"
@@ -104,12 +104,9 @@ export default function NewProjectPage() {
             </Link>
 
             <div
-                className="border p-8"
+                className="g-card p-8"
                 style={{
-                    backgroundColor: 'var(--g-surface-card)',
-                    borderColor: 'var(--g-border-default)',
                     borderRadius: 'var(--g-radius-xl)',
-                    boxShadow: 'var(--g-shadow-card)',
                 }}
             >
                 <div className="flex items-center gap-3 mb-8">
@@ -120,7 +117,7 @@ export default function NewProjectPage() {
                         <FolderKanban className="h-6 w-6" style={{ color: 'var(--g-brand-3308)' }} />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold" style={{ color: 'var(--g-text-primary)' }}>
+                        <h1 className="font-bold" style={{ fontSize: 'var(--g-text-h2)', color: 'var(--g-text-primary)' }}>
                             Nuevo Proyecto Due Diligence
                         </h1>
                         <p className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>
@@ -168,10 +165,11 @@ export default function NewProjectPage() {
                         <>
                             <div className="grid grid-cols-2 gap-5">
                                 <div>
-                                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
+                                    <label htmlFor="project-name" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
                                         Nombre del Proyecto *
                                     </label>
                                     <input
+                                        id="project-name"
                                         type="text" required value={form.name}
                                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                                         placeholder="DD FMC S.L. – Adquisición"
@@ -180,10 +178,11 @@ export default function NewProjectPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
+                                    <label htmlFor="project-target" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
                                         Sociedad Target *
                                     </label>
                                     <input
+                                        id="project-target"
                                         type="text" required value={form.target_company}
                                         onChange={(e) => setForm({ ...form, target_company: e.target.value })}
                                         placeholder="FMC Operaciones S.L."
@@ -195,10 +194,11 @@ export default function NewProjectPage() {
 
                             <div className="grid grid-cols-2 gap-5">
                                 <div>
-                                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
+                                    <label htmlFor="project-sector" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
                                         Sector
                                     </label>
                                     <input
+                                        id="project-sector"
                                         type="text" value={form.target_sector}
                                         onChange={(e) => setForm({ ...form, target_sector: e.target.value })}
                                         placeholder="Tecnología, Energía, Retail..."
@@ -207,10 +207,11 @@ export default function NewProjectPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
+                                    <label htmlFor="project-deal-type" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
                                         Tipo de Operación
                                     </label>
                                     <select
+                                        id="project-deal-type"
                                         value={form.deal_type}
                                         onChange={(e) => setForm({ ...form, deal_type: e.target.value })}
                                         className="w-full h-10 px-3 text-sm border"
@@ -226,10 +227,11 @@ export default function NewProjectPage() {
 
                             <div className="grid grid-cols-2 gap-5">
                                 <div>
-                                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
+                                    <label htmlFor="project-client" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
                                         Cliente
                                     </label>
                                     <input
+                                        id="project-client"
                                         type="text" value={form.client_name}
                                         onChange={(e) => setForm({ ...form, client_name: e.target.value })}
                                         placeholder="Nombre del cliente"
@@ -238,10 +240,11 @@ export default function NewProjectPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
+                                    <label htmlFor="project-deadline" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
                                         Deadline
                                     </label>
                                     <input
+                                        id="project-deadline"
                                         type="date" value={form.deadline}
                                         onChange={(e) => setForm({ ...form, deadline: e.target.value })}
                                         className="w-full h-10 px-3 text-sm border"
@@ -309,10 +312,11 @@ export default function NewProjectPage() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
+                                <label htmlFor="project-scope" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--g-text-primary)' }}>
                                     Notas de Alcance
                                 </label>
                                 <textarea
+                                    id="project-scope"
                                     value={form.scope_notes}
                                     onChange={(e) => setForm({ ...form, scope_notes: e.target.value })}
                                     placeholder="Descripción del alcance de la revisión..."

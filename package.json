@@ -7,7 +7,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "npx playwright test",
+    "test:ui": "npx playwright test --ui",
+    "test:api": "npx playwright test e2e/societario-api.spec.ts",
+    "test:page": "npx playwright test e2e/societario-page.spec.ts"
   },
   "dependencies": {
     "@fontsource/montserrat": "^5.0.0",
@@ -21,6 +25,7 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",

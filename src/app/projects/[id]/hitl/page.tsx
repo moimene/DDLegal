@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, use } from 'react';
+import { useCallback, useEffect, useMemo, useState, use } from 'react';
 import Link from 'next/link';
 import {
     ArrowLeft, CheckCircle2, RotateCcw, CircleX, Loader2, Bot,
@@ -78,7 +78,9 @@ export default function ProjectHitlPage({ params }: { params: Promise<{ id: stri
             });
     }, [tasks]);
 
-    const registerDecision = async (task: DDTask, decision: HitlDecision) => {
+    const [selectedIdx, setSelectedIdx] = useState(0);
+
+    const registerDecisionCb = useCallback(async (task: DDTask, decision: HitlDecision) => {
         setRunningTaskId(task.id);
         const note = notes[task.id]?.trim();
 
@@ -101,11 +103,54 @@ export default function ProjectHitlPage({ params }: { params: Promise<{ id: stri
             }
         }
         setRunningTaskId(null);
-    };
+    }, [notes]);
+
+    // Keyboard shortcuts: A=approve, C=correct, R=reject, E=scroll to evidence
+    useEffect(() => {
+        function handleKeyDown(e: KeyboardEvent) {
+            const tag = (e.target as HTMLElement).tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+            if (queue.length === 0 || runningTaskId) return;
+
+            const current = queue[selectedIdx];
+            if (!current) return;
+
+            switch (e.key.toLowerCase()) {
+                case 'a':
+                    e.preventDefault();
+                    registerDecisionCb(current, 'approve');
+                    break;
+                case 'c':
+                    e.preventDefault();
+                    registerDecisionCb(current, 'correct');
+                    break;
+                case 'r':
+                    e.preventDefault();
+                    registerDecisionCb(current, 'reject');
+                    break;
+                case 'e': {
+                    e.preventDefault();
+                    const el = document.getElementById(`hitl-evidence-${current.id}`);
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    break;
+                }
+                case 'arrowdown':
+                    e.preventDefault();
+                    setSelectedIdx(i => Math.min(i + 1, queue.length - 1));
+                    break;
+                case 'arrowup':
+                    e.preventDefault();
+                    setSelectedIdx(i => Math.max(i - 1, 0));
+                    break;
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [queue, selectedIdx, runningTaskId, registerDecisionCb]);
 
     if (loading) {
         return (
-            <div className="animate-fade-in space-y-4">
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-4)' }}>
                 <div className="skeleton h-8 w-72" style={{ borderRadius: 'var(--g-radius-md)' }} />
                 <div className="skeleton h-40 w-full" style={{ borderRadius: 'var(--g-radius-lg)' }} />
                 <div className="skeleton h-40 w-full" style={{ borderRadius: 'var(--g-radius-lg)' }} />
@@ -118,7 +163,7 @@ export default function ProjectHitlPage({ params }: { params: Promise<{ id: stri
     }
 
     return (
-        <div className="animate-fade-in space-y-6">
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-6)' }}>
             <div className="flex items-start justify-between">
                 <div>
                     <Link
@@ -128,7 +173,7 @@ export default function ProjectHitlPage({ params }: { params: Promise<{ id: stri
                     >
                         <ArrowLeft className="h-4 w-4" /> Volver al proyecto
                     </Link>
-                    <h1 className="text-2xl font-bold" style={{ color: 'var(--g-text-primary)' }}>
+                    <h1 className="font-bold" style={{ fontSize: 'var(--g-text-h1)', color: 'var(--g-text-primary)' }}>
                         Revisión HITL
                     </h1>
                     <p className="text-sm mt-1" style={{ color: 'var(--g-text-secondary)' }}>
@@ -174,11 +219,12 @@ export default function ProjectHitlPage({ params }: { params: Promise<{ id: stri
                         return (
                             <div
                                 key={task.id}
-                                className="p-5 border"
+                                className="p-5 border transition-all"
                                 style={{
-                                    borderColor: 'var(--g-border-default)',
+                                    borderColor: queue[selectedIdx]?.id === task.id ? 'var(--g-brand-3308)' : 'var(--g-border-default)',
                                     borderRadius: 'var(--g-radius-lg)',
                                     backgroundColor: 'var(--g-surface-card)',
+                                    boxShadow: queue[selectedIdx]?.id === task.id ? 'var(--g-shadow-card-hover)' : 'var(--g-shadow-card)',
                                 }}
                             >
                                 <div className="flex items-start justify-between gap-4">
@@ -208,6 +254,7 @@ export default function ProjectHitlPage({ params }: { params: Promise<{ id: stri
                                 </div>
 
                                 <div
+                                    id={`hitl-evidence-${task.id}`}
                                     className="mt-4 p-3"
                                     style={{
                                         borderRadius: 'var(--g-radius-md)',
@@ -224,12 +271,14 @@ export default function ProjectHitlPage({ params }: { params: Promise<{ id: stri
 
                                 <div className="mt-4">
                                     <label
+                                        htmlFor={`hitl-note-${task.id}`}
                                         className="block text-xs font-medium mb-1.5"
                                         style={{ color: 'var(--g-text-primary)' }}
                                     >
                                         Comentario de revisión (opcional)
                                     </label>
                                     <textarea
+                                        id={`hitl-note-${task.id}`}
                                         value={notes[task.id] || ''}
                                         onChange={(e) => setNotes(prev => ({ ...prev, [task.id]: e.target.value }))}
                                         rows={2}
@@ -246,46 +295,56 @@ export default function ProjectHitlPage({ params }: { params: Promise<{ id: stri
 
                                 <div className="mt-4 flex flex-wrap items-center gap-2">
                                     <button
-                                        onClick={() => registerDecision(task, 'approve')}
+                                        onClick={() => registerDecisionCb(task, 'approve')}
                                         disabled={running}
+                                        aria-busy={running}
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                                         style={{
                                             borderRadius: 'var(--g-radius-md)',
                                             backgroundColor: 'var(--status-success)',
                                             color: 'var(--g-text-inverse)',
                                         }}
+                                        title="Aprobar (A)"
                                     >
-                                        {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                        {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
                                         Aprobar
                                     </button>
 
                                     <button
-                                        onClick={() => registerDecision(task, 'correct')}
+                                        onClick={() => registerDecisionCb(task, 'correct')}
                                         disabled={running}
+                                        aria-busy={running}
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                                         style={{
                                             borderRadius: 'var(--g-radius-md)',
                                             backgroundColor: 'var(--status-warning)',
                                             color: 'var(--g-text-inverse)',
                                         }}
+                                        title="Corregir (C)"
                                     >
-                                        {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                                        {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />}
                                         Corregir
                                     </button>
 
                                     <button
-                                        onClick={() => registerDecision(task, 'reject')}
+                                        onClick={() => registerDecisionCb(task, 'reject')}
                                         disabled={running}
+                                        aria-busy={running}
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                                         style={{
                                             borderRadius: 'var(--g-radius-md)',
                                             backgroundColor: 'var(--status-error)',
                                             color: 'var(--g-text-inverse)',
                                         }}
+                                        title="Rechazar (R)"
                                     >
-                                        {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CircleX className="h-3.5 w-3.5" />}
+                                        {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <CircleX className="h-3.5 w-3.5" aria-hidden="true" />}
                                         Rechazar
                                     </button>
+
+                                    <span className="text-xs ml-2" style={{ color: 'var(--g-text-secondary)' }}>
+                                        Atajos: A aprobar · C corregir · R rechazar · E evidencia
+                                    </span>
                                 </div>
                             </div>
                         );

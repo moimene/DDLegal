@@ -5,13 +5,46 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, FolderKanban, ChevronLeft, ChevronRight,
-    Scale, Bot
+    Scale, Bot, Wrench, Building2, Shield, BookOpen, Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const NAV_ITEMS = [
-    { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-    { label: 'Proyectos DD', icon: FolderKanban, path: '/projects' },
+interface NavItem {
+    label: string;
+    icon: typeof LayoutDashboard;
+    path: string;
+}
+
+interface NavSection {
+    header: string;
+    items: NavItem[];
+}
+
+const NAV_SECTIONS: NavSection[] = [
+    {
+        header: 'Navegación',
+        items: [
+            { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
+            { label: 'Proyectos DD', icon: FolderKanban, path: '/projects' },
+        ],
+    },
+    {
+        header: 'Herramientas',
+        items: [
+            { label: 'Hub Herramientas', icon: Wrench, path: '/tools' },
+            { label: 'Societario', icon: Building2, path: '/tools/societario' },
+            { label: 'Radar Marcas', icon: Shield, path: '/tools/marcas' },
+        ],
+    },
+    {
+        header: 'Configuración',
+        items: [
+            { label: 'Estado del Sistema', icon: Settings, path: '/configuracion' },
+            { label: 'Catálogo Skills', icon: BookOpen, path: '/skills' },
+            { label: 'Gestión Herramientas', icon: Wrench, path: '/configuracion/herramientas' },
+            { label: 'Gestión Skills', icon: BookOpen, path: '/configuracion/skills' },
+        ],
+    },
 ];
 
 export default function Sidebar() {
@@ -20,7 +53,7 @@ export default function Sidebar() {
 
     return (
         <aside
-            className="fixed left-0 top-0 h-screen flex flex-col transition-all z-40"
+            className="fixed left-0 top-0 h-screen flex flex-col z-40"
             style={{
                 width: collapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width)',
                 backgroundColor: 'var(--g-brand-3308)',
@@ -28,19 +61,32 @@ export default function Sidebar() {
             }}
         >
             {/* Logo */}
-            <div className="flex items-center gap-3 px-4 h-16 border-b border-white/10">
-                <Scale className="h-7 w-7 shrink-0" style={{ color: 'var(--g-brand-bright)' }} />
+            <div
+                className="flex items-center gap-3 px-5 border-b shrink-0"
+                style={{
+                    borderColor: 'var(--g-sidebar-border)',
+                    height: 'var(--g-header-height)',
+                }}
+            >
+                <Scale className="h-6 w-6 shrink-0" style={{ color: 'var(--g-brand-bright)' }} />
                 {!collapsed && (
-                    <div className="animate-fade-in">
+                    <div className="animate-fade-in overflow-hidden">
                         <span
-                            className="text-lg font-bold tracking-wide"
-                            style={{ color: 'var(--g-text-inverse)' }}
+                            className="font-bold tracking-wide block"
+                            style={{
+                                color: 'var(--g-text-inverse)',
+                                fontSize: 'var(--g-text-body-lg)',
+                                lineHeight: 'var(--g-leading-tight)',
+                            }}
                         >
                             DD Legal
                         </span>
                         <span
-                            className="block text-xs"
-                            style={{ color: 'var(--g-sec-300)' }}
+                            className="block"
+                            style={{
+                                color: 'var(--g-sec-300)',
+                                fontSize: 'var(--g-text-caption)',
+                            }}
                         >
                             PMO · Due Diligence
                         </span>
@@ -49,56 +95,97 @@ export default function Sidebar() {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-                {NAV_ITEMS.map((item) => {
-                    const isActive = pathname === item.path ||
-                        (item.path !== '/' && pathname.startsWith(item.path));
-                    return (
-                        <Link
-                            key={item.path}
-                            href={item.path}
-                            className={cn(
-                                'flex items-center gap-3 px-3 py-2.5 transition-all',
-                                isActive
-                                    ? 'font-medium'
-                                    : 'opacity-70 hover:opacity-100'
-                            )}
-                            style={{
-                                borderRadius: 'var(--g-radius-md)',
-                                color: 'var(--g-text-inverse)',
-                                backgroundColor: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
-                            }}
-                            title={collapsed ? item.label : undefined}
-                        >
-                            <item.icon className="h-5 w-5 shrink-0" />
-                            {!collapsed && <span className="text-sm">{item.label}</span>}
-                        </Link>
-                    );
-                })}
+            <nav className="flex-1 py-5 px-3 overflow-y-auto">
+                {NAV_SECTIONS.map((section, sIdx) => (
+                    <div key={sIdx} className={sIdx > 0 ? 'mt-6' : ''}>
+                        {/* Section header */}
+                        {!collapsed ? (
+                            <p
+                                className="px-3 mb-2 animate-fade-in"
+                                style={{
+                                    fontSize: '0.6875rem',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.08em',
+                                    color: 'rgba(255,255,255,0.5)',
+                                    lineHeight: '1',
+                                }}
+                            >
+                                {section.header}
+                            </p>
+                        ) : sIdx > 0 ? (
+                            <hr
+                                className="mx-3 mb-3"
+                                style={{ borderColor: 'var(--g-sidebar-border)' }}
+                            />
+                        ) : null}
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            {section.items.map((item) => {
+                                const isActive = pathname === item.path ||
+                                    (item.path !== '/' && pathname.startsWith(item.path));
+                                return (
+                                    <Link
+                                        key={item.path}
+                                        href={item.path}
+                                        className={cn(
+                                            'flex items-center gap-3 transition-all',
+                                            isActive
+                                                ? 'font-medium'
+                                                : 'hover:opacity-100'
+                                        )}
+                                        style={{
+                                            borderRadius: 'var(--g-radius-md)',
+                                            color: 'var(--g-text-inverse)',
+                                            backgroundColor: isActive ? 'var(--g-sidebar-active)' : 'transparent',
+                                            opacity: isActive ? 1 : 0.75,
+                                            fontSize: 'var(--g-text-body)',
+                                            fontWeight: isActive ? 600 : 500,
+                                            padding: '8px 12px',
+                                            letterSpacing: '0.01em',
+                                        }}
+                                        title={collapsed ? item.label : undefined}
+                                        aria-label={item.label}
+                                        aria-current={isActive ? 'page' : undefined}
+                                    >
+                                        <item.icon className="h-[18px] w-[18px] shrink-0" />
+                                        {!collapsed && <span>{item.label}</span>}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
             </nav>
 
             {/* AI Assist */}
-            <div className="px-2 pb-2">
+            <div className="px-3 pb-3">
                 <button
-                    className="w-full flex items-center gap-3 px-3 py-2.5 transition-all hover:opacity-90"
+                    className="w-full flex items-center gap-3 px-3 py-2 transition-all hover:opacity-90"
                     style={{
                         borderRadius: 'var(--g-radius-md)',
                         backgroundColor: 'var(--g-brand-bright)',
                         color: 'var(--g-text-inverse)',
+                        fontSize: 'var(--g-text-body)',
                     }}
                     title="Harvey AI"
+                    aria-label="Abrir Harvey AI"
                 >
-                    <Bot className="h-5 w-5 shrink-0" />
-                    {!collapsed && <span className="text-sm font-medium">Harvey AI</span>}
+                    <Bot className="h-[18px] w-[18px] shrink-0" />
+                    {!collapsed && <span className="font-medium">Harvey AI</span>}
                 </button>
             </div>
 
             {/* Collapse toggle */}
             <button
                 onClick={() => setCollapsed(!collapsed)}
-                className="flex items-center justify-center h-10 border-t border-white/10 hover:bg-white/5 transition-colors"
-                style={{ color: 'var(--g-text-inverse)' }}
-                aria-label={collapsed ? 'Expandir menu' : 'Colapsar menu'}
+                className="flex items-center justify-center h-10 border-t transition-colors shrink-0"
+                style={{
+                    color: 'var(--g-text-inverse)',
+                    borderColor: 'var(--g-sidebar-border)',
+                    opacity: 0.5,
+                }}
+                aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
             >
                 {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>

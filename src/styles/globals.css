@@ -3,6 +3,7 @@
 
 /* ============================================================
    Global Styles — DD Legal PMO
+   Garrigues UX Blueprint v2.0 compliant
    ============================================================ */
 
 * {
@@ -15,10 +16,26 @@ body {
     font-family: var(--g-font-family);
     font-size: var(--g-text-body);
     font-weight: var(--g-font-weight-regular);
+    line-height: var(--g-leading-normal);
     color: var(--g-text-primary);
     background-color: var(--g-surface-page);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   Typography hierarchy
+   ============================================================ */
+
+h1, h2, h3, h4, h5, h6 {
+    line-height: var(--g-leading-tight);
+    font-weight: var(--g-font-weight-bold);
+    color: var(--g-text-primary);
+    letter-spacing: -0.01em;
+}
+
+p {
+    line-height: var(--g-leading-normal);
 }
 
 a {
@@ -31,13 +48,68 @@ a:hover {
     color: var(--g-link-hover);
 }
 
-/* Animations */
+/* ============================================================
+   Focus — WCAG AA double ring (Garrigues mandatory)
+   ============================================================ */
+
+:focus-visible {
+    outline: none;
+    box-shadow:
+        0 0 0 2px var(--g-surface-card),
+        0 0 0 4px var(--g-brand-3308);
+}
+
+/* Sidebar items need inverse ring */
+[data-sidebar] :focus-visible,
+aside :focus-visible {
+    box-shadow:
+        0 0 0 2px var(--g-brand-3308),
+        0 0 0 4px var(--g-text-inverse);
+}
+
+/* ============================================================
+   Reusable card classes (Garrigues pattern)
+   ============================================================ */
+
+.g-card {
+    background-color: var(--g-surface-card);
+    border: 1px solid var(--g-border-subtle);
+    border-radius: var(--g-radius-lg);
+    box-shadow: var(--g-shadow-card);
+}
+
+.g-card-interactive {
+    background-color: var(--g-surface-card);
+    border: 1px solid var(--g-border-subtle);
+    border-radius: var(--g-radius-lg);
+    box-shadow: var(--g-shadow-card);
+    transition: box-shadow var(--g-transition-normal), transform var(--g-transition-normal);
+    cursor: pointer;
+}
+
+.g-card-interactive:hover {
+    box-shadow: var(--g-shadow-card-hover);
+    transform: translateY(-1px);
+}
+
+.g-section-label {
+    font-size: var(--g-text-caption);
+    font-weight: var(--g-font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--g-text-muted);
+    line-height: 1;
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(8px);
+        transform: translateY(6px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -47,9 +119,8 @@ a:hover {
 @keyframes scaleIn {
     from {
         opacity: 0;
-        transform: scale(0.95);
+        transform: scale(0.96);
     }
-
     to {
         opacity: 1;
         transform: scale(1);
@@ -61,7 +132,6 @@ a:hover {
         opacity: 0;
         transform: translateX(16px);
     }
-
     to {
         opacity: 1;
         transform: translateX(0);
@@ -72,7 +142,6 @@ a:hover {
     0% {
         background-position: -200% 0;
     }
-
     100% {
         background-position: 200% 0;
     }
@@ -93,13 +162,17 @@ a:hover {
 .skeleton {
     background: linear-gradient(90deg,
             var(--g-surface-muted) 25%,
-            var(--g-surface-subtle) 50%,
+            var(--g-border-subtle) 50%,
             var(--g-surface-muted) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
+    border-radius: var(--g-radius-md);
 }
 
-/* Scrollbar */
+/* ============================================================
+   Scrollbar
+   ============================================================ */
+
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;

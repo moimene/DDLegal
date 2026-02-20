@@ -153,7 +153,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
     if (loading) {
         return (
-            <div className="animate-fade-in space-y-6">
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-6)' }}>
                 <div className="skeleton h-8 w-64" style={{ borderRadius: 'var(--g-radius-md)' }} />
                 <div className="skeleton h-40 w-full" style={{ borderRadius: 'var(--g-radius-lg)' }} />
                 <div className="skeleton h-64 w-full" style={{ borderRadius: 'var(--g-radius-lg)' }} />
@@ -179,7 +179,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     ).length;
 
     return (
-        <div className="animate-fade-in space-y-6">
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-6)' }}>
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div>
@@ -190,7 +190,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     >
                         <ArrowLeft className="h-4 w-4" /> Proyectos
                     </Link>
-                    <h1 className="text-2xl font-bold" style={{ color: 'var(--g-text-primary)' }}>
+                    <h1 className="font-bold" style={{ fontSize: 'var(--g-text-h1)', color: 'var(--g-text-primary)' }}>
                         {project.name}
                     </h1>
                     <p className="text-sm mt-1" style={{ color: 'var(--g-text-secondary)' }}>
@@ -303,7 +303,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         >
                             <div className="px-5 py-3 flex items-center justify-between" style={{ backgroundColor: 'var(--g-surface-subtle)' }}>
                                 <div className="flex items-center gap-2">
-                                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: area.color || 'gray' }} />
+                                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: area.color || 'var(--g-border-default)' }} />
                                     <span className="font-medium text-sm" style={{ color: 'var(--g-text-primary)' }}>
                                         {area.name}
                                     </span>
@@ -312,7 +312,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                     </span>
                                 </div>
                             </div>
-                            <div className="divide-y" style={{ borderColor: 'var(--g-border-subtle)' }}>
+                            <div className="divide-y" style={{ '--tw-divide-color': 'var(--g-border-subtle)' } as React.CSSProperties}>
                                 {areaProcs.map(proc => {
                                     const task = areaTasks.find(t => t.process_id === proc.id);
                                     const isRunning = aiRunning === proc.id;
@@ -338,6 +338,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                             <button
                                                 onClick={() => invokeHarvey(proc.id)}
                                                 disabled={isRunning}
+                                                aria-busy={isRunning}
                                                 className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-90 disabled:opacity-50"
                                                 style={{
                                                     backgroundColor: 'var(--g-brand-bright)',
@@ -346,9 +347,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                                 }}
                                             >
                                                 {isRunning ? (
-                                                    <><Loader2 className="h-3 w-3 animate-spin" /> Ejecutando...</>
+                                                    <><Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Ejecutando...</>
                                                 ) : (
-                                                    <><Bot className="h-3 w-3" /> Harvey AI</>
+                                                    <><Bot className="h-3 w-3" aria-hidden="true" /> Harvey AI</>
                                                 )}
                                             </button>
                                         </div>
@@ -386,7 +387,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                     backgroundColor: 'var(--g-surface-card)',
                                     borderColor: 'var(--g-border-default)',
                                     borderRadius: 'var(--g-radius-lg)',
-                                    borderLeft: `4px solid ${SEVERITY_CONFIG[c.severity]?.color || 'gray'}`,
+                                    borderLeft: `4px solid ${SEVERITY_CONFIG[c.severity]?.color || 'var(--g-border-default)'}`,
                                 }}
                             >
                                 <div className="flex items-start justify-between">
@@ -468,19 +469,19 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         >
                             <table className="w-full min-w-[980px]">
                                 <thead>
-                                    <tr style={{ backgroundColor: 'var(--g-surface-subtle)' }}>
+                                    <tr style={{ backgroundColor: 'var(--g-surface-muted)' }}>
                                         {['Proceso', 'Área', 'Estado', 'IA', 'Prioridad', 'Vencimiento', 'Última salida IA'].map((h) => (
                                             <th
                                                 key={h}
                                                 className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                                                style={{ color: 'var(--g-text-primary)' }}
+                                                style={{ color: 'var(--g-text-muted)' }}
                                             >
                                                 {h}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y" style={{ borderColor: 'var(--g-border-subtle)' }}>
+                                <tbody className="divide-y" style={{ '--tw-divide-color': 'var(--g-border-subtle)' } as React.CSSProperties}>
                                     {tasks.map((task) => {
                                         const process = processById.get(task.process_id);
                                         const area = task.area_id ? areaById.get(task.area_id) : undefined;
@@ -510,6 +511,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                                     <select
                                                         value={task.status}
                                                         disabled={statusUpdating === task.id}
+                                                        aria-busy={statusUpdating === task.id}
+                                                        aria-label={`Estado de tarea ${process?.name || task.id}`}
                                                         onChange={(e) => updateTaskStatus(task.id, e.target.value as DDTask['status'])}
                                                         className="h-8 px-2 text-xs border"
                                                         style={{
@@ -604,19 +607,19 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         >
                             <table className="w-full min-w-[780px]">
                                 <thead>
-                                    <tr style={{ backgroundColor: 'var(--g-surface-subtle)' }}>
+                                    <tr style={{ backgroundColor: 'var(--g-surface-muted)' }}>
                                         {['Título', 'Tipo', 'Estado', 'Versión', 'Generado por', 'Fecha'].map((h) => (
                                             <th
                                                 key={h}
                                                 className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                                                style={{ color: 'var(--g-text-primary)' }}
+                                                style={{ color: 'var(--g-text-muted)' }}
                                             >
                                                 {h}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y" style={{ borderColor: 'var(--g-border-subtle)' }}>
+                                <tbody className="divide-y" style={{ '--tw-divide-color': 'var(--g-border-subtle)' } as React.CSSProperties}>
                                     {deliverables.map((doc) => (
                                         <tr key={doc.id}>
                                             <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--g-text-primary)' }}>

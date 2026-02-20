@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
     FolderKanban, FileText,
-    TrendingUp, Clock, CheckCircle2, ArrowRight
+    TrendingUp, Clock, CheckCircle2, ArrowRight, AlertTriangle, Bot
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { DDProject, DDArea, DDTask } from '@/lib/supabase';
@@ -40,10 +40,10 @@ export default function DashboardPage() {
 
     const activeProjects = projects.filter(p => p.status === 'active');
     const stats = [
-        { label: 'Proyectos Activos', value: activeProjects.length, icon: FolderKanban, color: 'var(--g-brand-3308)' },
-        { label: 'En Revisión', value: projects.filter(p => p.status === 'review').length, icon: Clock, color: 'var(--status-warning)' },
-        { label: 'Completados', value: projects.filter(p => p.status === 'closed').length, icon: CheckCircle2, color: 'var(--status-success)' },
-        { label: 'Áreas Cubiertas', value: areas.length, icon: TrendingUp, color: 'var(--status-info)' },
+        { label: 'Liquidaciones pendientes', value: activeProjects.length, icon: FolderKanban, color: 'var(--g-brand-3308)', bg: 'var(--g-surface-subtle)' },
+        { label: 'En Revisión', value: projects.filter(p => p.status === 'review').length, icon: Clock, color: 'var(--status-warning)', bg: '#fef9ee' },
+        { label: 'Completados', value: projects.filter(p => p.status === 'closed').length, icon: CheckCircle2, color: 'var(--status-success)', bg: 'var(--g-surface-subtle)' },
+        { label: 'Áreas Cubiertas', value: areas.length, icon: TrendingUp, color: 'var(--status-info)', bg: '#eef4ff' },
     ];
     const nextActions = tasks
         .filter(t => t.status === 'pending' || t.status === 'in_progress')
@@ -61,342 +61,392 @@ export default function DashboardPage() {
     const projectById = new Map(projects.map(p => [p.id, p]));
 
     return (
-        <div className="animate-fade-in space-y-8">
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-8)' }}>
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1
-                        className="font-bold"
-                        style={{ fontSize: 'var(--g-text-h1)', color: 'var(--g-text-primary)' }}
-                    >
-                        Dashboard PMO
+                    <h1 style={{ fontSize: 'var(--g-text-h1)', color: 'var(--g-text-primary)' }}>
+                        Dashboard
                     </h1>
-                    <p style={{ color: 'var(--g-text-secondary)', fontSize: 'var(--g-text-body)' }}>
+                    <p style={{ color: 'var(--g-text-secondary)', fontSize: 'var(--g-text-body)', marginTop: '2px' }}>
                         Gestión integral de Due Diligence Legal
                     </p>
                 </div>
                 <Link
                     href="/projects/new"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium transition-all hover:opacity-90"
+                    className="inline-flex items-center gap-2 font-medium transition-all hover:opacity-90"
                     style={{
                         backgroundColor: 'var(--g-brand-3308)',
                         color: 'var(--g-text-inverse)',
                         borderRadius: 'var(--g-radius-md)',
                         boxShadow: 'var(--g-shadow-brand)',
+                        padding: 'var(--g-space-2) var(--g-space-5)',
+                        fontSize: 'var(--g-text-body)',
                     }}
                 >
-                    <FolderKanban className="h-4 w-4" />
+                    <FolderKanban className="h-4 w-4" aria-hidden="true" />
                     Nuevo Proyecto DD
                 </Link>
             </div>
 
-            {/* Mi Jornada */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div
-                    className="p-4 border"
-                    style={{
-                        borderColor: 'var(--g-border-default)',
-                        borderRadius: 'var(--g-radius-lg)',
-                        backgroundColor: 'var(--g-surface-card)',
-                        boxShadow: 'var(--g-shadow-card)',
-                    }}
-                >
-                    <p className="text-xs font-medium uppercase mb-2" style={{ color: 'var(--g-brand-3308)' }}>
-                        Siguiente mejor acción
-                    </p>
-                    {loading ? (
-                        <div className="skeleton h-16 w-full" style={{ borderRadius: 'var(--g-radius-md)' }} />
-                    ) : nextActions.length === 0 ? (
-                        <p className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>
-                            No hay tareas pendientes para hoy.
-                        </p>
-                    ) : (
-                        <div className="space-y-2">
-                            {nextActions.map((task) => {
-                                const project = projectById.get(task.project_id);
-                                return (
-                                    <Link
-                                        key={task.id}
-                                        href={`/projects/${task.project_id}`}
-                                        className="block p-2 border"
-                                        style={{
-                                            borderColor: 'var(--g-border-subtle)',
-                                            borderRadius: 'var(--g-radius-md)',
-                                        }}
-                                    >
-                                        <p className="text-sm font-medium" style={{ color: 'var(--g-text-primary)' }}>
-                                            {project?.name || 'Proyecto'}
-                                        </p>
-                                        <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>
-                                            Estado: {STATUS_CONFIG[task.status]?.label} · Vence: {task.due_date || 'sin fecha'}
-                                        </p>
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-
-                <div
-                    className="p-4 border"
-                    style={{
-                        borderColor: 'var(--g-border-default)',
-                        borderRadius: 'var(--g-radius-lg)',
-                        backgroundColor: 'var(--g-surface-card)',
-                        boxShadow: 'var(--g-shadow-card)',
-                    }}
-                >
-                    <p className="text-xs font-medium uppercase mb-2" style={{ color: 'var(--status-warning)' }}>
-                        Bloqueos urgentes
-                    </p>
-                    {loading ? (
-                        <div className="skeleton h-16 w-full" style={{ borderRadius: 'var(--g-radius-md)' }} />
-                    ) : blockers.length === 0 ? (
-                        <p className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>
-                            Sin bloqueos activos.
-                        </p>
-                    ) : (
-                        <div className="space-y-2">
-                            {blockers.map((task) => {
-                                const project = projectById.get(task.project_id);
-                                return (
-                                    <Link
-                                        key={task.id}
-                                        href={`/projects/${task.project_id}`}
-                                        className="block p-2 border"
-                                        style={{
-                                            borderColor: 'var(--g-border-subtle)',
-                                            borderRadius: 'var(--g-radius-md)',
-                                        }}
-                                    >
-                                        <p className="text-sm font-medium" style={{ color: 'var(--g-text-primary)' }}>
-                                            {project?.name || 'Proyecto'}
-                                        </p>
-                                        <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>
-                                            Prioridad: {task.priority} · Responsable: {task.assigned_to || 'Pendiente'}
-                                        </p>
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-
-                <div
-                    className="p-4 border"
-                    style={{
-                        borderColor: 'var(--g-border-default)',
-                        borderRadius: 'var(--g-radius-lg)',
-                        backgroundColor: 'var(--g-surface-card)',
-                        boxShadow: 'var(--g-shadow-card)',
-                    }}
-                >
-                    <p className="text-xs font-medium uppercase mb-2" style={{ color: 'var(--status-success)' }}>
-                        Cola de revisión HITL
-                    </p>
-                    {loading ? (
-                        <div className="skeleton h-16 w-full" style={{ borderRadius: 'var(--g-radius-md)' }} />
-                    ) : hitlQueue.length === 0 ? (
-                        <p className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>
-                            Sin revisiones pendientes.
-                        </p>
-                    ) : (
-                        <div className="space-y-2">
-                            {hitlQueue.map((task) => {
-                                const project = projectById.get(task.project_id);
-                                return (
-                                    <Link
-                                        key={task.id}
-                                        href={`/projects/${task.project_id}/hitl`}
-                                        className="block p-2 border"
-                                        style={{
-                                            borderColor: 'var(--g-border-subtle)',
-                                            borderRadius: 'var(--g-radius-md)',
-                                        }}
-                                    >
-                                        <p className="text-sm font-medium" style={{ color: 'var(--g-text-primary)' }}>
-                                            {project?.name || 'Proyecto'}
-                                        </p>
-                                        <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>
-                                            Estado: {STATUS_CONFIG[task.status]?.label} · IA: {task.ai_status}
-                                        </p>
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            </div>
-
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4" style={{ gap: 'var(--g-space-4)' }}>
                 {stats.map((stat) => (
                     <div
                         key={stat.label}
-                        className="flex items-center gap-4 p-5 border transition-all hover:translate-y-[-2px]"
-                        style={{
-                            backgroundColor: 'var(--g-surface-card)',
-                            borderColor: 'var(--g-border-default)',
-                            borderRadius: 'var(--g-radius-lg)',
-                            boxShadow: 'var(--g-shadow-card)',
-                        }}
+                        className="g-card-interactive"
+                        style={{ padding: 'var(--g-space-5)' }}
                     >
-                        <div
-                            className="flex items-center justify-center h-12 w-12 shrink-0"
+                        <div className="flex items-center justify-between" style={{ marginBottom: 'var(--g-space-4)' }}>
+                            <div
+                                className="flex items-center justify-center"
+                                style={{
+                                    width: '40px',
+                                    height: '40px',
+                                    borderRadius: 'var(--g-radius-md)',
+                                    backgroundColor: stat.bg,
+                                }}
+                            >
+                                <stat.icon className="h-5 w-5" style={{ color: stat.color }} aria-hidden="true" />
+                            </div>
+                        </div>
+                        <p
+                            className="font-bold"
                             style={{
-                                borderRadius: 'var(--g-radius-md)',
-                                backgroundColor: stat.color,
-                                opacity: 0.1,
+                                fontSize: '1.75rem',
+                                lineHeight: '1',
+                                color: 'var(--g-text-primary)',
                             }}
                         >
-                            <stat.icon className="h-6 w-6" style={{ color: stat.color, opacity: 10 }} />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold" style={{ color: 'var(--g-text-primary)' }}>
-                                {loading ? '—' : stat.value}
-                            </p>
-                            <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>
-                                {stat.label}
-                            </p>
-                        </div>
+                            {loading ? '—' : stat.value}
+                        </p>
+                        <p style={{
+                            color: 'var(--g-text-secondary)',
+                            fontSize: 'var(--g-text-body)',
+                            marginTop: 'var(--g-space-1)',
+                        }}>
+                            {stat.label}
+                        </p>
                     </div>
                 ))}
             </div>
 
-            {/* Projects List */}
-            <div>
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-bold" style={{ fontSize: 'var(--g-text-h3)', color: 'var(--g-text-primary)' }}>
-                        Proyectos Recientes
-                    </h2>
-                    <Link
-                        href="/projects"
-                        className="inline-flex items-center gap-1 text-sm font-medium"
-                        style={{ color: 'var(--g-link)' }}
-                    >
-                        Ver todos <ArrowRight className="h-4 w-4" />
-                    </Link>
-                </div>
-
-                {loading ? (
-                    <div className="space-y-3">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="skeleton h-20 w-full" style={{ borderRadius: 'var(--g-radius-lg)' }} />
-                        ))}
-                    </div>
-                ) : projects.length === 0 ? (
-                    <div
-                        className="flex flex-col items-center justify-center py-16 border border-dashed"
-                        style={{
-                            backgroundColor: 'var(--g-surface-card)',
-                            borderColor: 'var(--g-border-subtle)',
-                            borderRadius: 'var(--g-radius-lg)',
-                        }}
-                    >
-                        <FolderKanban className="h-12 w-12 mb-4" style={{ color: 'var(--g-sec-300)' }} />
-                        <p className="text-lg font-medium mb-1" style={{ color: 'var(--g-text-primary)' }}>
-                            Sin proyectos todavía
-                        </p>
-                        <p className="text-sm mb-4" style={{ color: 'var(--g-text-secondary)' }}>
-                            Crea tu primer proyecto de Due Diligence para empezar
-                        </p>
-                        <Link
-                            href="/projects/new"
-                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium"
-                            style={{
-                                backgroundColor: 'var(--g-brand-3308)',
-                                color: 'var(--g-text-inverse)',
-                                borderRadius: 'var(--g-radius-md)',
-                            }}
-                        >
-                            Crear Proyecto
-                        </Link>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {projects.slice(0, 5).map((project) => (
+            {/* Action Panels — 3-column grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: 'var(--g-space-4)' }}>
+                {/* Siguiente mejor acción */}
+                <ActionPanel
+                    title="Siguiente mejor acción"
+                    titleColor="var(--g-brand-3308)"
+                    icon={<CheckCircle2 className="h-3.5 w-3.5" style={{ color: 'var(--g-brand-3308)' }} aria-hidden="true" />}
+                    loading={loading}
+                    empty={nextActions.length === 0}
+                    emptyText="No hay tareas pendientes para hoy."
+                >
+                    {nextActions.map((task) => {
+                        const project = projectById.get(task.project_id);
+                        return (
                             <Link
-                                key={project.id}
-                                href={`/projects/${project.id}`}
-                                className="flex items-center justify-between p-5 border transition-all hover:translate-y-[-1px]"
+                                key={task.id}
+                                href={`/projects/${task.project_id}`}
+                                className="block transition-colors"
                                 style={{
-                                    backgroundColor: 'var(--g-surface-card)',
-                                    borderColor: 'var(--g-border-default)',
-                                    borderRadius: 'var(--g-radius-lg)',
-                                    boxShadow: 'var(--g-shadow-card)',
+                                    padding: 'var(--g-space-3)',
+                                    borderRadius: 'var(--g-radius-md)',
                                 }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--g-surface-muted)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                             >
-                                <div className="flex items-center gap-4">
-                                    <div
-                                        className="h-10 w-10 flex items-center justify-center shrink-0"
-                                        style={{
-                                            borderRadius: 'var(--g-radius-md)',
-                                            backgroundColor: 'var(--g-sec-100)',
-                                        }}
-                                    >
-                                        <FileText className="h-5 w-5" style={{ color: 'var(--g-brand-3308)' }} />
-                                    </div>
-                                    <div>
-                                        <p className="font-medium" style={{ color: 'var(--g-text-primary)' }}>
-                                            {project.name}
-                                        </p>
-                                        <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>
-                                            {project.target_company} · {project.deal_type || 'Acquisition'}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span
-                                        className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium"
-                                        style={{
-                                            borderRadius: 'var(--g-radius-full)',
-                                            backgroundColor: project.status === 'active' ? 'var(--g-brand-3308)'
-                                                : project.status === 'review' ? 'var(--status-warning)'
-                                                    : project.status === 'closed' ? 'var(--status-success)'
-                                                        : 'var(--g-surface-muted)',
-                                            color: project.status === 'draft' ? 'var(--g-text-primary)' : 'var(--g-text-inverse)',
-                                        }}
-                                    >
-                                        {PROJECT_STATUS_LABEL[project.status]}
-                                    </span>
-                                    <ArrowRight className="h-4 w-4" style={{ color: 'var(--g-text-secondary)' }} />
-                                </div>
+                                <p className="font-medium" style={{ color: 'var(--g-text-primary)', fontSize: 'var(--g-text-body)' }}>
+                                    {project?.name || 'Proyecto'}
+                                </p>
+                                <p style={{ color: 'var(--g-text-muted)', fontSize: 'var(--g-text-small)', marginTop: '2px' }}>
+                                    {STATUS_CONFIG[task.status]?.label} · Vence: {task.due_date || 'sin fecha'}
+                                </p>
                             </Link>
-                        ))}
-                    </div>
-                )}
+                        );
+                    })}
+                </ActionPanel>
+
+                {/* Bloqueos urgentes */}
+                <ActionPanel
+                    title="Bloqueos urgentes"
+                    titleColor="var(--status-error)"
+                    icon={<AlertTriangle className="h-3.5 w-3.5" style={{ color: 'var(--status-error)' }} aria-hidden="true" />}
+                    loading={loading}
+                    empty={blockers.length === 0}
+                    emptyText="Sin bloqueos activos."
+                >
+                    {blockers.map((task) => {
+                        const project = projectById.get(task.project_id);
+                        return (
+                            <Link
+                                key={task.id}
+                                href={`/projects/${task.project_id}`}
+                                className="block transition-colors"
+                                style={{
+                                    padding: 'var(--g-space-3)',
+                                    borderRadius: 'var(--g-radius-md)',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--g-surface-muted)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                            >
+                                <p className="font-medium" style={{ color: 'var(--g-text-primary)', fontSize: 'var(--g-text-body)' }}>
+                                    {project?.name || 'Proyecto'}
+                                </p>
+                                <p style={{ color: 'var(--g-text-muted)', fontSize: 'var(--g-text-small)', marginTop: '2px' }}>
+                                    Prioridad: {task.priority} · {task.assigned_to || 'Sin asignar'}
+                                </p>
+                            </Link>
+                        );
+                    })}
+                </ActionPanel>
+
+                {/* Cola HITL */}
+                <ActionPanel
+                    title="Cola de revisión HITL"
+                    titleColor="var(--status-success)"
+                    icon={<Bot className="h-3.5 w-3.5" style={{ color: 'var(--status-success)' }} aria-hidden="true" />}
+                    loading={loading}
+                    empty={hitlQueue.length === 0}
+                    emptyText="Sin revisiones pendientes."
+                >
+                    {hitlQueue.map((task) => {
+                        const project = projectById.get(task.project_id);
+                        return (
+                            <Link
+                                key={task.id}
+                                href={`/projects/${task.project_id}/hitl`}
+                                className="block transition-colors"
+                                style={{
+                                    padding: 'var(--g-space-3)',
+                                    borderRadius: 'var(--g-radius-md)',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--g-surface-muted)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                            >
+                                <p className="font-medium" style={{ color: 'var(--g-text-primary)', fontSize: 'var(--g-text-body)' }}>
+                                    {project?.name || 'Proyecto'}
+                                </p>
+                                <p style={{ color: 'var(--g-text-muted)', fontSize: 'var(--g-text-small)', marginTop: '2px' }}>
+                                    {STATUS_CONFIG[task.status]?.label} · IA: {task.ai_status}
+                                </p>
+                            </Link>
+                        );
+                    })}
+                </ActionPanel>
             </div>
 
-            {/* Areas Grid */}
-            <div>
-                <h2
-                    className="font-bold mb-4"
-                    style={{ fontSize: 'var(--g-text-h3)', color: 'var(--g-text-primary)' }}
-                >
-                    Áreas de Revisión
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {areas.map((area) => (
-                        <div
-                            key={area.id}
-                            className="p-4 border transition-all hover:translate-y-[-1px] cursor-pointer"
-                            style={{
-                                backgroundColor: 'var(--g-surface-card)',
-                                borderColor: 'var(--g-border-default)',
-                                borderRadius: 'var(--g-radius-lg)',
-                                boxShadow: 'var(--g-shadow-sm)',
-                                borderLeft: `3px solid ${area.color}`,
-                            }}
+            {/* Two-column bottom section */}
+            <div className="grid grid-cols-1 lg:grid-cols-5" style={{ gap: 'var(--g-space-5)' }}>
+                {/* Projects List — wider */}
+                <div className="lg:col-span-3">
+                    <div className="flex items-center justify-between" style={{ marginBottom: 'var(--g-space-4)' }}>
+                        <h2 style={{ fontSize: 'var(--g-text-h3)', color: 'var(--g-text-primary)' }}>
+                            Proyectos Recientes
+                        </h2>
+                        <Link
+                            href="/projects"
+                            className="inline-flex items-center gap-1 font-medium"
+                            style={{ color: 'var(--g-link)', fontSize: 'var(--g-text-body)' }}
                         >
-                            <p className="text-sm font-medium" style={{ color: 'var(--g-text-primary)' }}>
-                                {area.name}
-                            </p>
-                            <p className="text-xs mt-1" style={{ color: 'var(--g-text-secondary)' }}>
-                                {area.code}
-                            </p>
+                            Ver todos <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Link>
+                    </div>
+
+                    {loading ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-2)' }}>
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="skeleton" style={{ height: '64px', borderRadius: 'var(--g-radius-lg)' }} />
+                            ))}
                         </div>
-                    ))}
+                    ) : projects.length === 0 ? (
+                        <div
+                            className="g-card flex flex-col items-center justify-center"
+                            style={{ padding: 'var(--g-space-12) var(--g-space-6)' }}
+                        >
+                            <FolderKanban className="h-10 w-10" style={{ color: 'var(--g-text-muted)', marginBottom: 'var(--g-space-4)' }} />
+                            <p className="font-medium" style={{ color: 'var(--g-text-primary)', fontSize: 'var(--g-text-body-lg)' }}>
+                                Sin proyectos todavía
+                            </p>
+                            <p style={{ color: 'var(--g-text-secondary)', fontSize: 'var(--g-text-body)', marginTop: '4px', marginBottom: 'var(--g-space-5)' }}>
+                                Crea tu primer proyecto de Due Diligence para empezar
+                            </p>
+                            <Link
+                                href="/projects/new"
+                                className="inline-flex items-center gap-2 font-medium"
+                                style={{
+                                    backgroundColor: 'var(--g-brand-3308)',
+                                    color: 'var(--g-text-inverse)',
+                                    borderRadius: 'var(--g-radius-md)',
+                                    padding: 'var(--g-space-2) var(--g-space-5)',
+                                    fontSize: 'var(--g-text-body)',
+                                }}
+                            >
+                                Crear Proyecto
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="g-card" style={{ overflow: 'hidden' }}>
+                            {projects.slice(0, 5).map((project, i) => (
+                                <Link
+                                    key={project.id}
+                                    href={`/projects/${project.id}`}
+                                    className="flex items-center justify-between transition-colors"
+                                    style={{
+                                        padding: 'var(--g-space-4) var(--g-space-5)',
+                                        borderBottom: i < Math.min(projects.length, 5) - 1 ? '1px solid var(--g-border-subtle)' : 'none',
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--g-surface-hover)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className="flex items-center justify-center shrink-0"
+                                            style={{
+                                                width: '36px',
+                                                height: '36px',
+                                                borderRadius: 'var(--g-radius-md)',
+                                                backgroundColor: 'var(--g-surface-subtle)',
+                                            }}
+                                        >
+                                            <FileText className="h-[18px] w-[18px]" style={{ color: 'var(--g-brand-3308)' }} aria-hidden="true" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium" style={{ color: 'var(--g-text-primary)', fontSize: 'var(--g-text-body)' }}>
+                                                {project.name}
+                                            </p>
+                                            <p style={{ color: 'var(--g-text-muted)', fontSize: 'var(--g-text-small)' }}>
+                                                {project.target_company} · {project.deal_type || 'Acquisition'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span
+                                            className="font-medium"
+                                            style={{
+                                                borderRadius: 'var(--g-radius-full)',
+                                                padding: '3px 10px',
+                                                fontSize: 'var(--g-text-caption)',
+                                                backgroundColor: project.status === 'active' ? 'var(--g-surface-subtle)'
+                                                    : project.status === 'review' ? '#fef9ee'
+                                                        : project.status === 'closed' ? 'var(--g-surface-subtle)'
+                                                            : 'var(--g-surface-muted)',
+                                                color: project.status === 'active' ? 'var(--g-brand-3308)'
+                                                    : project.status === 'review' ? 'var(--status-warning)'
+                                                        : project.status === 'closed' ? 'var(--status-success)'
+                                                            : 'var(--g-text-secondary)',
+                                            }}
+                                        >
+                                            {PROJECT_STATUS_LABEL[project.status]}
+                                        </span>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
                 </div>
+
+                {/* Areas Grid — narrower right column */}
+                <div className="lg:col-span-2">
+                    <h2 style={{ fontSize: 'var(--g-text-h3)', color: 'var(--g-text-primary)', marginBottom: 'var(--g-space-4)' }}>
+                        Áreas de Revisión
+                    </h2>
+                    <div className="g-card" style={{ overflow: 'hidden' }}>
+                        {areas.length === 0 && !loading ? (
+                            <div className="flex flex-col items-center justify-center" style={{ padding: 'var(--g-space-10)' }}>
+                                <p style={{ color: 'var(--g-text-muted)', fontSize: 'var(--g-text-body)' }}>Sin áreas configuradas</p>
+                            </div>
+                        ) : (
+                            areas.map((area, i) => (
+                                <div
+                                    key={area.id}
+                                    className="flex items-center gap-3"
+                                    style={{
+                                        padding: 'var(--g-space-3) var(--g-space-4)',
+                                        borderBottom: i < areas.length - 1 ? '1px solid var(--g-border-subtle)' : 'none',
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            width: '8px',
+                                            height: '8px',
+                                            borderRadius: 'var(--g-radius-full)',
+                                            backgroundColor: area.color || 'var(--g-text-muted)',
+                                            flexShrink: 0,
+                                        }}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-medium" style={{ color: 'var(--g-text-primary)', fontSize: 'var(--g-text-body)' }}>
+                                            {area.name}
+                                        </p>
+                                    </div>
+                                    <span style={{ color: 'var(--g-text-muted)', fontSize: 'var(--g-text-caption)' }}>
+                                        {area.code}
+                                    </span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ---- Reusable ActionPanel ---- */
+function ActionPanel({
+    title,
+    titleColor,
+    icon,
+    loading,
+    empty,
+    emptyText,
+    children,
+}: {
+    title: string;
+    titleColor: string;
+    icon: React.ReactNode;
+    loading: boolean;
+    empty: boolean;
+    emptyText: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="g-card" style={{ display: 'flex', flexDirection: 'column' }}>
+            {/* Card header */}
+            <div
+                className="flex items-center gap-2"
+                style={{
+                    padding: 'var(--g-space-4) var(--g-space-5)',
+                    borderBottom: '1px solid var(--g-border-subtle)',
+                }}
+            >
+                {icon}
+                <span
+                    className="font-bold"
+                    style={{
+                        fontSize: 'var(--g-text-caption)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        color: titleColor,
+                    }}
+                >
+                    {title}
+                </span>
+            </div>
+            {/* Card body */}
+            <div style={{ padding: 'var(--g-space-3) var(--g-space-4)', flex: 1 }}>
+                {loading ? (
+                    <div className="skeleton" style={{ height: '48px' }} />
+                ) : empty ? (
+                    <p style={{ color: 'var(--g-text-muted)', fontSize: 'var(--g-text-body)', padding: 'var(--g-space-2)' }}>
+                        {emptyText}
+                    </p>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {children}
+                    </div>
+                )}
             </div>
         </div>
     );

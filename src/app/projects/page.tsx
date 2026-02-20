@@ -23,21 +23,21 @@ export default function ProjectsPage() {
     );
 
     return (
-        <div className="animate-fade-in space-y-6">
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-6)' }}>
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="font-bold" style={{ fontSize: 'var(--g-text-h1)', color: 'var(--g-text-primary)' }}>
+                    <h1 style={{ fontSize: 'var(--g-text-h1)', color: 'var(--g-text-primary)' }}>
                         Proyectos Due Diligence
                     </h1>
-                    <p style={{ color: 'var(--g-text-secondary)' }}>
+                    <p style={{ color: 'var(--g-text-secondary)', fontSize: 'var(--g-text-body)', marginTop: '2px' }}>
                         {projects.length} proyecto{projects.length !== 1 ? 's' : ''} registrado{projects.length !== 1 ? 's' : ''}
                     </p>
                 </div>
                 <Link
                     href="/projects/new"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium transition-all hover:opacity-90"
+                    className="inline-flex items-center gap-2 font-medium transition-all hover:opacity-90"
                     style={{
-                        backgroundColor: 'var(--g-brand-3308)',
+                        padding: 'var(--g-space-2) var(--g-space-5)', fontSize: 'var(--g-text-body)', backgroundColor: 'var(--g-brand-3308)',
                         color: 'var(--g-text-inverse)',
                         borderRadius: 'var(--g-radius-md)',
                         boxShadow: 'var(--g-shadow-brand)',
@@ -48,48 +48,56 @@ export default function ProjectsPage() {
             </div>
 
             {/* Search */}
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'var(--g-text-secondary)' }} />
-                <input
-                    type="text"
-                    placeholder="Buscar por nombre o sociedad target..."
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="w-full h-10 pl-10 pr-4 text-sm border transition-colors"
-                    style={{
-                        backgroundColor: 'var(--g-surface-card)',
-                        borderColor: 'var(--g-border-subtle)',
-                        borderRadius: 'var(--g-radius-md)',
-                        color: 'var(--g-text-primary)',
-                    }}
-                />
+            <div>
+                <label
+                    htmlFor="projects-filter"
+                    className="block text-xs font-medium mb-1.5"
+                    style={{ color: 'var(--g-text-primary)' }}
+                >
+                    Buscar proyectos
+                </label>
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'var(--g-text-secondary)' }} aria-hidden="true" />
+                    <input
+                        id="projects-filter"
+                        type="text"
+                        placeholder="Buscar por nombre o sociedad target..."
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value)}
+                        className="w-full h-10 pl-10 pr-4 text-sm border transition-colors"
+                        style={{
+                            backgroundColor: 'var(--g-surface-card)',
+                            borderColor: 'var(--g-border-subtle)',
+                            borderRadius: 'var(--g-radius-md)',
+                            color: 'var(--g-text-primary)',
+                        }}
+                    />
+                </div>
             </div>
 
             {/* Table */}
             <div
-                className="overflow-hidden border"
+                className="g-card overflow-hidden"
                 style={{
                     backgroundColor: 'var(--g-surface-card)',
-                    borderColor: 'var(--g-border-default)',
                     borderRadius: 'var(--g-radius-lg)',
-                    boxShadow: 'var(--g-shadow-card)',
                 }}
             >
                 <table className="w-full">
                     <thead>
-                        <tr style={{ backgroundColor: 'var(--g-surface-subtle)' }}>
+                        <tr style={{ backgroundColor: 'var(--g-surface-muted)' }}>
                             {['Proyecto', 'Target', 'Tipo', 'Estado', 'Fecha', ''].map(h => (
                                 <th
                                     key={h}
                                     className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                                    style={{ color: 'var(--g-text-primary)' }}
+                                    style={{ color: 'var(--g-text-muted)' }}
                                 >
                                     {h}
                                 </th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y" style={{ borderColor: 'var(--g-border-subtle)' }}>
+                    <tbody className="divide-y" style={{ '--tw-divide-color': 'var(--g-border-subtle)' } as React.CSSProperties}>
                         {loading ? (
                             [1, 2, 3].map(i => (
                                 <tr key={i}>
@@ -111,10 +119,9 @@ export default function ProjectsPage() {
                         ) : filtered.map((p) => (
                             <tr
                                 key={p.id}
-                                className="hover:bg-opacity-50 transition-colors cursor-pointer"
-                                style={{ backgroundColor: 'transparent' }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--g-surface-subtle)'}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                className="transition-colors cursor-pointer"
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--g-surface-subtle)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                             >
                                 <td className="px-5 py-4">
                                     <div className="flex items-center gap-3">
@@ -129,11 +136,14 @@ export default function ProjectsPage() {
                                         className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium"
                                         style={{
                                             borderRadius: 'var(--g-radius-full)',
-                                            backgroundColor: p.status === 'active' ? 'var(--g-brand-3308)'
+                                            backgroundColor: p.status === 'active' ? 'var(--g-surface-subtle)'
+                                                : p.status === 'review' ? '#fef9ee'
+                                                    : p.status === 'closed' ? 'var(--g-surface-subtle)'
+                                                        : 'var(--g-surface-muted)',
+                                            color: p.status === 'active' ? 'var(--g-brand-3308)'
                                                 : p.status === 'review' ? 'var(--status-warning)'
                                                     : p.status === 'closed' ? 'var(--status-success)'
-                                                        : 'var(--g-surface-muted)',
-                                            color: p.status === 'draft' ? 'var(--g-text-primary)' : 'var(--g-text-inverse)',
+                                                        : 'var(--g-text-secondary)',
                                         }}
                                     >
                                         {STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG]?.label}
@@ -143,7 +153,7 @@ export default function ProjectsPage() {
                                     {formatDate(p.created_at)}
                                 </td>
                                 <td className="px-5 py-4 text-right">
-                                    <Link href={`/projects/${p.id}`}>
+                                    <Link href={`/projects/${p.id}`} aria-label={`Ver proyecto ${p.name}`}>
                                         <ArrowRight className="h-4 w-4" style={{ color: 'var(--g-link)' }} />
                                     </Link>
                                 </td>

@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 /**
  * Harvey AI Integration — API Route
  * This route proxies requests to Harvey AI (or n8n webhook which orchestrates Harvey).
+ * Enhanced with skills catalog lookup for richer prompts.
  * POST /api/harvey
  */
 export async function POST(req: NextRequest) {
@@ -22,6 +23,13 @@ export async function POST(req: NextRequest) {
             .replace(/\[sector\]/gi, sector || '[Sector]')
             .replace(/\[años\]/gi, '2022-2025');
 
+        // Get process info including area
+        const { data: proc } = await supabase
+            .from('dd_processes')
+            .select('area_id')
+            .eq('id', process_id)
+            .single();
+
         // Create or update the task
         const { data: existingTask } = await supabase
             .from('dd_tasks')
@@ -36,13 +44,6 @@ export async function POST(req: NextRequest) {
                 updated_at: new Date().toISOString(),
             }).eq('id', existingTask.id);
         } else {
-            // Get process area
-            const { data: proc } = await supabase
-                .from('dd_processes')
-                .select('area_id')
-                .eq('id', process_id)
-                .single();
-
             await supabase.from('dd_tasks').insert({
                 project_id,
                 process_id,
@@ -52,22 +53,67 @@ export async function POST(req: NextRequest) {
             });
         }
 
+        // ============================================================
+        // Skills catalog enhancement (backward compatible)
+        // Look up matching skills by area_code for richer prompts
+        // ============================================================
+        let skillContext: {
+            prompt_template?: string;
+            expected_output_schema?: Record<string, unknown> | null;
+            evidence_requirements?: unknown;
+            agent_pipeline?: string[] | null;
+        } | null = null;
+
+        if (proc?.area_id) {
+            // Get area code from area_id
+            const { data: area } = await supabase
+                .from('dd_areas')
+                .select('code')
+                .eq('id', proc.area_id)
+                .single();
+
+            if (area?.code) {
+                // Look for matching skills in this area
+                const { data: skills } = await supabase
+                    .from('dd_skills_catalog')
+                    .select('prompt_template, expected_output_schema, evidence_requirements, agent_pipeline')
+                    .eq('area_code', area.code)
+                    .eq('is_active', true)
+                    .eq('category', 'verificacion')
+                    .limit(1);
+
+                if (skills && skills.length > 0) {
+                    skillContext = skills[0];
+                }
+            }
+        }
+
         // Attempt to call Harvey via n8n webhook
         const n8nUrl = process.env.N8N_WEBHOOK_BASE_URL;
         let aiResult: Record<string, unknown> = {};
 
         if (n8nUrl) {
             try {
+                const n8nPayload: Record<string, unknown> = {
+                    prompt: enrichedPrompt,
+                    project_id,
+                    process_id,
+                    target_company,
+                    sector,
+                };
+
+                // Include skills context when available
+                if (skillContext) {
+                    n8nPayload.skill_prompt = skillContext.prompt_template;
+                    n8nPayload.expected_output_schema = skillContext.expected_output_schema;
+                    n8nPayload.evidence_requirements = skillContext.evidence_requirements;
+                    n8nPayload.agent_pipeline = skillContext.agent_pipeline;
+                }
+
                 const n8nResp = await fetch(`${n8nUrl}/dd-harvey-invoke`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: enrichedPrompt,
-                        project_id,
-                        process_id,
-                        target_company,
-                        sector,
-                    }),
+                    body: JSON.stringify(n8nPayload),
                 });
                 if (n8nResp.ok) {
                     aiResult = await n8nResp.json();
@@ -78,6 +124,7 @@ export async function POST(req: NextRequest) {
                     status: 'queued',
                     message: 'n8n webhook not reachable. Prompt stored for manual execution.',
                     prompt: enrichedPrompt,
+                    skill_enriched: !!skillContext,
                 };
             }
         } else {
@@ -85,6 +132,7 @@ export async function POST(req: NextRequest) {
                 status: 'queued',
                 message: 'Harvey integration pending. Prompt stored.',
                 prompt: enrichedPrompt,
+                skill_enriched: !!skillContext,
             };
         }
 
@@ -106,6 +154,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             result: aiResult,
+            skill_enriched: !!skillContext,
         });
 
     } catch (error) {

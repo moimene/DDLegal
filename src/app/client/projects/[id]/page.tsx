@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, AlertTriangle, CalendarDays, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, CalendarDays, CheckCircle2, Loader2, Upload, MessageSquare, CheckCheck } from 'lucide-react';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
 type ProjectStatus = 'draft' | 'active' | 'review' | 'closed';
@@ -91,7 +91,7 @@ export default function ClientProjectPage({ params }: { params: Promise<{ id: st
     const { project, progress_by_area, confirmed_flags, blockers, next_milestones } = payload;
 
     return (
-        <div className="animate-fade-in space-y-6 max-w-6xl">
+        <div className="animate-fade-in max-w-6xl" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-6)' }}>
             <div className="flex items-start justify-between">
                 <div>
                     <Link
@@ -101,7 +101,7 @@ export default function ClientProjectPage({ params }: { params: Promise<{ id: st
                     >
                         <ArrowLeft className="h-4 w-4" /> Volver al cockpit interno
                     </Link>
-                    <h1 className="text-2xl font-bold" style={{ color: 'var(--g-text-primary)' }}>
+                    <h1 className="font-bold" style={{ fontSize: 'var(--g-text-h1)', color: 'var(--g-text-primary)' }}>
                         Portal cliente
                     </h1>
                     <p className="text-sm mt-1" style={{ color: 'var(--g-text-secondary)' }}>
@@ -122,12 +122,15 @@ export default function ClientProjectPage({ params }: { params: Promise<{ id: st
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div
-                    className="p-4 border"
+                    className="g-card p-4 border transition-shadow"
                     style={{
                         borderColor: 'var(--g-border-default)',
                         borderRadius: 'var(--g-radius-lg)',
                         backgroundColor: 'var(--g-surface-card)',
+                        boxShadow: 'var(--g-shadow-card)',
                     }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card-hover)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card)'; }}
                 >
                     <p className="text-xs font-medium uppercase mb-1" style={{ color: 'var(--g-brand-3308)' }}>
                         Red flags confirmadas
@@ -141,12 +144,15 @@ export default function ClientProjectPage({ params }: { params: Promise<{ id: st
                 </div>
 
                 <div
-                    className="p-4 border"
+                    className="g-card p-4 border transition-shadow"
                     style={{
                         borderColor: 'var(--g-border-default)',
                         borderRadius: 'var(--g-radius-lg)',
                         backgroundColor: 'var(--g-surface-card)',
+                        boxShadow: 'var(--g-shadow-card)',
                     }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card-hover)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card)'; }}
                 >
                     <p className="text-xs font-medium uppercase mb-1" style={{ color: 'var(--status-warning)' }}>
                         Bloqueos activos
@@ -160,12 +166,15 @@ export default function ClientProjectPage({ params }: { params: Promise<{ id: st
                 </div>
 
                 <div
-                    className="p-4 border"
+                    className="g-card p-4 border transition-shadow"
                     style={{
                         borderColor: 'var(--g-border-default)',
                         borderRadius: 'var(--g-radius-lg)',
                         backgroundColor: 'var(--g-surface-card)',
+                        boxShadow: 'var(--g-shadow-card)',
                     }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card-hover)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card)'; }}
                 >
                     <p className="text-xs font-medium uppercase mb-1" style={{ color: 'var(--status-success)' }}>
                         Próximas fechas clave
@@ -179,12 +188,98 @@ export default function ClientProjectPage({ params }: { params: Promise<{ id: st
                 </div>
             </div>
 
+            {/* CTAs para el cliente */}
             <div
-                className="p-5 border"
+                className="g-card p-5 border"
                 style={{
                     borderColor: 'var(--g-border-default)',
                     borderRadius: 'var(--g-radius-lg)',
                     backgroundColor: 'var(--g-surface-card)',
+                    boxShadow: 'var(--g-shadow-card)',
+                }}
+            >
+                <h2 className="font-bold mb-4" style={{ color: 'var(--g-text-primary)' }}>
+                    Acciones disponibles
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <button
+                        className="g-card flex items-center gap-3 p-4 border transition-all hover:translate-y-[-1px]"
+                        style={{
+                            borderColor: 'var(--g-border-default)',
+                            borderRadius: 'var(--g-radius-lg)',
+                            backgroundColor: 'var(--g-surface-card)',
+                            boxShadow: 'var(--g-shadow-card)',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card-hover)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card)'; }}
+                    >
+                        <div
+                            className="h-10 w-10 flex items-center justify-center shrink-0"
+                            style={{ borderRadius: 'var(--g-radius-md)', backgroundColor: 'var(--g-sec-100)' }}
+                        >
+                            <Upload className="h-5 w-5" style={{ color: 'var(--g-brand-3308)' }} aria-hidden="true" />
+                        </div>
+                        <div className="text-left">
+                            <p className="text-sm font-medium" style={{ color: 'var(--g-text-primary)' }}>Subir documento</p>
+                            <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>Subir documento solicitado</p>
+                        </div>
+                    </button>
+
+                    <button
+                        className="g-card flex items-center gap-3 p-4 border transition-all hover:translate-y-[-1px]"
+                        style={{
+                            borderColor: 'var(--g-border-default)',
+                            borderRadius: 'var(--g-radius-lg)',
+                            backgroundColor: 'var(--g-surface-card)',
+                            boxShadow: 'var(--g-shadow-card)',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card-hover)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card)'; }}
+                    >
+                        <div
+                            className="h-10 w-10 flex items-center justify-center shrink-0"
+                            style={{ borderRadius: 'var(--g-radius-md)', backgroundColor: 'var(--g-sec-100)' }}
+                        >
+                            <MessageSquare className="h-5 w-5" style={{ color: 'var(--g-brand-3308)' }} aria-hidden="true" />
+                        </div>
+                        <div className="text-left">
+                            <p className="text-sm font-medium" style={{ color: 'var(--g-text-primary)' }}>Responder Q&A</p>
+                            <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>Responder preguntas pendientes</p>
+                        </div>
+                    </button>
+
+                    <button
+                        className="g-card flex items-center gap-3 p-4 border transition-all hover:translate-y-[-1px]"
+                        style={{
+                            borderColor: 'var(--g-border-default)',
+                            borderRadius: 'var(--g-radius-lg)',
+                            backgroundColor: 'var(--g-surface-card)',
+                            boxShadow: 'var(--g-shadow-card)',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card-hover)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--g-shadow-card)'; }}
+                    >
+                        <div
+                            className="h-10 w-10 flex items-center justify-center shrink-0"
+                            style={{ borderRadius: 'var(--g-radius-md)', backgroundColor: 'var(--g-sec-100)' }}
+                        >
+                            <CheckCheck className="h-5 w-5" style={{ color: 'var(--g-brand-3308)' }} aria-hidden="true" />
+                        </div>
+                        <div className="text-left">
+                            <p className="text-sm font-medium" style={{ color: 'var(--g-text-primary)' }}>Confirmar recepción</p>
+                            <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>Confirmar recepción de documentos</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div
+                className="g-card p-5 border"
+                style={{
+                    borderColor: 'var(--g-border-default)',
+                    borderRadius: 'var(--g-radius-lg)',
+                    backgroundColor: 'var(--g-surface-card)',
+                    boxShadow: 'var(--g-shadow-card)',
                 }}
             >
                 <h2 className="font-bold mb-4" style={{ color: 'var(--g-text-primary)' }}>
@@ -224,15 +319,16 @@ export default function ClientProjectPage({ params }: { params: Promise<{ id: st
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div
-                    className="p-5 border"
+                    className="g-card p-5 border"
                     style={{
                         borderColor: 'var(--g-border-default)',
                         borderRadius: 'var(--g-radius-lg)',
                         backgroundColor: 'var(--g-surface-card)',
+                        boxShadow: 'var(--g-shadow-card)',
                     }}
                 >
                     <h2 className="font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--g-text-primary)' }}>
-                        <AlertTriangle className="h-4 w-4" /> Red flags visibles
+                        <AlertTriangle className="h-4 w-4" aria-hidden="true" /> Red flags visibles
                     </h2>
                     {confirmed_flags.length === 0 ? (
                         <p className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>
@@ -255,15 +351,16 @@ export default function ClientProjectPage({ params }: { params: Promise<{ id: st
                 </div>
 
                 <div
-                    className="p-5 border"
+                    className="g-card p-5 border"
                     style={{
                         borderColor: 'var(--g-border-default)',
                         borderRadius: 'var(--g-radius-lg)',
                         backgroundColor: 'var(--g-surface-card)',
+                        boxShadow: 'var(--g-shadow-card)',
                     }}
                 >
                     <h2 className="font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--g-text-primary)' }}>
-                        <CalendarDays className="h-4 w-4" /> Próximas acciones del cliente
+                        <CalendarDays className="h-4 w-4" aria-hidden="true" /> Próximas acciones del cliente
                     </h2>
                     {blockers.length === 0 ? (
                         <div className="flex items-start gap-2">
