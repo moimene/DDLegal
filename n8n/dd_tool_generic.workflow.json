@@ -1,0 +1,86 @@
+{
+  "name": "DD Legal PMO — Generic Tool Executor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dd-tool-generic",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-tool",
+      "name": "Webhook - Generic Tool",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst toolSlug = body.tool_slug || '';\nconst params = body.params || {};\nconst skills = body.skills || [];\nconst projectId = body.project_id || '';\n\n// Combine all skill prompts\nlet skillInstructions = '';\nfor (const s of skills) {\n  skillInstructions += `\\n--- Skill: ${s.skill_key} ---\\n${s.prompt || s.prompt_template || ''}\\n`;\n}\n\nconst systemPrompt = `Eres un asistente legal experto ejecutando la herramienta \"${toolSlug}\".\nSigue las instrucciones de los skills asignados.\n\nREGLAS:\n- CITA cada afirmación con [SRC-XXX]\n- NO inventes datos\n- Responde en español con formato estructurado`;\n\nconst userPrompt = `Herramienta: ${toolSlug}\\nParámetros: ${JSON.stringify(params)}\\n${skillInstructions}`;\n\nreturn [{\n  json: {\n    execution_id: body.execution_id,\n    tool_slug: toolSlug,\n    system_prompt: systemPrompt,\n    user_prompt: userPrompt,\n    model: 'default'\n  }\n}];"
+      },
+      "id": "prepare-tool",
+      "name": "Prepare from Tool Definition",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.HARVEY_ENDPOINT_V1 || 'https://eu.api.harvey.ai/api/v1/completion' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'default', system_prompt: $json.system_prompt, user_prompt: $json.user_prompt, temperature: 0.2 }) }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "harvey-api-tool",
+      "name": "Call Harvey API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "harvey-token",
+          "name": "Harvey API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const harveyResponse = $input.first().json;\nconst prevData = $('Prepare from Tool Definition').first().json;\nconst rawResponse = harveyResponse.text || harveyResponse.completion || JSON.stringify(harveyResponse);\n\n// Extract evidence references from response\nconst citationPattern = /\\[SRC-\\d{3}\\]/g;\nconst citations = rawResponse.match(citationPattern) || [];\nconst uniqueCitations = [...new Set(citations)];\n\nreturn [{\n  json: {\n    execution_id: prevData.execution_id,\n    tool_slug: prevData.tool_slug,\n    output: {\n      raw_response: rawResponse,\n      model_used: harveyResponse.model || 'harvey-default',\n      generated_at: new Date().toISOString(),\n      citations_found: uniqueCitations.length,\n      citations: uniqueCitations\n    },\n    status: 'ok'\n  }\n}];"
+      },
+      "id": "extract-evidence",
+      "name": "Extract Evidence Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond-tool",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1130, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Generic Tool": {
+      "main": [[{ "node": "Prepare from Tool Definition", "type": "main", "index": 0 }]]
+    },
+    "Prepare from Tool Definition": {
+      "main": [[{ "node": "Call Harvey API", "type": "main", "index": 0 }]]
+    },
+    "Call Harvey API": {
+      "main": [[{ "node": "Extract Evidence Items", "type": "main", "index": 0 }]]
+    },
+    "Extract Evidence Items": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

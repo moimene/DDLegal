@@ -1,0 +1,48 @@
+{
+  "name": "DD Legal PMO — Agent Paranoico (Citation Validator)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dd-agent-paranoico",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-paranoico",
+      "name": "Webhook - Paranoico",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst harveyResponse = body.harvey_response || '';\nconst evidencePack = body.evidence_pack || {};\nconst sources = evidencePack.sources || [];\nconst allowedDomains = body.allowed_domains || ['boe.es', 'borme.es', 'oepm.es', 'euipo.europa.eu', 'wipo.int', 'registradores.org', 'consultas2.oepm.es'];\n\nconst issues = [];\nlet score = 100;\n\n// Check 1: Citation validation — [SRC-XXX] must reference existing sources\nconst citationPattern = /\\[SRC-(\\d{3})\\]/g;\nconst citations = [];\nlet match;\nwhile ((match = citationPattern.exec(harveyResponse)) !== null) {\n  citations.push(match[1]);\n}\nconst uniqueCitations = [...new Set(citations)];\nconst sourceIds = sources.map((s, i) => String(i + 1).padStart(3, '0'));\nconst sourceIdSet = new Set(sourceIds);\n// Also check for id field in sources\nconst sourceRefSet = new Set(sources.map(s => s.id ? s.id.replace('SRC-', '') : ''));\nconst validIds = new Set([...sourceIdSet, ...sourceRefSet]);\n\nfor (const cited of uniqueCitations) {\n  if (!validIds.has(cited)) {\n    issues.push({ type: 'invalid_citation', severity: 'error', detail: `[SRC-${cited}] does not match any source in evidence pack` });\n    score -= 10;\n  }\n}\n\n// Check 2: URL allowlist\nconst urlPattern = /https?:\\/\\/[^\\s)\"]+/g;\nconst urls = harveyResponse.match(urlPattern) || [];\nfor (const url of urls) {\n  const domain = url.replace(/^https?:\\/\\//, '').split('/')[0];\n  const isAllowed = allowedDomains.some(d => domain.endsWith(d));\n  if (!isAllowed) {\n    issues.push({ type: 'unauthorized_url', severity: 'warning', detail: `URL ${url} not in allowed domains` });\n    score -= 3;\n  }\n}\n\n// Check 3: Coverage — % of sources cited\nconst sourceCoverage = sources.length > 0 ? (uniqueCitations.length / sources.length) * 100 : 100;\nif (sourceCoverage < 50) {\n  issues.push({ type: 'low_coverage', severity: 'error', detail: `Only ${sourceCoverage.toFixed(0)}% of sources cited (target: >=95%)` });\n  score -= 10;\n} else if (sourceCoverage < 95) {\n  issues.push({ type: 'moderate_coverage', severity: 'warning', detail: `${sourceCoverage.toFixed(0)}% of sources cited (target: >=95%)` });\n  score -= 3;\n}\n\n// Check 4: No citation at all\nif (uniqueCitations.length === 0 && sources.length > 0) {\n  issues.push({ type: 'no_citations', severity: 'error', detail: 'Response contains zero citations but evidence pack has sources' });\n  score -= 20;\n}\n\nscore = Math.max(0, score);\nconst passed = score >= 80 && issues.filter(i => i.severity === 'error').length === 0;\n\nreturn [{\n  json: {\n    passed,\n    score,\n    issues,\n    stats: {\n      total_citations: uniqueCitations.length,\n      total_sources: sources.length,\n      coverage_pct: sourceCoverage.toFixed(1),\n      urls_checked: urls.length,\n      errors: issues.filter(i => i.severity === 'error').length,\n      warnings: issues.filter(i => i.severity === 'warning').length\n    }\n  }\n}];"
+      },
+      "id": "validate-citations",
+      "name": "Validate Citations & URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond-paranoico",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [690, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Paranoico": {
+      "main": [[{ "node": "Validate Citations & URLs", "type": "main", "index": 0 }]]
+    },
+    "Validate Citations & URLs": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

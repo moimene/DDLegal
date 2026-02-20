@@ -1,0 +1,99 @@
+{
+  "name": "DD Legal PMO — Skill Executor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dd-skill-executor",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-skill",
+      "name": "Webhook - Skill Executor",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst skillKey = body.skill_key || '';\nconst promptTemplate = body.prompt_template || '';\nconst outputSchema = body.expected_output_schema || {};\nconst evidencePack = body.evidence_pack || {};\nconst areaCode = body.area_code || 'general';\n\nreturn [{\n  json: {\n    ...body,\n    skill_key: skillKey,\n    prompt_template: promptTemplate,\n    output_schema: outputSchema,\n    evidence_pack: evidencePack,\n    area_code: areaCode\n  }\n}];"
+      },
+      "id": "extract-skill",
+      "name": "Extract Skill Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst systemPrompt = `Eres un experto en ${input.area_code} para due diligence legal.\nSigue estas instrucciones del skill \"${input.skill_key}\":\n\n${input.prompt_template}\n\nREGLAS:\n- CITA cada afirmación con [SRC-XXX]\n- NO inventes fuentes ni datos\n- Responde en español\n- Sigue el schema de output esperado`;\n\nconst userPrompt = `EVIDENCE PACK:\\n${JSON.stringify(input.evidence_pack, null, 2)}\\n\\nOUTPUT SCHEMA ESPERADO:\\n${JSON.stringify(input.output_schema, null, 2)}`;\n\nreturn [{\n  json: {\n    report_id: input.report_id,\n    request_id: input.request_id,\n    skill_key: input.skill_key,\n    system_prompt: systemPrompt,\n    user_prompt: userPrompt,\n    output_schema: input.output_schema,\n    model: 'default'\n  }\n}];"
+      },
+      "id": "prepare-skill-prompt",
+      "name": "Prepare Skill Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.HARVEY_ENDPOINT_V1 || 'https://eu.api.harvey.ai/api/v1/completion' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'default', system_prompt: $json.system_prompt, user_prompt: $json.user_prompt, temperature: 0.2 }) }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "harvey-api-skill",
+      "name": "Call Harvey API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "harvey-token",
+          "name": "Harvey API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const harveyResponse = $input.first().json;\nconst prevData = $('Prepare Skill Prompt').first().json;\nconst outputSchema = prevData.output_schema || {};\nconst rawResponse = harveyResponse.text || harveyResponse.completion || JSON.stringify(harveyResponse);\n\n// Basic schema validation\nconst requiredKeys = Object.keys(outputSchema);\nconst warnings = [];\nfor (const key of requiredKeys) {\n  if (!rawResponse.toLowerCase().includes(key.toLowerCase())) {\n    warnings.push(`Missing expected section: ${key}`);\n  }\n}\n\nreturn [{\n  json: {\n    report_id: prevData.report_id,\n    request_id: prevData.request_id,\n    skill_key: prevData.skill_key,\n    output: {\n      raw_response: rawResponse,\n      model_used: harveyResponse.model || 'harvey-default',\n      generated_at: new Date().toISOString()\n    },\n    validation: {\n      schema_warnings: warnings,\n      passed: warnings.length === 0\n    },\n    status: 'ok'\n  }\n}];"
+      },
+      "id": "validate-schema",
+      "name": "Validate Output Schema",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond-skill",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1350, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Skill Executor": {
+      "main": [[{ "node": "Extract Skill Config", "type": "main", "index": 0 }]]
+    },
+    "Extract Skill Config": {
+      "main": [[{ "node": "Prepare Skill Prompt", "type": "main", "index": 0 }]]
+    },
+    "Prepare Skill Prompt": {
+      "main": [[{ "node": "Call Harvey API", "type": "main", "index": 0 }]]
+    },
+    "Call Harvey API": {
+      "main": [[{ "node": "Validate Output Schema", "type": "main", "index": 0 }]]
+    },
+    "Validate Output Schema": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

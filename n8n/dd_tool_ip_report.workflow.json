@@ -1,0 +1,86 @@
+{
+  "name": "DD Legal PMO — IP Report Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dd-tool-ip-report",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-ip",
+      "name": "Webhook - IP Report",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst evidencePack = input.evidence_pack || {};\nconst snapshot = input.snapshot || {};\nconst skills = input.skills || [];\nconst prompt = input.prompt || '';\n\nconst systemPrompt = `Eres un abogado especialista en propiedad industrial e intelectual en España y la Unión Europea.\nGenera un informe profesional de IP basándote EXCLUSIVAMENTE en las evidencias aportadas.\n\nREGLAS DE CITACIÓN:\n- CITA cada afirmación factual usando [SRC-XXX]\n- NO inventes fuentes ni datos\n- Si no tienes evidencia, indica \"No consta en las evidencias aportadas\"\n- URLs solo de oepm.es, euipo.europa.eu o wipo.int\n\nSECCIONES OBLIGATORIAS:\n1. TITULAR — Datos del titular de los derechos IP\n2. MATRIZ DE MARCAS — Tabla con todas las marcas, clases Niza, estado, jurisdicción\n3. DIAGNÓSTICO — Vencimientos próximos, gaps de cobertura, incoherencias titularidad\n4. RECOMENDACIONES — Acciones prioritarias, renovaciones, extensiones`;\n\nlet skillInstructions = '';\nfor (const s of skills) {\n  skillInstructions += `\\n--- Skill: ${s.skill_key} ---\\n${s.prompt_template || s.prompt || ''}\\n`;\n}\n\nconst userPrompt = `${prompt}\\n${skillInstructions}\\n\\nEVIDENCE PACK:\\n${JSON.stringify(evidencePack, null, 2)}\\n\\nSNAPSHOT IP:\\n${JSON.stringify(snapshot, null, 2)}`;\n\nreturn [{\n  json: {\n    report_id: input.report_id,\n    request_id: input.request_id,\n    system_prompt: systemPrompt,\n    user_prompt: userPrompt,\n    evidence_pack: evidencePack,\n    model: 'default'\n  }\n}];"
+      },
+      "id": "prepare-ip-prompt",
+      "name": "Prepare IP Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.HARVEY_ENDPOINT_V1 || 'https://eu.api.harvey.ai/api/v1/completion' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'default', system_prompt: $json.system_prompt, user_prompt: $json.user_prompt, temperature: 0.2 }) }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "harvey-api-ip",
+      "name": "Call Harvey API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "harvey-token",
+          "name": "Harvey API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const harveyResponse = $input.first().json;\nconst prevData = $('Prepare IP Prompt').first().json;\n\nconst output = {\n  report_id: prevData.report_id,\n  request_id: prevData.request_id,\n  output: {\n    raw_response: harveyResponse.text || harveyResponse.completion || JSON.stringify(harveyResponse),\n    model_used: harveyResponse.model || 'harvey-default',\n    generated_at: new Date().toISOString(),\n    evidence_pack_version: '1.1',\n    sections: {\n      titular: 'See raw_response',\n      matriz_marcas: 'See raw_response',\n      diagnostico: 'See raw_response',\n      recomendaciones: 'See raw_response'\n    }\n  },\n  status: 'ok'\n};\n\nreturn [{ json: output }];"
+      },
+      "id": "format-ip-response",
+      "name": "Format IP Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond-ip",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1130, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - IP Report": {
+      "main": [[{ "node": "Prepare IP Prompt", "type": "main", "index": 0 }]]
+    },
+    "Prepare IP Prompt": {
+      "main": [[{ "node": "Call Harvey API", "type": "main", "index": 0 }]]
+    },
+    "Call Harvey API": {
+      "main": [[{ "node": "Format IP Response", "type": "main", "index": 0 }]]
+    },
+    "Format IP Response": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

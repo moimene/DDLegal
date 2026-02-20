@@ -1,0 +1,125 @@
+{
+  "name": "DD Legal PMO — Report Generator (Multi-Template)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dd-report-generate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-report-gen",
+      "name": "Webhook - Report Generate",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            { "outputIndex": 0, "value": "transactional" },
+            { "outputIndex": 1, "value": "pmo" },
+            { "outputIndex": 1, "value": "compliance" }
+          ]
+        },
+        "fallbackOutput": 1,
+        "mode": "rules",
+        "dataType": "string",
+        "value1": "={{ $json.body?.family || 'transactional' }}"
+      },
+      "id": "switch-family",
+      "name": "Route by Family",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst evidencePack = body.evidence_pack || {};\nconst snapshot = body.snapshot || {};\nconst prompt = body.prompt || '';\nconst templateType = body.template_type || 'generic';\n\nconst systemPrompt = `Eres un abogado especializado en due diligence legal.\nGenera un informe de tipo \"${templateType}\" basándote EXCLUSIVAMENTE en las fuentes proporcionadas.\n\nREGLAS DE CITACIÓN:\n- CITA cada afirmación factual usando [SRC-XXX]\n- NO inventes fuentes\n- Si no tienes evidencia, indica \"Sin evidencia disponible\"\n\nGenera el informe en español con secciones estructuradas.`;\n\nconst userPrompt = `${prompt}\\n\\nEVIDENCE PACK:\\n${JSON.stringify(evidencePack, null, 2)}\\n\\nSNAPSHOT:\\n${JSON.stringify(snapshot, null, 2)}`;\n\nreturn [{\n  json: {\n    report_id: body.report_id,\n    request_id: body.request_id,\n    template_type: templateType,\n    system_prompt: systemPrompt,\n    user_prompt: userPrompt,\n    model: 'default'\n  }\n}];"
+      },
+      "id": "prepare-harvey-prompt",
+      "name": "Prepare Harvey Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.HARVEY_ENDPOINT_V1 || 'https://eu.api.harvey.ai/api/v1/completion' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'default', system_prompt: $json.system_prompt, user_prompt: $json.user_prompt, temperature: 0.2 }) }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "harvey-api-report",
+      "name": "Call Harvey API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "harvey-token",
+          "name": "Harvey API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const harveyResponse = $input.first().json;\nconst prevData = $('Prepare Harvey Prompt').first().json;\n\nreturn [{\n  json: {\n    report_id: prevData.report_id,\n    request_id: prevData.request_id,\n    template_type: prevData.template_type,\n    output: {\n      raw_response: harveyResponse.text || harveyResponse.completion || JSON.stringify(harveyResponse),\n      model_used: harveyResponse.model || 'harvey-default',\n      generated_at: new Date().toISOString()\n    },\n    status: 'ok'\n  }\n}];"
+      },
+      "id": "format-harvey-response",
+      "name": "Format Harvey Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst snapshot = body.snapshot || {};\nconst templateType = body.template_type || 'pmo';\n\n// Aggregate data from snapshot for PMO/compliance reports\nconst summary = {\n  report_id: body.report_id,\n  request_id: body.request_id,\n  template_type: templateType,\n  output: {\n    raw_response: JSON.stringify(snapshot, null, 2),\n    generated_at: new Date().toISOString(),\n    data_source: 'snapshot_aggregation',\n    note: 'PMO/Compliance reports use data aggregation, no Harvey AI call'\n  },\n  status: 'ok'\n};\n\nreturn [{ json: summary }];"
+      },
+      "id": "data-aggregation",
+      "name": "Data Aggregation (PMO/Compliance)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond-report",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1350, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Report Generate": {
+      "main": [[{ "node": "Route by Family", "type": "main", "index": 0 }]]
+    },
+    "Route by Family": {
+      "main": [
+        [{ "node": "Prepare Harvey Prompt", "type": "main", "index": 0 }],
+        [{ "node": "Data Aggregation (PMO/Compliance)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Harvey Prompt": {
+      "main": [[{ "node": "Call Harvey API", "type": "main", "index": 0 }]]
+    },
+    "Call Harvey API": {
+      "main": [[{ "node": "Format Harvey Response", "type": "main", "index": 0 }]]
+    },
+    "Format Harvey Response": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+    "Data Aggregation (PMO/Compliance)": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

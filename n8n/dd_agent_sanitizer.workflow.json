@@ -1,0 +1,48 @@
+{
+  "name": "DD Legal PMO — Agent Sanitizer (PII & Format Cleanup)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dd-agent-sanitizer",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-sanitizer",
+      "name": "Webhook - Sanitizer",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nlet response = body.harvey_response || '';\nconst changesMade = [];\n\n// 1. Remove PII — personal emails\nconst emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g;\nconst emails = response.match(emailPattern) || [];\nif (emails.length > 0) {\n  response = response.replace(emailPattern, '[EMAIL_REDACTED]');\n  changesMade.push(`Redacted ${emails.length} email address(es)`);\n}\n\n// 2. Remove PII — phone numbers (Spanish format)\nconst phonePattern = /(?:\\+34\\s?)?(?:\\d{3}[\\s.-]?\\d{3}[\\s.-]?\\d{3}|\\d{2}[\\s.-]?\\d{3}[\\s.-]?\\d{2}[\\s.-]?\\d{2})/g;\nconst phones = response.match(phonePattern) || [];\nif (phones.length > 0) {\n  response = response.replace(phonePattern, '[PHONE_REDACTED]');\n  changesMade.push(`Redacted ${phones.length} phone number(s)`);\n}\n\n// 3. Normalize dates to ISO format (DD/MM/YYYY → YYYY-MM-DD)\nconst datePattern = /(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})/g;\nlet dateMatch;\nlet dateCount = 0;\nwhile ((dateMatch = datePattern.exec(response)) !== null) {\n  dateCount++;\n}\nif (dateCount > 0) {\n  response = response.replace(/(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})/g, (match, d, m, y) => {\n    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;\n  });\n  changesMade.push(`Normalized ${dateCount} date(s) to ISO format`);\n}\n\n// 4. Clean broken markdown — fix unclosed bold/italic\nconst boldCount = (response.match(/\\*\\*/g) || []).length;\nif (boldCount % 2 !== 0) {\n  response += '**';\n  changesMade.push('Closed unclosed bold markdown');\n}\n\n// 5. Truncate excessively long responses (> 50k chars)\nconst MAX_LENGTH = 50000;\nif (response.length > MAX_LENGTH) {\n  response = response.substring(0, MAX_LENGTH) + '\\n\\n[RESPONSE TRUNCATED — original length: ' + response.length + ' chars]';\n  changesMade.push(`Truncated response from ${response.length} to ${MAX_LENGTH} chars`);\n}\n\n// 6. Remove any null bytes or control characters\nconst cleanedResponse = response.replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/g, '');\nif (cleanedResponse.length !== response.length) {\n  changesMade.push('Removed control characters');\n  response = cleanedResponse;\n}\n\nreturn [{\n  json: {\n    sanitized_response: response,\n    changes_made: changesMade,\n    stats: {\n      original_length: (body.harvey_response || '').length,\n      sanitized_length: response.length,\n      changes_count: changesMade.length\n    }\n  }\n}];"
+      },
+      "id": "sanitize-response",
+      "name": "Sanitize Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond-sanitizer",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [690, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Sanitizer": {
+      "main": [[{ "node": "Sanitize Response", "type": "main", "index": 0 }]]
+    },
+    "Sanitize Response": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

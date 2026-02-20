@@ -1,0 +1,48 @@
+{
+  "name": "DD Legal PMO — Agent Validador (Schema Checker)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dd-agent-validador",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-validador",
+      "name": "Webhook - Validador",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst harveyResponse = body.harvey_response || '';\nconst requiredSections = body.required_sections || [];\nconst outputSchema = body.expected_output_schema || {};\n\nconst missingSections = [];\nconst formatErrors = [];\n\n// Check required sections\nconst responseLower = harveyResponse.toLowerCase();\nfor (const section of requiredSections) {\n  if (!responseLower.includes(section.toLowerCase())) {\n    missingSections.push(section);\n  }\n}\n\n// Check if response is valid (non-empty, has structure)\nif (harveyResponse.trim().length === 0) {\n  formatErrors.push('Response is empty');\n}\n\nif (harveyResponse.length < 100) {\n  formatErrors.push('Response suspiciously short (< 100 chars)');\n}\n\n// Check for broken markdown\nconst openBrackets = (harveyResponse.match(/\\[/g) || []).length;\nconst closeBrackets = (harveyResponse.match(/\\]/g) || []).length;\nif (Math.abs(openBrackets - closeBrackets) > 5) {\n  formatErrors.push('Possible broken markdown: bracket mismatch');\n}\n\n// Check output schema keys if provided\nconst schemaKeys = Object.keys(outputSchema);\nfor (const key of schemaKeys) {\n  if (!responseLower.includes(key.toLowerCase()) && !responseLower.includes(key.replace(/_/g, ' ').toLowerCase())) {\n    formatErrors.push(`Expected key \"${key}\" not found in response`);\n  }\n}\n\nconst valid = missingSections.length === 0 && formatErrors.length === 0;\n\nreturn [{\n  json: {\n    valid,\n    missing_sections: missingSections,\n    format_errors: formatErrors,\n    stats: {\n      sections_checked: requiredSections.length,\n      sections_found: requiredSections.length - missingSections.length,\n      response_length: harveyResponse.length\n    }\n  }\n}];"
+      },
+      "id": "validate-structure",
+      "name": "Validate Structure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond-validador",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [690, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Validador": {
+      "main": [[{ "node": "Validate Structure", "type": "main", "index": 0 }]]
+    },
+    "Validate Structure": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
