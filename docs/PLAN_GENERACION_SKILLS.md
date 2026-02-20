@@ -1,6 +1,11 @@
 # Plan de Generacion de Skills — DD Legal PMO
 **Documento para revision del equipo legal**
-**Fecha: Febrero 2025**
+**Fecha: Febrero 2025** (actualizado Febrero 2026)
+
+> **NOTA:** Este documento describe la arquitectura general de skills.
+> Para el briefing especifico con los workflows FMC mapeados a skills
+> y las fichas que debe completar cada area legal, ver:
+> **[BRIEFING_EQUIPO_LEGAL_FMC.md](./BRIEFING_EQUIPO_LEGAL_FMC.md)**
 
 ---
 

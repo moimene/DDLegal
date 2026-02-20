@@ -20,7 +20,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         required_sections: ['datos_generales', 'administradores', 'conclusiones'],
         evidence_pack_version: '1.1',
         grounding_required: true,
-        harvey_skill_key: 'marcas.consulta_oepm',
+        harvey_skill_key: 'societario.consulta_borme',
         export_formats: ['pdf', 'json', 'markdown'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
@@ -73,7 +73,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         required_sections: ['consentimientos', 'cambio_control', 'impacto'],
         evidence_pack_version: '1.1',
         grounding_required: true,
-        harvey_skill_key: 'contratos.consents_coc',
+        harvey_skill_key: 'contratos.extraccion_clausulas',
         export_formats: ['pdf', 'json'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
@@ -86,10 +86,11 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         required_sections: ['plantilla', 'contingencias', 'alta_direccion', 'recomendaciones'],
         evidence_pack_version: '1.1',
         grounding_required: true,
-        harvey_skill_key: 'laboral.analisis_contingencias',
+        harvey_skill_key: 'laboral.contingencias_laborales',
         export_formats: ['pdf', 'json'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
+        url_allowlist: ['boe.es', 'seg-social.es', 'borme.es'],
     },
 
     fiscal_report: {
@@ -99,9 +100,11 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         required_sections: ['situacion_fiscal', 'contingencias', 'recomendaciones'],
         evidence_pack_version: '1.1',
         grounding_required: true,
+        harvey_skill_key: 'fiscal.situacion_fiscal',
         export_formats: ['pdf', 'json'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
+        url_allowlist: ['boe.es', 'agenciatributaria.es', 'borme.es'],
     },
 
     inmobiliario_report: {
@@ -111,9 +114,11 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         required_sections: ['activos', 'cargas', 'recomendaciones'],
         evidence_pack_version: '1.1',
         grounding_required: true,
+        harvey_skill_key: 'inmobiliario.ficha_inmuebles',
         export_formats: ['pdf', 'json'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
+        url_allowlist: ['boe.es', 'registradores.org', 'catastro.meh.es'],
     },
 
     litigios_report: {
@@ -123,9 +128,11 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         required_sections: ['procedimientos_activos', 'riesgo_agregado', 'recomendaciones'],
         evidence_pack_version: '1.1',
         grounding_required: true,
+        harvey_skill_key: 'litigios.ficha_procedimientos',
         export_formats: ['pdf', 'json'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
+        url_allowlist: ['boe.es', 'poderjudicial.es'],
     },
 
     regulatorio_report: {
@@ -135,9 +142,11 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         required_sections: ['licencias', 'cumplimiento', 'recomendaciones'],
         evidence_pack_version: '1.1',
         grounding_required: true,
+        harvey_skill_key: 'regulatorio.licencias_autorizaciones',
         export_formats: ['pdf', 'json'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
+        url_allowlist: ['boe.es', 'cnmc.es'],
     },
 
     earn_out_report: {
@@ -147,7 +156,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         required_sections: ['mecanismo', 'riesgos', 'recomendaciones'],
         evidence_pack_version: '1.1',
         grounding_required: true,
-        harvey_skill_key: 'contratos.earn_out',
+        harvey_skill_key: 'contratos.extraccion_clausulas',
         export_formats: ['pdf', 'json'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
@@ -160,9 +169,11 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         required_sections: ['licencias_ambientales', 'contingencias', 'recomendaciones'],
         evidence_pack_version: '1.1',
         grounding_required: true,
+        harvey_skill_key: 'medioambiental.autorizaciones_ambientales',
         export_formats: ['pdf', 'json'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
+        url_allowlist: ['boe.es', 'miteco.gob.es'],
     },
 
     datos_report: {
@@ -172,9 +183,11 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         required_sections: ['tratamientos', 'cumplimiento_rgpd', 'recomendaciones'],
         evidence_pack_version: '1.1',
         grounding_required: true,
+        harvey_skill_key: 'datos.cumplimiento_rgpd',
         export_formats: ['pdf', 'json'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
+        url_allowlist: ['boe.es', 'aepd.es'],
     },
 
     antitrust_report: {
@@ -184,9 +197,11 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         required_sections: ['analisis_concentracion', 'riesgos', 'recomendaciones'],
         evidence_pack_version: '1.1',
         grounding_required: true,
+        harvey_skill_key: 'regulatorio.contingencias_regulatorias',
         export_formats: ['pdf', 'json'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
+        url_allowlist: ['boe.es', 'cnmc.es', 'ec.europa.eu'],
     },
 
     executive_digest: {
