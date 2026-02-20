@@ -1,41 +1,42 @@
 # DD Legal PMO
 
-## Que es DD Legal PMO
+Plataforma web para gestionar proyectos de due diligence legal con soporte de IA (Harvey AI), pipeline de agentes de validacion, reporting automatizado, Data Room con gap analysis, y catalogo extensible de 63 skills legales.
 
-DD Legal PMO es una plataforma web para gestionar proyectos de due diligence legal con soporte de IA (Harvey AI) en flujos de analisis por area, reporteria automatizada, y pipeline de agentes de validacion.
+**Production:** https://dd-legal-pmo.vercel.app
 
-**Production URL:** https://dd-legal-pmo.vercel.app
+---
 
-### Capacidades principales
+## Capacidades
 
 | Modulo | Descripcion | Estado |
 |--------|-------------|--------|
 | Dashboard PMO | KPIs, proyectos recientes, areas de revision | Operativo |
-| Proyectos DD | CRUD, detalle, tareas, contingencias | Operativo |
-| Tool Societario | Pipeline 7 fases: request > resolve > snapshot > report | Operativo |
+| Proyectos DD | CRUD + 6 tabs: Resumen, Tareas, Contingencias, Q&A, Documentos, Entregables | Operativo |
+| Reports UI | Hub de informes + wizard de generacion (31 templates) + visor con grounding | Operativo |
+| Data Room | Upload, listado, gap list por area (22 docs esperados en 6 areas) | Operativo |
+| Tool Societario | Pipeline 7 fases: request > resolve > BORME > snapshot > validate > report | Operativo |
 | Tool IP Radar | Pipeline 5 fases: request > resolve > search > snapshot > report | Operativo |
-| Tool Marcas | Interfaz especializada marcas | Operativo |
+| Skill-Driven Processes | Skills grid por area con accordion, invocar Harvey por skill especifico | Operativo |
+| Skills Catalog | 63 skills en 11 areas, quality gates, domain enums, HITL badges | Operativo |
 | Reporting Engine | 31 templates en 3 familias (transactional/pmo/compliance) | Operativo |
-| Skills Catalog | 12 skills activos (Phase A + B), gestion desde UI | Operativo |
+| Evidence Pack v1.1 | Fuentes indexadas [SRC-XXX] con grounding validation (0-100) | Operativo |
 | Alertas Negociacion | Auto-deteccion de red flags criticos con scoring | Operativo |
-| Red Flags Digest | Consolidacion cross-snapshot | Operativo |
-| Evidence Pack v1.1 | Fuentes indexadas [SRC-XXX] con grounding validation | Operativo |
-| Agent Pipeline n8n | Paranoico > Validador > Sanitizer | Workflows creados |
+| HITL | Aprobacion/correccion/rechazo de outputs IA, badges por area | Operativo |
 | Portal Cliente | Vista read-only de proyecto con progreso por area | Operativo |
-| HITL (Human-in-the-Loop) | Aprobacion/correccion/rechazo de outputs IA | Operativo |
+| Agent Pipeline n8n | Paranoico > Validador > Sanitizer (workflows creados) | Pendiente activar |
 
 ---
 
-## Stack tecnico
+## Stack
 
 | Capa | Tecnologia |
 |------|-----------|
 | Frontend | Next.js 14 (App Router), React 18, TypeScript |
-| Estilos | Tailwind CSS v4 + tokens de diseno |
-| Base de datos | Supabase (PostgreSQL + RLS) |
-| IA Legal | Harvey AI via n8n webhooks |
-| Orquestacion | n8n Cloud (9 workflows) |
-| Deploy | Vercel (produccion + preview) |
+| Estilos | Garrigues Design System (CSS custom properties + Tailwind) |
+| Base de datos | Supabase (PostgreSQL + RLS) — 19 tablas |
+| IA Legal | Harvey AI via n8n Cloud webhooks |
+| Orquestacion | n8n Cloud (9 workflows con agent pipeline) |
+| Deploy | Vercel (auto-deploy desde main) |
 | Tests E2E | Playwright |
 
 ---
@@ -46,30 +47,54 @@ DD Legal PMO es una plataforma web para gestionar proyectos de due diligence leg
 Browser
   |
   v
-Vercel (Next.js App Router)
+Vercel (Next.js 14 App Router)
   |
-  +-- Pages (14 rutas) ---- React UI con Tailwind
+  +-- Pages (17 rutas) ---- React UI + Garrigues Design System
   |
-  +-- API Routes (26 endpoints) ---- Server-side logic
+  +-- API Routes (27 endpoints) ---- Server-side logic
   |     |
   |     +-- Supabase (admin client, RLS bypass)
   |     |
   |     +-- n8n Cloud webhooks
   |           |
-  |           +-- Harvey AI (eu.api.harvey.ai/api/v1/completion)
+  |           +-- Harvey AI (eu.api.harvey.ai)
   |           |
   |           +-- Agent Pipeline (Paranoico > Validador > Sanitizer)
   |
   +-- Lib
-        +-- supabase.ts / supabase-admin.ts
+        +-- supabase.ts / supabase-admin.ts (tipos + clients)
         +-- reporting/report-engine.ts (31 templates)
-        +-- reporting/templates.ts
-        +-- utils.ts
+        +-- reporting/garrigues-schemas.ts (schemas FMC)
+        +-- utils.ts (formatters, configs)
 ```
 
 ---
 
-## Inventario de API Routes (26)
+## Paginas (17)
+
+| Ruta | Descripcion |
+|------|-------------|
+| `/` | Dashboard principal con KPIs y areas |
+| `/projects` | Listado de proyectos DD |
+| `/projects/new` | Alta de nuevo proyecto |
+| `/projects/[id]` | Detalle: Resumen + Skills, Tareas, Contingencias, Q&A, Documentos, Entregables |
+| `/projects/[id]/hitl` | Vista HITL para aprobacion de outputs |
+| `/reports` | Hub de informes con filtros y busqueda |
+| `/reports/new` | Wizard de generacion de informe (3 pasos) |
+| `/reports/[id]` | Visor de informe con grounding score |
+| `/tools` | Catalogo de herramientas DD |
+| `/tools/societario` | Pipeline societario (7 fases) |
+| `/tools/ip-radar` | Pipeline IP Radar (5 fases) |
+| `/tools/marcas` | Herramienta de marcas |
+| `/skills` | Catalogo de skills (lectura) |
+| `/configuracion` | Estado del sistema |
+| `/configuracion/herramientas` | Gestion de herramientas |
+| `/configuracion/skills` | Gestion de skills |
+| `/client/projects/[id]` | Portal de cliente (read-only) |
+
+---
+
+## API Routes (27)
 
 ### Societario (7)
 | Ruta | Metodo | Descripcion |
@@ -86,7 +111,7 @@ Vercel (Next.js App Router)
 | Ruta | Metodo | Descripcion |
 |------|--------|-------------|
 | `/api/ip/requests` | POST | Crea solicitud de analisis IP |
-| `/api/ip/resolve` | POST | Resuelve titular en registros OEPM/EUIPO |
+| `/api/ip/resolve` | POST | Resuelve titular en OEPM/EUIPO |
 | `/api/ip/search` | POST | Busqueda en registros de marcas/patentes |
 | `/api/ip/snapshot` | POST | Genera snapshot de cartera IP |
 | `/api/ip/report` | POST | Genera reporte IP via Harvey |
@@ -94,61 +119,86 @@ Vercel (Next.js App Router)
 ### Reporting (2)
 | Ruta | Metodo | Descripcion |
 |------|--------|-------------|
-| `/api/reports/generate` | POST | Genera reporte desde cualquier template (31 tipos) |
+| `/api/reports/generate` | POST | Genera reporte desde template (31 tipos) |
 | `/api/reports/red-flags-digest` | POST | Consolida red flags cross-snapshot |
 
-### Alertas (1)
+### Data Room (1)
 | Ruta | Metodo | Descripcion |
 |------|--------|-------------|
-| `/api/alerts/negotiation` | POST | Evalua red flags con scoring automatico |
+| `/api/documents` | GET/POST | Listado + gap list / crear documento |
 
-### Skills (1)
+### Otros (12)
 | Ruta | Metodo | Descripcion |
 |------|--------|-------------|
+| `/api/alerts/negotiation` | POST | Evalua red flags con scoring |
 | `/api/skills` | GET/POST | CRUD de skills catalog |
-
-### System (3)
-| Ruta | Metodo | Descripcion |
-|------|--------|-------------|
-| `/api/system/health` | GET | Health check (Supabase + n8n connectivity) |
+| `/api/system/health` | GET | Health check |
 | `/api/system/skills` | GET | Lista skills del sistema |
-| `/api/system/tools` | GET | Lista herramientas disponibles |
-
-### Tools (3)
-| Ruta | Metodo | Descripcion |
-|------|--------|-------------|
-| `/api/tools/execute` | POST | Ejecuta herramienta generica via n8n |
-| `/api/tools/executions` | GET | Lista ejecuciones de herramientas |
-| `/api/tools/link-project` | POST | Vincula ejecucion a proyecto DD |
-
-### Core (4)
-| Ruta | Metodo | Descripcion |
-|------|--------|-------------|
-| `/api/harvey` | POST | Invocacion directa Harvey AI via n8n |
-| `/api/evidence` | POST | Gestiona Evidence Pack (fuentes indexadas) |
-| `/api/hitl/decision` | POST | Decision HITL: approve/correct/reject |
+| `/api/system/tools` | GET | Lista herramientas |
+| `/api/tools/execute` | POST | Ejecuta herramienta via n8n |
+| `/api/tools/executions` | GET | Lista ejecuciones |
+| `/api/tools/link-project` | POST | Vincula ejecucion a proyecto |
+| `/api/harvey` | POST | Invocacion directa Harvey AI |
+| `/api/evidence` | POST | Gestiona Evidence Pack |
+| `/api/hitl/decision` | POST | Decision HITL |
 | `/api/client/projects/[id]` | GET | Portal cliente read-only |
 
 ---
 
-## Paginas (14)
+## Base de datos (19 tablas)
 
-| Ruta | Descripcion |
-|------|-------------|
-| `/` | Dashboard principal con KPIs y areas |
-| `/projects` | Listado de proyectos DD |
-| `/projects/new` | Alta de nuevo proyecto |
-| `/projects/[id]` | Detalle de proyecto (tabs: resumen, tareas, contingencias) |
-| `/projects/[id]/hitl` | Vista HITL para aprobacion de outputs |
-| `/tools` | Catalogo de herramientas DD |
-| `/tools/societario` | Pipeline societario (7 fases) |
-| `/tools/ip-radar` | Pipeline IP Radar (5 fases) |
-| `/tools/marcas` | Herramienta de marcas |
-| `/skills` | Catalogo y gestion de skills |
-| `/configuracion` | Panel de configuracion general |
-| `/configuracion/herramientas` | Config de herramientas |
-| `/configuracion/skills` | Config de skills |
-| `/client/projects/[id]` | Portal de cliente (read-only) |
+| Tabla | Descripcion |
+|-------|-------------|
+| `dd_projects` | Proyectos DD principales |
+| `dd_areas` | Catalogo de areas de revision |
+| `dd_processes` | Procesos por area (incluye harvey_prompt) |
+| `dd_tasks` | Ejecucion/seguimiento por proceso + salida IA |
+| `dd_contingencies` | Contingencias/riesgos por proyecto |
+| `dd_tools` | Catalogo de herramientas DD |
+| `dd_tool_executions` | Log de ejecuciones de herramientas |
+| `dd_skills_catalog` | 63 skills con prompts, schemas, quality gates |
+| `dd_evidence_packs` | Paquetes de evidencia con fuentes indexadas |
+| `dd_societario_requests` | Solicitudes de DD societaria |
+| `dd_societario_snapshots` | Snapshots societarios |
+| `dd_ip_requests` | Solicitudes de DD propiedad industrial |
+| `dd_ip_snapshots` | Snapshots de cartera IP |
+| `dd_reports` | Reportes generados (31 templates) |
+| `dd_alerts` | Alertas de negociacion |
+| `dd_agent_executions` | Observabilidad del pipeline de agentes |
+| `dd_documents` | Documentos del Data Room |
+| `dd_expected_documents` | Gap list por area (22 docs en 6 areas) |
+| `dd_domain_enums` | Enumeraciones canonicas por dominio (15 enums) |
+
+### Migraciones (9)
+
+```
+supabase/migrations/
+  20260103175640_remote_baseline.sql
+  202602200001_hitl_client_visibility.sql
+  202602200002_tools_evidence_skills.sql
+  202602200003_seed_tools_skills.sql
+  202602210001_societario_schema.sql
+  202602210002_seed_societario_config.sql
+  202602210003_seed_fmc_skills.sql
+  202602210004_data_room.sql
+  202602210005_skill_quality_gates.sql
+```
+
+---
+
+## Workflows n8n (9)
+
+| Workflow | Webhook Path | Funcion |
+|----------|-------------|---------|
+| Harvey Adapter | `/dd-harvey-invoke` | Adaptador generico Harvey AI |
+| Societario Report | `/dd-tool-societario-report` | Reporte DD societario |
+| IP Report | `/dd-tool-ip-report` | Reporte DD propiedad industrial |
+| Report Generator | `/dd-report-generate` | Generador generico (31 templates) |
+| Skill Executor | `/dd-skill-executor` | Ejecucion de skills individuales |
+| Generic Tool | `/dd-tool-generic` | Ejecucion de microtools |
+| Agent Paranoico | `/dd-agent-paranoico` | Validacion de citas y URLs |
+| Agent Validador | `/dd-agent-validador` | Validacion de schema/secciones |
+| Agent Sanitizer | `/dd-agent-sanitizer` | Limpieza PII y formato |
 
 ---
 
@@ -156,7 +206,7 @@ Vercel (Next.js App Router)
 
 | Componente | Ubicacion | Funcion |
 |-----------|-----------|---------|
-| `sidebar` | layout/ | Navegacion principal |
+| `sidebar` | layout/ | Navegacion principal con secciones |
 | `candidate-resolver` | societario/ | UI resolucion de empresa target |
 | `pipeline-tracker` | societario/ | Tracker visual de fases del pipeline |
 | `snapshot-viewer` | societario/ | Visualizador de snapshot societario |
@@ -170,118 +220,12 @@ Vercel (Next.js App Router)
 
 ---
 
-## Workflows n8n (9)
-
-Instancia n8n Cloud: `mmenendeza.app.n8n.cloud`
-
-| Workflow | Webhook Path | Nodos | Funcion |
-|----------|-------------|-------|---------|
-| Harvey Adapter | `/dd-harvey-invoke` | 4 | Adaptador generico Harvey AI |
-| Societario Report | `/dd-tool-societario-report` | 5 | Reporte DD societario |
-| IP Report | `/dd-tool-ip-report` | 5 | Reporte DD propiedad industrial |
-| Report Generator | `/dd-report-generate` | 7 | Generador generico (31 templates) |
-| Skill Executor | `/dd-skill-executor` | 6 | Ejecucion de skills individuales |
-| Generic Tool | `/dd-tool-generic` | 5 | Ejecucion de microtools |
-| Agent Paranoico | `/dd-agent-paranoico` | 3 | Validacion de citas y URLs |
-| Agent Validador | `/dd-agent-validador` | 3 | Validacion de schema/secciones |
-| Agent Sanitizer | `/dd-agent-sanitizer` | 3 | Limpieza PII y formato |
-
-### Agent Pipeline
-
-El pipeline de agentes se ejecuta despues de cada respuesta de Harvey:
-
-```
-Harvey Response
-     |
-     v
-Agent Paranoico ---- Valida: citas [SRC-XXX] existen en evidence pack,
-     |                URLs en allowlist (boe.es, oepm.es, euipo.europa.eu...),
-     |                cobertura de fuentes >= 95%
-     v                Output: { passed, score: 0-100, issues[] }
-Agent Validador --- Valida: secciones requeridas presentes,
-     |               response no vacia, longitud minima,
-     |               schema keys encontrados
-     v               Output: { valid, missing_sections[], format_errors[] }
-Agent Sanitizer --- Limpia: emails redactados [EMAIL_REDACTED],
-     |               telefonos redactados [PHONE_REDACTED],
-     |               fechas normalizadas a ISO,
-     v               markdown roto cerrado, truncamiento a 50k chars
-Final Response      Output: { sanitized_response, changes_made[], stats }
-```
-
----
-
-## Modelo de datos
-
-### Tablas Supabase
-
-| Tabla | Descripcion |
-|-------|-------------|
-| `dd_projects` | Proyectos DD principales |
-| `dd_areas` | Catalogo de areas de revision |
-| `dd_processes` | Procesos por area (incluye harvey_prompt) |
-| `dd_tasks` | Ejecucion/seguimiento por proceso + salida IA |
-| `dd_contingencies` | Contingencias/riesgos por proyecto |
-| `dd_tools` | Catalogo de herramientas DD |
-| `dd_tool_executions` | Log de ejecuciones de herramientas |
-| `dd_skills_catalog` | 12 skills con prompt_template y output_schema |
-| `dd_evidence_packs` | Paquetes de evidencia con fuentes indexadas |
-| `dd_societario_requests` | Solicitudes de DD societaria |
-| `dd_societario_snapshots` | Snapshots societarios |
-| `dd_ip_requests` | Solicitudes de DD propiedad industrial |
-| `dd_ip_snapshots` | Snapshots de cartera IP |
-| `dd_reports` | Reportes generados (31 templates) |
-| `dd_alerts` | Alertas de negociacion |
-| `dd_agent_executions` | Observabilidad del pipeline de agentes |
-
-### Migraciones SQL (6)
-
-```
-supabase/migrations/
-  20260103175640_remote_baseline.sql          -- Schema base DD
-  202602200001_hitl_client_visibility.sql     -- HITL + portal cliente
-  202602200002_tools_evidence_skills.sql      -- Tools, evidence, skills
-  202602200003_seed_tools_skills.sql          -- Seed de tools y skills
-  202602210001_societario_schema.sql          -- Schema societario + IP
-  202602210002_seed_societario_config.sql     -- Seed config societario
-```
-
-Tabla `dd_agent_executions` fue creada via Supabase MCP (migracion cloud).
-
----
-
-## Skills Catalog (12 activos)
-
-### Phase A — Operativos (4)
-
-| Skill Key | Area | Descripcion |
-|-----------|------|-------------|
-| `societario.consulta_rm` | Societario | Consulta Registro Mercantil |
-| `societario.analisis_organos` | Societario | Analisis de organos sociales |
-| `marcas.consulta_oepm` | Marcas/PI | Consulta OEPM |
-| `marcas.analisis_riesgo_pi` | Marcas/PI | Analisis de riesgo PI |
-
-### Phase B — Seeded (8)
-
-| Skill Key | Area | Descripcion |
-|-----------|------|-------------|
-| `contratos.revision_clausulas` | Contratos | Revision de clausulas contractuales |
-| `contratos.analisis_garantias` | Contratos | Analisis de garantias |
-| `contratos.change_of_control` | Contratos | Clausulas de cambio de control |
-| `contratos.vencimientos` | Contratos | Analisis de vencimientos |
-| `laboral.plantilla_estructura` | Laboral | Estructura de plantilla |
-| `laboral.convenios_colectivos` | Laboral | Analisis de convenios colectivos |
-| `laboral.litigios_pendientes` | Laboral | Litigios laborales pendientes |
-| `laboral.planes_retribucion` | Laboral | Planes de retribucion |
-
----
-
 ## Setup local
 
 ### Prerrequisitos
 - Node.js 20+
 - Proyecto Supabase con esquema DD
-- n8n Cloud con credenciales Harvey configuradas (para flujo IA real)
+- n8n Cloud con credenciales Harvey (para flujo IA real)
 
 ### Variables de entorno
 
@@ -317,8 +261,9 @@ npx playwright test # Tests E2E
 
 **Proyecto Vercel:** `dd-legal-pmo`
 **URL produccion:** https://dd-legal-pmo.vercel.app
+**Auto-deploy:** Push a `main` en GitHub (moimene/DDLegal)
 
-### Env vars configuradas en Vercel
+### Env vars en Vercel
 
 | Variable | Scope |
 |----------|-------|
@@ -327,14 +272,7 @@ npx playwright test # Tests E2E
 | `SUPABASE_SERVICE_ROLE_KEY` | Production + Preview |
 | `N8N_WEBHOOK_BASE_URL` | Production |
 
-### Deploy manual
-```bash
-npx vercel pull --yes
-npx vercel build --prod
-npx vercel deploy --prebuilt --prod
-```
-
-Nota: `.npmrc` contiene `legacy-peer-deps=true` para resolver conflicto de peer dependencies entre `eslint@^9` y `eslint-config-next@14`.
+Nota: `.npmrc` contiene `legacy-peer-deps=true` para resolver peer deps.
 
 ---
 
@@ -350,12 +288,13 @@ Ejecutar: `npx playwright test`
 
 ---
 
-## Documentacion adicional
+## Documentacion
 
 | Archivo | Descripcion |
 |---------|-------------|
-| `PRD.md` | Product Requirements Document completo |
+| `PRD.md` | Product Requirements Document v2.0 |
 | `docs/PLAN_GENERACION_SKILLS.md` | Roadmap de 30 skills en 11 areas (Phases A-F) |
+| `docs/BRIEFING_EQUIPO_LEGAL_FMC.md` | Briefing para equipo legal con fichas de skill |
 
 ---
 
@@ -364,12 +303,18 @@ Ejecutar: `npx playwright test`
 ### P0 — Activacion pipeline
 1. Configurar credenciales Harvey API en n8n Cloud.
 2. Activar los 9 workflows en n8n.
-3. Implementar autenticacion y autorizacion (Supabase Auth + RLS).
-4. Implementar tabs Tareas, Documentos y Q&A operativos.
+3. Implementar autenticacion (Supabase Auth + RLS + roles).
+4. Activar skills CONT + LAB con prompts ejecutables.
 
 ### P1 — Expansion
-1. Skills Phase C: Fiscal, Inmobiliario (6 skills adicionales).
-2. Skills Phase D: Medioambiental, Compliance, Penal (8 skills).
-3. Pipeline de entregables con versionado.
-4. Dashboard de riesgos agregado.
-5. Exportes ejecutivos para comite.
+1. Skills operativos Phase C: Fiscal + Inmobiliario.
+2. Skills operativos Phase D: Litigios + Regulatorio.
+3. Tools UI dedicados para Contratos y Laboral.
+4. Fichas modelo Garrigues (17 campos societaria).
+5. Dashboard de riesgos agregado.
+
+### P2 — Enterprise
+1. Skills Phase E-F: Medioambiental + Datos + General.
+2. Control de permisos por rol.
+3. Integracion con Registro de la Propiedad.
+4. Review Tables (Tabular Review Harvey nativo).
