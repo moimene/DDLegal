@@ -1,0 +1,107 @@
+/* ============================================================
+   DD Legal PMO — Garrigues Design Tokens
+   Source of truth: skill desarrollar-ux-garrigues v2.0
+   ============================================================ */
+
+@import "@fontsource/montserrat/400.css";
+@import "@fontsource/montserrat/500.css";
+@import "@fontsource/montserrat/700.css";
+
+:root {
+  /* Brand — Pantone 3308 C */
+  --g-brand-3308: #004438;
+  --g-brand-bright: #009a77;
+  --g-sec-700: #007362;
+  --g-sec-300: #6dc1b0;
+  --g-sec-100: #d8ece7;
+
+  /* Text */
+  --g-text-primary: #4a4a49;
+  --g-text-secondary: #50564f;
+  --g-text-inverse: #ffffff;
+  --g-link: #004438;
+  --g-link-hover: #007362;
+
+  /* Surfaces */
+  --g-surface-page: #f0f0f0;
+  --g-surface-card: #ffffff;
+  --g-surface-subtle: #d8ece7;
+  --g-surface-muted: hsl(60, 1%, 88%);
+
+  /* Borders */
+  --g-border-default: #b7bfb0;
+  --g-border-subtle: #b9babb;
+  --g-border-focus: var(--g-brand-3308);
+
+  /* Status */
+  --status-success: #009a77;
+  --status-warning: #d4a017;
+  --status-error: hsl(0, 84%, 60%);
+  --status-info: #596f7b;
+
+  /* Workstream Colors */
+  --ws-merc: 262, 83%, 58%;
+  --ws-cont: 217, 91%, 60%;
+  --ws-lab: 25, 95%, 53%;
+  --ws-fisc: 38, 92%, 50%;
+  --ws-inm: 160, 100%, 30%;
+  --ws-pi: 192, 91%, 49%;
+  --ws-lit: 330, 81%, 60%;
+  --ws-admin: 280, 70%, 55%;
+  --ws-ma: 120, 60%, 40%;
+  --ws-datos: 200, 80%, 50%;
+  --ws-general: 0, 0%, 50%;
+
+  /* Typography */
+  --g-font-family: 'Montserrat', Arial, system-ui, -apple-system, sans-serif;
+  --g-font-weight-regular: 400;
+  --g-font-weight-medium: 500;
+  --g-font-weight-bold: 700;
+
+  --g-text-display: 3rem;
+  --g-text-h1: 2rem;
+  --g-text-h2: 1.5rem;
+  --g-text-h3: 1.25rem;
+  --g-text-h4: 1rem;
+  --g-text-body: 0.875rem;
+  --g-text-body-lg: 1rem;
+  --g-text-small: 0.75rem;
+  --g-text-caption: 0.625rem;
+
+  /* Spacing (4px grid) */
+  --g-space-1: 4px;
+  --g-space-2: 8px;
+  --g-space-3: 12px;
+  --g-space-4: 16px;
+  --g-space-5: 20px;
+  --g-space-6: 24px;
+  --g-space-8: 32px;
+  --g-space-10: 40px;
+  --g-space-12: 48px;
+
+  /* Border Radius */
+  --g-radius-none: 0px;
+  --g-radius-sm: 6px;
+  --g-radius-md: 8px;
+  --g-radius-lg: 10px;
+  --g-radius-xl: 16px;
+  --g-radius-full: 9999px;
+
+  /* Shadows */
+  --g-shadow-none: none;
+  --g-shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+  --g-shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --g-shadow-card-hover: 0 4px 12px rgba(0,0,0,0.1);
+  --g-shadow-dropdown: 0 4px 16px rgba(0,0,0,0.12);
+  --g-shadow-modal: 0 8px 32px rgba(0,0,0,0.18);
+  --g-shadow-brand: 0 4px 14px rgba(0,68,56,0.25);
+
+  /* Transitions */
+  --g-transition-fast: 150ms ease;
+  --g-transition-normal: 200ms ease-out;
+  --g-transition-smooth: 300ms cubic-bezier(0.16,1,0.3,1);
+
+  /* Sidebar */
+  --sidebar-width: 260px;
+  --sidebar-width-collapsed: 64px;
+}

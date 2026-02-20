@@ -1,0 +1,13 @@
+node_modules/
+.next/
+
+# local env secrets
+.env
+.env.local
+.env.*.local
+
+# system/editor
+.DS_Store
+.agent/
+*.log
+*.tsbuildinfo

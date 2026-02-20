@@ -1,0 +1,30 @@
+{
+    "name": "DD Legal PMO — Harvey Adapter",
+    "id": "DmzihumZOZZJmDpX",
+    "notes": "Based on TerasSecondBrain legal_harvey_adapter. Adapted for DD Legal PMO with DD-specific prompt enrichment.",
+    "webhook_path": "dd-harvey-invoke",
+    "harvey_endpoint": "eu.api.harvey.ai/api/v1/completion",
+    "required_n8n_vars": [
+        "HARVEY_TOKEN",
+        "HARVEY_ENDPOINT_V1"
+    ],
+    "flow": "Webhook → Prepare DD Harvey Request (Code) → Call Harvey API (HTTP) → Format DD Response (Code)",
+    "input_schema": {
+        "prompt": "string (required) — The Harvey prompt from dd_processes",
+        "project_id": "string — DD project UUID",
+        "process_id": "string — DD process UUID",
+        "target_company": "string — Name of target company",
+        "sector": "string — Target sector"
+    },
+    "output_schema": {
+        "status": "ok | error",
+        "output": {
+            "summary": "string",
+            "findings": "[{area, finding, severity, impact, recommendation, citation}]",
+            "contingencies": "[{title, severity, probability, estimated_amount_eur, recommendation}]",
+            "documents_identified": "string[]",
+            "next_steps": "string[]",
+            "disclaimer": "string"
+        }
+    }
+}
