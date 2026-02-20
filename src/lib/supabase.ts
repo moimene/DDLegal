@@ -465,3 +465,24 @@ export interface IPSnapshotIP {
     data: Record<string, unknown>;
     created_at: string;
 }
+
+// ============================================================
+// Data Room — Documents
+// ============================================================
+
+export interface DDDocument {
+    id: string;
+    project_id: string;
+    area_code: string | null;
+    name: string;
+    original_filename: string;
+    file_type: string;
+    file_size_bytes: number;
+    storage_path: string | null;
+    status: 'uploaded' | 'processing' | 'indexed' | 'error';
+    category: string;
+    uploaded_by: string | null;
+    metadata: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
+}

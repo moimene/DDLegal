@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, FolderKanban, ChevronLeft, ChevronRight,
-    Scale, Bot, Wrench, Building2, Shield, BookOpen, Settings
+    Scale, Bot, Wrench, Building2, Shield, BookOpen, Settings, FileBarChart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +26,7 @@ const NAV_SECTIONS: NavSection[] = [
         items: [
             { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
             { label: 'Proyectos DD', icon: FolderKanban, path: '/projects' },
+            { label: 'Informes', icon: FileBarChart, path: '/reports' },
         ],
     },
     {
