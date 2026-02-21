@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, useMemo, useCallback, use } from 'react';
 import Link from 'next/link';
 import {
     ArrowLeft, FolderOpen, FolderPlus, FileText, Upload, ChevronRight,
-    ChevronDown, Clock, Shield, AlertTriangle, CheckCircle2, Search,
-    MoreHorizontal, Eye, Download, Trash2, Plus
+    ChevronDown, ChevronUp, Clock, Shield, AlertTriangle, CheckCircle2, Search,
+    MoreHorizontal, Eye, Download, Trash2, Plus, Home, Filter, X,
+    Archive, FolderInput, ArrowUpDown, Calendar, Tag, Lock
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
 interface VDRFolder {
     id: string; project_id: string; parent_id: string | null; name: string;
@@ -29,6 +32,20 @@ interface GapStats {
     total_expected: number; total_uploaded: number; gaps_count: number; coverage_pct: number;
 }
 
+type SortField = 'name' | 'created_at' | 'status' | 'category';
+type SortDirection = 'asc' | 'desc';
+
+interface AdvancedFilters {
+    dateFrom: string;
+    dateTo: string;
+    fileType: string;
+    confidentiality: string;
+    tag: string;
+    status: string;
+}
+
+const ITEMS_PER_PAGE = 20;
+
 const VDR_STATUS: Record<string, { label: string; bg: string; fg: string }> = {
     draft: { label: 'Borrador', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
     staged: { label: 'Preparado', bg: 'var(--status-info)', fg: 'var(--g-text-inverse)' },
@@ -39,6 +56,11 @@ const VDR_STATUS: Record<string, { label: string; bg: string; fg: string }> = {
     archived: { label: 'Archivado', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-secondary)' },
     error: { label: 'Error', bg: 'var(--status-error)', fg: 'var(--g-text-inverse)' },
 };
+
+const CATEGORY_OPTIONS = [
+    'general', 'contrato', 'escritura', 'estatutos', 'cuentas_anuales',
+    'nomina', 'poliza', 'licencia', 'sentencia', 'informe', 'certificado',
+];
 
 export default function VDRPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -58,6 +80,30 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
     const [uploadCategory, setUploadCategory] = useState('general');
     const [searchTerm, setSearchTerm] = useState('');
 
+    // --- New state: sorting ---
+    const [sortField, setSortField] = useState<SortField>('name');
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+    // --- New state: bulk selection ---
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+    // --- New state: advanced filters ---
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+        dateFrom: '',
+        dateTo: '',
+        fileType: '',
+        confidentiality: '',
+        tag: '',
+        status: '',
+    });
+
+    // --- New state: pagination ---
+    const [currentPage, setCurrentPage] = useState(1);
+
+    // --- New state: breadcrumb path (folder navigation history) ---
+    const [folderPath, setFolderPath] = useState<VDRFolder[]>([]);
+
     const fetchData = async () => {
         const [foldersRes, docsRes, gapRes] = await Promise.all([
             fetch(`/api/vdr/folders?project_id=${id}`).then(r => r.json()),
@@ -72,6 +118,31 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
     };
 
     useEffect(() => { fetchData(); }, [id]);
+
+    // Build breadcrumb path when selectedFolder changes
+    useEffect(() => {
+        if (!selectedFolder) {
+            setFolderPath([]);
+            return;
+        }
+        const path: VDRFolder[] = [];
+        let current = folders.find(f => f.id === selectedFolder);
+        while (current) {
+            path.unshift(current);
+            current = current.parent_id ? folders.find(f => f.id === current!.parent_id) : undefined;
+        }
+        setFolderPath(path);
+    }, [selectedFolder, folders]);
+
+    // Reset page when filters or folder change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedFolder, searchTerm, advancedFilters, sortField, sortDirection]);
+
+    // Clear selection when filters change
+    useEffect(() => {
+        setSelectedIds(new Set());
+    }, [selectedFolder, searchTerm, advancedFilters, currentPage]);
 
     const fetchVersions = async (docId: string) => {
         const res = await fetch(`/api/vdr/documents/${docId}/versions`);
@@ -94,6 +165,7 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
         setNewFolderName('');
         setShowNewFolder(false);
         fetchData();
+        toast.success('Carpeta creada correctamente');
     };
 
     const handleUploadDoc = async () => {
@@ -125,6 +197,7 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
         setUploadCategory('general');
         setShowUpload(false);
         fetchData();
+        toast.success('Documento creado correctamente');
     };
 
     const formatFileSize = (bytes: number): string => {
@@ -138,11 +211,168 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
 
     const rootFolders = folders.filter(f => !f.parent_id);
     const getChildFolders = (parentId: string) => folders.filter(f => f.parent_id === parentId);
-    const filteredDocs = documents.filter(d => {
-        const matchesFolder = selectedFolder ? d.folder_id === selectedFolder : true;
-        const matchesSearch = searchTerm ? d.name.toLowerCase().includes(searchTerm.toLowerCase()) : true;
-        return matchesFolder && matchesSearch;
-    });
+
+    // --- Collect unique tags across all documents for filter dropdown ---
+    const allTags = useMemo(() => {
+        const tagSet = new Set<string>();
+        documents.forEach(d => d.tags?.forEach(t => tagSet.add(t)));
+        return Array.from(tagSet).sort();
+    }, [documents]);
+
+    // --- Unique categories for filter dropdown ---
+    const allCategories = useMemo(() => {
+        const catSet = new Set<string>();
+        documents.forEach(d => { if (d.category) catSet.add(d.category); });
+        return Array.from(catSet).sort();
+    }, [documents]);
+
+    // --- Advanced filtering logic ---
+    const filteredDocs = useMemo(() => {
+        return documents.filter(d => {
+            const matchesFolder = selectedFolder ? d.folder_id === selectedFolder : true;
+            const matchesSearch = searchTerm ? d.name.toLowerCase().includes(searchTerm.toLowerCase()) : true;
+
+            // Advanced filters
+            const matchesDateFrom = advancedFilters.dateFrom
+                ? new Date(d.created_at) >= new Date(advancedFilters.dateFrom)
+                : true;
+            const matchesDateTo = advancedFilters.dateTo
+                ? new Date(d.created_at) <= new Date(advancedFilters.dateTo + 'T23:59:59')
+                : true;
+            const matchesFileType = advancedFilters.fileType
+                ? d.category === advancedFilters.fileType
+                : true;
+            const matchesConfidentiality = advancedFilters.confidentiality
+                ? advancedFilters.confidentiality === 'confidencial'
+                    ? d.is_confidential
+                    : !d.is_confidential
+                : true;
+            const matchesTag = advancedFilters.tag
+                ? d.tags?.includes(advancedFilters.tag)
+                : true;
+            const matchesStatus = advancedFilters.status
+                ? d.status === advancedFilters.status
+                : true;
+
+            return matchesFolder && matchesSearch && matchesDateFrom && matchesDateTo
+                && matchesFileType && matchesConfidentiality && matchesTag && matchesStatus;
+        });
+    }, [documents, selectedFolder, searchTerm, advancedFilters]);
+
+    // --- Sorting logic ---
+    const sortedDocs = useMemo(() => {
+        const sorted = [...filteredDocs];
+        sorted.sort((a, b) => {
+            let cmp = 0;
+            switch (sortField) {
+                case 'name':
+                    cmp = a.name.localeCompare(b.name, 'es');
+                    break;
+                case 'created_at':
+                    cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                    break;
+                case 'status':
+                    cmp = a.status.localeCompare(b.status, 'es');
+                    break;
+                case 'category':
+                    cmp = a.category.localeCompare(b.category, 'es');
+                    break;
+            }
+            return sortDirection === 'asc' ? cmp : -cmp;
+        });
+        return sorted;
+    }, [filteredDocs, sortField, sortDirection]);
+
+    // --- Pagination logic ---
+    const totalPages = Math.max(1, Math.ceil(sortedDocs.length / ITEMS_PER_PAGE));
+    const paginatedDocs = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return sortedDocs.slice(start, start + ITEMS_PER_PAGE);
+    }, [sortedDocs, currentPage]);
+
+    // --- Sorting toggle handler ---
+    const handleSort = useCallback((field: SortField) => {
+        if (sortField === field) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('asc');
+        }
+    }, [sortField]);
+
+    const SortIndicator = ({ field }: { field: SortField }) => {
+        if (sortField !== field) return <ArrowUpDown className="h-3 w-3" style={{ opacity: 0.3 }} />;
+        return sortDirection === 'asc'
+            ? <ChevronUp className="h-3 w-3" />
+            : <ChevronDown className="h-3 w-3" />;
+    };
+
+    // --- Bulk selection handlers ---
+    const toggleSelectItem = useCallback((docId: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(docId)) next.delete(docId);
+            else next.add(docId);
+            return next;
+        });
+    }, []);
+
+    const toggleSelectAll = useCallback(() => {
+        if (selectedIds.size === paginatedDocs.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(paginatedDocs.map(d => d.id)));
+        }
+    }, [paginatedDocs, selectedIds.size]);
+
+    const isAllSelected = paginatedDocs.length > 0 && selectedIds.size === paginatedDocs.length;
+    const isSomeSelected = selectedIds.size > 0 && selectedIds.size < paginatedDocs.length;
+
+    // --- Bulk action handlers ---
+    const handleBulkDownload = () => {
+        toast.success(`${selectedIds.size} documento(s) marcados para descarga`);
+        setSelectedIds(new Set());
+    };
+
+    const handleBulkMove = () => {
+        toast.success(`${selectedIds.size} documento(s) marcados para mover`);
+        setSelectedIds(new Set());
+    };
+
+    const handleBulkArchive = async () => {
+        const count = selectedIds.size;
+        for (const docId of Array.from(selectedIds)) {
+            await fetch(`/api/vdr/documents/${docId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'archived' }),
+            });
+        }
+        setSelectedIds(new Set());
+        fetchData();
+        toast.success(`${count} documento(s) archivados`);
+    };
+
+    // --- Advanced filter helpers ---
+    const hasActiveFilters = advancedFilters.dateFrom || advancedFilters.dateTo
+        || advancedFilters.fileType || advancedFilters.confidentiality
+        || advancedFilters.tag || advancedFilters.status;
+
+    const clearAdvancedFilters = () => {
+        setAdvancedFilters({
+            dateFrom: '',
+            dateTo: '',
+            fileType: '',
+            confidentiality: '',
+            tag: '',
+            status: '',
+        });
+    };
+
+    // --- Navigate folder via breadcrumb ---
+    const handleBreadcrumbClick = (folderId: string | null) => {
+        setSelectedFolder(folderId);
+    };
 
     if (loading) {
         return (
@@ -191,6 +421,48 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
                     </button>
                 </div>
             </div>
+
+            {/* Breadcrumb Navigation */}
+            <nav style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-1)', flexWrap: 'wrap' }}>
+                <button
+                    onClick={() => handleBreadcrumbClick(null)}
+                    className="inline-flex items-center gap-1 text-xs font-medium"
+                    style={{
+                        color: selectedFolder ? 'var(--g-link)' : 'var(--g-text-primary)',
+                        cursor: 'pointer',
+                        background: 'none',
+                        border: 'none',
+                        padding: 'var(--g-space-1) var(--g-space-2)',
+                        borderRadius: 'var(--g-radius-sm)',
+                    }}
+                >
+                    <Home className="h-3.5 w-3.5" />
+                    Inicio
+                </button>
+                {folderPath.map((folder, idx) => {
+                    const isLast = idx === folderPath.length - 1;
+                    return (
+                        <span key={folder.id} className="inline-flex items-center gap-1">
+                            <ChevronRight className="h-3 w-3" style={{ color: 'var(--g-text-secondary)' }} />
+                            <button
+                                onClick={() => handleBreadcrumbClick(folder.id)}
+                                className="text-xs font-medium"
+                                style={{
+                                    color: isLast ? 'var(--g-text-primary)' : 'var(--g-link)',
+                                    fontWeight: isLast ? 600 : 400,
+                                    cursor: 'pointer',
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 'var(--g-space-1) var(--g-space-2)',
+                                    borderRadius: 'var(--g-radius-sm)',
+                                }}
+                            >
+                                {folder.name}
+                            </button>
+                        </span>
+                    );
+                })}
+            </nav>
 
             {/* Gap Analysis Panel */}
             {showGaps && gapStats && (
@@ -299,7 +571,8 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
                 </div>
 
                 {/* Document List */}
-                <div className="col-span-5 g-card p-4" style={{ borderRadius: 'var(--g-radius-lg)' }}>
+                <div className="col-span-5 g-card p-4" style={{ borderRadius: 'var(--g-radius-lg)', display: 'flex', flexDirection: 'column' }}>
+                    {/* Search bar + filter toggle */}
                     <div className="flex items-center gap-2 mb-3">
                         <div className="flex-1 relative">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--g-text-secondary)' }} />
@@ -311,41 +584,337 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
                                 style={{ borderRadius: 'var(--g-radius-md)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }}
                             />
                         </div>
-                        <span className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>{filteredDocs.length} docs</span>
+                        <button
+                            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 text-xs border"
+                            style={{
+                                borderRadius: 'var(--g-radius-md)',
+                                borderColor: hasActiveFilters ? 'var(--g-brand-3308)' : 'var(--g-border-default)',
+                                color: hasActiveFilters ? 'var(--g-brand-3308)' : 'var(--g-text-secondary)',
+                                backgroundColor: hasActiveFilters ? 'var(--g-sec-100)' : 'transparent',
+                            }}
+                        >
+                            <Filter className="h-3.5 w-3.5" />
+                            Filtros
+                            {hasActiveFilters && (
+                                <span style={{
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    width: '14px', height: '14px', borderRadius: '50%',
+                                    backgroundColor: 'var(--g-brand-3308)', color: 'var(--g-text-inverse)',
+                                    fontSize: '9px', fontWeight: 700,
+                                }}>
+                                    !
+                                </span>
+                            )}
+                        </button>
+                        <span className="text-xs" style={{ color: 'var(--g-text-secondary)', whiteSpace: 'nowrap' }}>{sortedDocs.length} docs</span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        {filteredDocs.length === 0 ? (
+
+                    {/* Advanced Filters Bar */}
+                    {showAdvancedFilters && (
+                        <div
+                            className="g-card mb-3 p-3"
+                            style={{
+                                borderRadius: 'var(--g-radius-md)',
+                                border: '1px solid var(--g-border-default)',
+                                backgroundColor: 'var(--g-surface-muted)',
+                            }}
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-medium" style={{ color: 'var(--g-text-primary)' }}>Filtros Avanzados</span>
+                                {hasActiveFilters && (
+                                    <button
+                                        onClick={clearAdvancedFilters}
+                                        className="inline-flex items-center gap-1 text-xs"
+                                        style={{ color: 'var(--g-link)', background: 'none', border: 'none', cursor: 'pointer' }}
+                                    >
+                                        <X className="h-3 w-3" /> Limpiar
+                                    </button>
+                                )}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--g-space-2)' }}>
+                                {/* Date From */}
+                                <div>
+                                    <label className="block text-xs mb-1" style={{ color: 'var(--g-text-secondary)' }}>
+                                        <Calendar className="inline h-3 w-3" style={{ marginRight: '2px' }} />
+                                        Fecha desde
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={advancedFilters.dateFrom}
+                                        onChange={e => setAdvancedFilters(f => ({ ...f, dateFrom: e.target.value }))}
+                                        className="w-full h-7 px-2 text-xs border"
+                                        style={{ borderRadius: 'var(--g-radius-sm)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }}
+                                    />
+                                </div>
+                                {/* Date To */}
+                                <div>
+                                    <label className="block text-xs mb-1" style={{ color: 'var(--g-text-secondary)' }}>
+                                        <Calendar className="inline h-3 w-3" style={{ marginRight: '2px' }} />
+                                        Fecha hasta
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={advancedFilters.dateTo}
+                                        onChange={e => setAdvancedFilters(f => ({ ...f, dateTo: e.target.value }))}
+                                        className="w-full h-7 px-2 text-xs border"
+                                        style={{ borderRadius: 'var(--g-radius-sm)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }}
+                                    />
+                                </div>
+                                {/* File Type / Category */}
+                                <div>
+                                    <label className="block text-xs mb-1" style={{ color: 'var(--g-text-secondary)' }}>
+                                        <FileText className="inline h-3 w-3" style={{ marginRight: '2px' }} />
+                                        Tipo
+                                    </label>
+                                    <select
+                                        value={advancedFilters.fileType}
+                                        onChange={e => setAdvancedFilters(f => ({ ...f, fileType: e.target.value }))}
+                                        className="w-full h-7 px-2 text-xs border"
+                                        style={{ borderRadius: 'var(--g-radius-sm)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }}
+                                    >
+                                        <option value="">Todos</option>
+                                        {allCategories.map(c => (
+                                            <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1).replace('_', ' ')}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {/* Status */}
+                                <div>
+                                    <label className="block text-xs mb-1" style={{ color: 'var(--g-text-secondary)' }}>
+                                        <CheckCircle2 className="inline h-3 w-3" style={{ marginRight: '2px' }} />
+                                        Estado
+                                    </label>
+                                    <select
+                                        value={advancedFilters.status}
+                                        onChange={e => setAdvancedFilters(f => ({ ...f, status: e.target.value }))}
+                                        className="w-full h-7 px-2 text-xs border"
+                                        style={{ borderRadius: 'var(--g-radius-sm)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }}
+                                    >
+                                        <option value="">Todos</option>
+                                        {Object.entries(VDR_STATUS).map(([key, val]) => (
+                                            <option key={key} value={key}>{val.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {/* Confidentiality */}
+                                <div>
+                                    <label className="block text-xs mb-1" style={{ color: 'var(--g-text-secondary)' }}>
+                                        <Lock className="inline h-3 w-3" style={{ marginRight: '2px' }} />
+                                        Confidencialidad
+                                    </label>
+                                    <select
+                                        value={advancedFilters.confidentiality}
+                                        onChange={e => setAdvancedFilters(f => ({ ...f, confidentiality: e.target.value }))}
+                                        className="w-full h-7 px-2 text-xs border"
+                                        style={{ borderRadius: 'var(--g-radius-sm)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }}
+                                    >
+                                        <option value="">Todos</option>
+                                        <option value="confidencial">Confidencial</option>
+                                        <option value="no_confidencial">No confidencial</option>
+                                    </select>
+                                </div>
+                                {/* Tags */}
+                                <div>
+                                    <label className="block text-xs mb-1" style={{ color: 'var(--g-text-secondary)' }}>
+                                        <Tag className="inline h-3 w-3" style={{ marginRight: '2px' }} />
+                                        Etiqueta
+                                    </label>
+                                    <select
+                                        value={advancedFilters.tag}
+                                        onChange={e => setAdvancedFilters(f => ({ ...f, tag: e.target.value }))}
+                                        className="w-full h-7 px-2 text-xs border"
+                                        style={{ borderRadius: 'var(--g-radius-sm)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }}
+                                    >
+                                        <option value="">Todas</option>
+                                        {allTags.map(t => (
+                                            <option key={t} value={t}>{t}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Column Header Row (sortable) */}
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: '28px 1fr 90px 80px',
+                            gap: 'var(--g-space-2)',
+                            alignItems: 'center',
+                            padding: '6px 10px',
+                            borderBottom: '1px solid var(--g-border-default)',
+                            marginBottom: 'var(--g-space-1)',
+                        }}
+                    >
+                        {/* Select All checkbox */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <input
+                                type="checkbox"
+                                checked={isAllSelected}
+                                ref={(el) => { if (el) el.indeterminate = isSomeSelected; }}
+                                onChange={toggleSelectAll}
+                                style={{ accentColor: 'var(--g-brand-3308)', cursor: 'pointer', width: '14px', height: '14px' }}
+                                title="Seleccionar todos"
+                            />
+                        </div>
+                        {/* Name header */}
+                        <button
+                            onClick={() => handleSort('name')}
+                            className="inline-flex items-center gap-1 text-xs font-medium"
+                            style={{ color: 'var(--g-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        >
+                            Nombre <SortIndicator field="name" />
+                        </button>
+                        {/* Date header */}
+                        <button
+                            onClick={() => handleSort('created_at')}
+                            className="inline-flex items-center gap-1 text-xs font-medium"
+                            style={{ color: 'var(--g-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        >
+                            Fecha <SortIndicator field="created_at" />
+                        </button>
+                        {/* Status header */}
+                        <button
+                            onClick={() => handleSort('status')}
+                            className="inline-flex items-center gap-1 text-xs font-medium"
+                            style={{ color: 'var(--g-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, justifyContent: 'flex-end' }}
+                        >
+                            Estado <SortIndicator field="status" />
+                        </button>
+                    </div>
+
+                    {/* Document rows */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, overflowY: 'auto' }}>
+                        {paginatedDocs.length === 0 ? (
                             <p className="text-xs text-center py-8" style={{ color: 'var(--g-text-secondary)' }}>
                                 No hay documentos{selectedFolder ? ' en esta carpeta' : ''}.
                             </p>
-                        ) : filteredDocs.map(doc => {
+                        ) : paginatedDocs.map(doc => {
                             const st = VDR_STATUS[doc.status] || VDR_STATUS.draft;
+                            const isChecked = selectedIds.has(doc.id);
                             return (
-                                <button
+                                <div
                                     key={doc.id}
-                                    onClick={() => handleSelectDoc(doc)}
-                                    className="w-full text-left flex items-center gap-3 p-2.5 border transition-all hover:translate-y-[-1px]"
                                     style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: '28px 1fr 90px 80px',
+                                        gap: 'var(--g-space-2)',
+                                        alignItems: 'center',
+                                        padding: '8px 10px',
                                         borderRadius: 'var(--g-radius-md)',
-                                        borderColor: selectedDoc?.id === doc.id ? 'var(--g-brand-3308)' : 'var(--g-border-default)',
-                                        backgroundColor: selectedDoc?.id === doc.id ? 'var(--g-sec-100)' : 'var(--g-surface-card)',
+                                        border: '1px solid',
+                                        borderColor: selectedDoc?.id === doc.id ? 'var(--g-brand-3308)' : isChecked ? 'var(--g-brand-3308)' : 'var(--g-border-default)',
+                                        backgroundColor: selectedDoc?.id === doc.id ? 'var(--g-sec-100)' : isChecked ? 'var(--g-sec-100)' : 'var(--g-surface-card)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease',
                                     }}
                                 >
-                                    <FileText className="h-4 w-4 shrink-0" style={{ color: 'var(--g-brand-3308)' }} />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-medium truncate" style={{ color: 'var(--g-text-primary)' }}>{doc.name}</p>
-                                        <p className="text-xs truncate" style={{ color: 'var(--g-text-secondary)' }}>
-                                            {doc.area_code || 'General'} {'\u00B7'} {doc.category} {'\u00B7'} {formatDate(doc.created_at)}
-                                        </p>
+                                    {/* Checkbox */}
+                                    <div
+                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        onClick={e => { e.stopPropagation(); toggleSelectItem(doc.id); }}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={() => toggleSelectItem(doc.id)}
+                                            style={{ accentColor: 'var(--g-brand-3308)', cursor: 'pointer', width: '14px', height: '14px' }}
+                                            onClick={e => e.stopPropagation()}
+                                        />
                                     </div>
-                                    <div className="flex items-center gap-1.5">
-                                        {doc.is_confidential && <Shield className="h-3 w-3" style={{ color: 'var(--status-error)' }} />}
-                                        <span className="px-1.5 py-0.5 text-xs" style={{ borderRadius: 'var(--g-radius-sm)', backgroundColor: st.bg, color: st.fg }}>{st.label}</span>
+                                    {/* Name + metadata */}
+                                    <div
+                                        className="min-w-0"
+                                        onClick={() => handleSelectDoc(doc)}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-2)' }}
+                                    >
+                                        <FileText className="h-4 w-4 shrink-0" style={{ color: 'var(--g-brand-3308)' }} />
+                                        <div className="min-w-0" style={{ flex: 1 }}>
+                                            <p className="text-xs font-medium truncate" style={{ color: 'var(--g-text-primary)' }}>{doc.name}</p>
+                                            <p className="text-xs truncate" style={{ color: 'var(--g-text-secondary)' }}>
+                                                {doc.area_code || 'General'} {'\u00B7'} {doc.category}
+                                            </p>
+                                        </div>
+                                        {doc.is_confidential && <Shield className="h-3 w-3 shrink-0" style={{ color: 'var(--status-error)' }} />}
                                     </div>
-                                </button>
+                                    {/* Date */}
+                                    <span
+                                        className="text-xs"
+                                        style={{ color: 'var(--g-text-secondary)' }}
+                                        onClick={() => handleSelectDoc(doc)}
+                                    >
+                                        {formatDate(doc.created_at)}
+                                    </span>
+                                    {/* Status badge */}
+                                    <div
+                                        style={{ display: 'flex', justifyContent: 'flex-end' }}
+                                        onClick={() => handleSelectDoc(doc)}
+                                    >
+                                        <span className="px-1.5 py-0.5 text-xs" style={{ borderRadius: 'var(--g-radius-sm)', backgroundColor: st.bg, color: st.fg, whiteSpace: 'nowrap' }}>
+                                            {st.label}
+                                        </span>
+                                    </div>
+                                </div>
                             );
                         })}
                     </div>
+
+                    {/* Pagination Controls */}
+                    {sortedDocs.length > ITEMS_PER_PAGE && (
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                paddingTop: 'var(--g-space-3)',
+                                borderTop: '1px solid var(--g-border-default)',
+                                marginTop: 'var(--g-space-3)',
+                            }}
+                        >
+                            <span className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>
+                                {((currentPage - 1) * ITEMS_PER_PAGE) + 1}
+                                {' - '}
+                                {Math.min(currentPage * ITEMS_PER_PAGE, sortedDocs.length)}
+                                {' de '}
+                                {sortedDocs.length}
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1 text-xs font-medium border disabled:opacity-40"
+                                    style={{
+                                        borderRadius: 'var(--g-radius-md)',
+                                        borderColor: 'var(--g-border-default)',
+                                        color: 'var(--g-text-primary)',
+                                        backgroundColor: 'var(--g-surface-card)',
+                                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                                    }}
+                                >
+                                    Anterior
+                                </button>
+                                <span className="text-xs font-medium" style={{ color: 'var(--g-text-primary)' }}>
+                                    {currentPage} / {totalPages}
+                                </span>
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1 text-xs font-medium border disabled:opacity-40"
+                                    style={{
+                                        borderRadius: 'var(--g-radius-md)',
+                                        borderColor: 'var(--g-border-default)',
+                                        color: 'var(--g-text-primary)',
+                                        backgroundColor: 'var(--g-surface-card)',
+                                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                                    }}
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Document Detail + Versions */}
@@ -427,6 +996,79 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
                 </div>
             </div>
 
+            {/* Floating Bulk Action Bar */}
+            {selectedIds.size > 0 && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        bottom: 'var(--g-space-6)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 50,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--g-space-3)',
+                        padding: 'var(--g-space-3) var(--g-space-5)',
+                        borderRadius: 'var(--g-radius-xl)',
+                        backgroundColor: 'var(--g-surface-card)',
+                        border: '1px solid var(--g-border-default)',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                    }}
+                >
+                    <span className="text-xs font-medium" style={{ color: 'var(--g-text-primary)' }}>
+                        {selectedIds.size} seleccionado{selectedIds.size > 1 ? 's' : ''}
+                    </span>
+                    <div style={{ width: '1px', height: '20px', backgroundColor: 'var(--g-border-default)' }} />
+                    <button
+                        onClick={handleBulkDownload}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border"
+                        style={{
+                            borderRadius: 'var(--g-radius-md)',
+                            borderColor: 'var(--g-border-default)',
+                            color: 'var(--g-text-primary)',
+                            backgroundColor: 'var(--g-surface-card)',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <Download className="h-3.5 w-3.5" /> Descargar
+                    </button>
+                    <button
+                        onClick={handleBulkMove}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border"
+                        style={{
+                            borderRadius: 'var(--g-radius-md)',
+                            borderColor: 'var(--g-border-default)',
+                            color: 'var(--g-text-primary)',
+                            backgroundColor: 'var(--g-surface-card)',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <FolderInput className="h-3.5 w-3.5" /> Mover
+                    </button>
+                    <button
+                        onClick={handleBulkArchive}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border"
+                        style={{
+                            borderRadius: 'var(--g-radius-md)',
+                            borderColor: 'var(--status-warning)',
+                            color: 'var(--status-warning)',
+                            backgroundColor: 'var(--g-surface-card)',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <Archive className="h-3.5 w-3.5" /> Archivar
+                    </button>
+                    <button
+                        onClick={() => setSelectedIds(new Set())}
+                        className="p-1"
+                        style={{ color: 'var(--g-text-secondary)', cursor: 'pointer', background: 'none', border: 'none' }}
+                        title="Deseleccionar todo"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
+
             {/* Upload Modal */}
             {showUpload && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -440,7 +1082,7 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
                             <div>
                                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--g-text-primary)' }}>Categoria</label>
                                 <select value={uploadCategory} onChange={e => setUploadCategory(e.target.value)} className="w-full h-9 px-3 text-sm border" style={{ borderRadius: 'var(--g-radius-md)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }}>
-                                    {['general','contrato','escritura','estatutos','cuentas_anuales','nomina','poliza','licencia','sentencia','informe','certificado'].map(c => (
+                                    {CATEGORY_OPTIONS.map(c => (
                                         <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1).replace('_', ' ')}</option>
                                     ))}
                                 </select>
