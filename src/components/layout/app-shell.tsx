@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { UserProvider } from '@/contexts/UserContext';
 import Sidebar from '@/components/layout/sidebar';
 import UserIndicator from '@/components/layout/user-indicator';
+import { NotificationToast } from '@/components/notifications';
 
 /**
  * AppShell wraps the entire app with:
@@ -44,6 +45,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     </div>
                 </div>
             )}
+            {/* Global SSE notification toast listener */}
+            {!isLoginPage && <NotificationToast />}
         </UserProvider>
     );
 }

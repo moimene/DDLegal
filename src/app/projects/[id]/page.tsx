@@ -7,8 +7,10 @@ import {
     FileText, MessageSquare, CheckCircle2,
     Loader2, ListChecks, Sparkles, ChevronDown,
     ChevronUp, Zap, FileSearch, Brain,
-    Upload, FolderOpen, ChevronRight, X, ShieldCheck, Users
+    Upload, FolderOpen, ChevronRight, X, ShieldCheck, Users, Activity
 } from 'lucide-react';
+import { EventFeed } from '@/components/events';
+import { SmartSuggestions } from '@/components/events';
 import { supabase } from '@/lib/supabase';
 import type { DDProject, DDArea, DDProcess, DDTask, DDContingency, DDQA, DDDeliverable, DDSkill, DDDocument } from '@/lib/supabase';
 import { cn, STATUS_CONFIG, SEVERITY_CONFIG, SKILL_CATEGORY_CONFIG, REVIEW_DEPTH_CONFIG, ROLE_CONFIG, formatDate, formatCurrency } from '@/lib/utils';
@@ -268,6 +270,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         { id: 'documents', label: 'Documentos', icon: FileText },
         { id: 'qa', label: 'Q&A', icon: MessageSquare },
         { id: 'team', label: 'Equipo', icon: Users },
+        { id: 'events', label: 'Eventos', icon: Activity },
+        { id: 'suggestions', label: 'IA Insights', icon: Sparkles },
     ];
 
     if (loading) {
@@ -737,6 +741,81 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                 <Sparkles className="h-4 w-4" />
                                 Ver catalogo completo
                             </Link>
+                        </div>
+
+                        {/* Accesos rápidos */}
+                        <div
+                            className="g-card"
+                            style={{
+                                padding: 'var(--g-space-5)',
+                                borderRadius: 'var(--g-radius-xl)',
+                            }}
+                        >
+                            <h3
+                                className="font-bold"
+                                style={{
+                                    fontSize: 'var(--g-text-h3)',
+                                    color: 'var(--g-text-primary)',
+                                    marginBottom: 'var(--g-space-4)',
+                                }}
+                            >
+                                Accesos rápidos
+                            </h3>
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(3, 1fr)',
+                                    gap: 'var(--g-space-3)',
+                                }}
+                            >
+                                {[
+                                    { href: `/projects/${id}/vdr`, label: 'Data Room', icon: FolderOpen },
+                                    { href: `/projects/${id}/qa`, label: 'Q&A', icon: MessageSquare },
+                                    { href: `/projects/${id}/cockpit`, label: 'Deal Cockpit', icon: Zap },
+                                    { href: `/projects/${id}/negotiation`, label: 'Negociación', icon: FileText },
+                                    { href: `/projects/${id}/hitl`, label: 'HITL Review', icon: ShieldCheck },
+                                    { href: `/projects/${id}/activity`, label: 'Actividad', icon: Activity },
+                                ].map((item) => (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 'var(--g-space-3)',
+                                            padding: 'var(--g-space-3) var(--g-space-4)',
+                                            borderRadius: 'var(--g-radius-lg)',
+                                            border: '1px solid var(--g-border-default)',
+                                            backgroundColor: 'var(--g-surface-card)',
+                                            color: 'var(--g-text-primary)',
+                                            textDecoration: 'none',
+                                            transition: 'all var(--g-transition-smooth)',
+                                        }}
+                                        className="hover:opacity-80"
+                                    >
+                                        <span
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                width: '2rem',
+                                                height: '2rem',
+                                                borderRadius: 'var(--g-radius-md)',
+                                                backgroundColor: 'var(--g-brand-3308)',
+                                                color: 'var(--g-text-inverse)',
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            <item.icon className="h-4 w-4" />
+                                        </span>
+                                        <span className="text-sm font-medium">{item.label}</span>
+                                        <ChevronRight
+                                            className="h-4 w-4"
+                                            style={{ marginLeft: 'auto', color: 'var(--g-text-tertiary)' }}
+                                        />
+                                    </Link>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 );
@@ -1542,6 +1621,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         </div>
                     )}
                 </div>
+            )}
+
+            {activeTab === 'events' && (
+                <EventFeed projectId={id} />
+            )}
+
+            {activeTab === 'suggestions' && (
+                <SmartSuggestions projectId={id} context="dashboard" />
             )}
         </div>
     );

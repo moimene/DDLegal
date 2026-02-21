@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { LogOut, User, Loader2 } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { getRoleLabel } from '@/lib/supabase-auth';
+import { NotificationCenter } from '@/components/notifications';
 
 /**
  * Small user indicator shown in the top-right corner of the app.
@@ -46,6 +47,9 @@ export default function UserIndicator() {
                 />
             ) : user ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-3)' }}>
+                    {/* Notification center */}
+                    <NotificationCenter />
+
                     {/* Role badge */}
                     {primaryRole && (
                         <span

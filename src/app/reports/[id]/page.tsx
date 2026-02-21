@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, use } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
     ArrowLeft, FileBarChart, ChevronDown, ChevronUp,
@@ -10,6 +11,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import type { DDReport } from '@/lib/supabase';
 import { cn, formatDate, REPORT_FAMILY_CONFIG, REPORT_CATEGORY_CONFIG, REPORT_VISIBILITY_CONFIG } from '@/lib/utils';
+import { FreezeControl, ReportVersionHistory, ReportExportPanel } from '@/components/reports';
 
 const REPORT_STATUS_CONFIG: Record<DDReport['status'], { label: string; bg: string; fg: string }> = {
     pending:    { label: 'Pendiente',   bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
@@ -189,6 +191,7 @@ function renderHarveyResponse(response: Record<string, unknown>) {
 
 export default function ReportViewerPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const router = useRouter();
     const [report, setReport] = useState<DDReport | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -379,6 +382,32 @@ export default function ReportViewerPage({ params }: { params: Promise<{ id: str
                     </span>
                 </div>
             </div>
+
+            {/* Action Bar: Freeze + Export */}
+            {!isProcessing && report.status === 'done' && (
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--g-space-3)',
+                        flexWrap: 'wrap',
+                    }}
+                >
+                    <FreezeControl
+                        reportId={report.id}
+                        isFrozen={report.is_frozen ?? false}
+                        frozenAt={report.frozen_at ?? null}
+                        frozenBy={report.frozen_by ?? null}
+                        reportStatus={report.status}
+                        onFreezeChange={() => loadReport()}
+                    />
+                    <ReportExportPanel
+                        reportId={report.id}
+                        reportType={report.report_type}
+                        versionNumber={report.version_number ?? 1}
+                    />
+                </div>
+            )}
 
             {/* Processing indicator */}
             {isProcessing && (
@@ -613,6 +642,14 @@ export default function ReportViewerPage({ params }: { params: Promise<{ id: str
                     </div>
                 )}
             </CollapsiblePanel>
+
+            {/* Version History */}
+            <ReportVersionHistory
+                reportId={report.id}
+                projectId={report.request_id ?? ''}
+                currentVersion={report.version_number ?? 1}
+                onSelectVersion={(versionReportId) => router.push(`/reports/${versionReportId}`)}
+            />
 
             {/* Prompt Used Section */}
             <CollapsiblePanel title="Prompt Utilizado" icon={Bot} defaultOpen={false}>

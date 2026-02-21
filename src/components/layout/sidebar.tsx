@@ -1,14 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, FolderKanban, ChevronLeft, ChevronRight,
-    Scale, Bot, Wrench, Building2, Shield, BookOpen, Settings, FileBarChart,
-    Database, MessageCircle, FileText
+    Scale, Bot, Wrench, Building2, Shield, BookOpen, Settings,
+    FileBarChart, Database, MessageCircle, FileText, Eye, Gauge,
+    Handshake, UserCheck, Activity, ListChecks, ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
 
 interface NavItem {
     label: string;
@@ -18,48 +23,98 @@ interface NavItem {
 
 interface NavSection {
     header: string;
+    badge?: string;
     items: NavItem[];
 }
 
-const NAV_SECTIONS: NavSection[] = [
-    {
-        header: 'Navegación',
-        items: [
-            { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-            { label: 'Proyectos DD', icon: FolderKanban, path: '/projects' },
-            { label: 'Informes', icon: FileBarChart, path: '/reports' },
-        ],
-    },
-    {
-        header: 'Herramientas',
-        items: [
-            { label: 'Hub Herramientas', icon: Wrench, path: '/tools' },
-            { label: 'Societario', icon: Building2, path: '/tools/societario' },
-            { label: 'Radar Marcas', icon: Shield, path: '/tools/marcas' },
-        ],
-    },
-    {
+/* ------------------------------------------------------------------ */
+/*  Static sections (always visible)                                   */
+/* ------------------------------------------------------------------ */
+
+const NAV_SECTION_NAVEGACION: NavSection = {
+    header: 'Navegacion',
+    items: [
+        { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
+        { label: 'Proyectos DD', icon: FolderKanban, path: '/projects' },
+        { label: 'Informes', icon: FileBarChart, path: '/reports' },
+    ],
+};
+
+const NAV_SECTION_HERRAMIENTAS: NavSection = {
+    header: 'Herramientas',
+    items: [
+        { label: 'Hub Herramientas', icon: Wrench, path: '/tools' },
+        { label: 'Societario', icon: Building2, path: '/tools/societario' },
+        { label: 'Radar Marcas', icon: Shield, path: '/tools/marcas' },
+    ],
+};
+
+const NAV_SECTION_CONFIGURACION: NavSection = {
+    header: 'Configuracion',
+    items: [
+        { label: 'Estado del Sistema', icon: Settings, path: '/configuracion' },
+        { label: 'Catalogo Skills', icon: BookOpen, path: '/skills' },
+        { label: 'Gestion Herramientas', icon: Wrench, path: '/configuracion/herramientas' },
+        { label: 'Gestion Skills', icon: BookOpen, path: '/configuracion/skills' },
+        { label: 'Plantillas', icon: FileText, path: '/configuracion/templates' },
+        { label: 'Dominios', icon: ListChecks, path: '/configuracion/dominios' },
+        { label: 'Seguridad', icon: ShieldCheck, path: '/configuracion/seguridad' },
+    ],
+};
+
+/* ------------------------------------------------------------------ */
+/*  Project-contextual section builder                                 */
+/* ------------------------------------------------------------------ */
+
+const PROJECT_ID_RE = /^\/projects\/([^/]+)/;
+
+function buildProjectSection(projectId: string): NavSection {
+    const base = `/projects/${projectId}`;
+    return {
         header: 'Proyecto',
+        badge: 'Proyecto activo',
         items: [
-            { label: 'Data Room', icon: Database, path: '/vdr' },
-            { label: 'Q&A', icon: MessageCircle, path: '/qa' },
+            { label: 'Vista General', icon: Eye, path: base },
+            { label: 'Data Room', icon: Database, path: `${base}/vdr` },
+            { label: 'Q&A', icon: MessageCircle, path: `${base}/qa` },
+            { label: 'Deal Cockpit', icon: Gauge, path: `${base}/cockpit` },
+            { label: 'Negociacion', icon: Handshake, path: `${base}/negotiation` },
+            { label: 'HITL Review', icon: UserCheck, path: `${base}/hitl` },
+            { label: 'Actividad', icon: Activity, path: `${base}/activity` },
         ],
-    },
-    {
-        header: 'Configuración',
-        items: [
-            { label: 'Estado del Sistema', icon: Settings, path: '/configuracion' },
-            { label: 'Catálogo Skills', icon: BookOpen, path: '/skills' },
-            { label: 'Gestión Herramientas', icon: Wrench, path: '/configuracion/herramientas' },
-            { label: 'Gestión Skills', icon: BookOpen, path: '/configuracion/skills' },
-            { label: 'Plantillas', icon: FileText, path: '/configuracion/templates' },
-        ],
-    },
-];
+    };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Hook: build final sections array based on current pathname         */
+/* ------------------------------------------------------------------ */
+
+function useNavSections(pathname: string): NavSection[] {
+    return useMemo(() => {
+        const match = PROJECT_ID_RE.exec(pathname);
+        const projectId = match ? match[1] : null;
+
+        const sections: NavSection[] = [NAV_SECTION_NAVEGACION];
+
+        if (projectId) {
+            sections.push(buildProjectSection(projectId));
+        }
+
+        sections.push(NAV_SECTION_HERRAMIENTAS);
+        sections.push(NAV_SECTION_CONFIGURACION);
+
+        return sections;
+    }, [pathname]);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const pathname = usePathname();
+    const sections = useNavSections(pathname);
 
     return (
         <aside
@@ -98,7 +153,7 @@ export default function Sidebar() {
                                 fontSize: 'var(--g-text-caption)',
                             }}
                         >
-                            PMO · Due Diligence
+                            PMO &middot; Due Diligence
                         </span>
                     </div>
                 )}
@@ -106,23 +161,52 @@ export default function Sidebar() {
 
             {/* Navigation */}
             <nav className="flex-1 py-5 px-3 overflow-y-auto">
-                {NAV_SECTIONS.map((section, sIdx) => (
-                    <div key={sIdx} className={sIdx > 0 ? 'mt-6' : ''}>
+                {sections.map((section, sIdx) => (
+                    <div key={section.header} style={{ marginTop: sIdx > 0 ? '24px' : undefined }}>
                         {/* Section header */}
                         {!collapsed ? (
-                            <p
-                                className="px-3 mb-2 animate-fade-in"
+                            <div
+                                className="animate-fade-in"
                                 style={{
-                                    fontSize: '0.6875rem',
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.08em',
-                                    color: 'rgba(255,255,255,0.5)',
-                                    lineHeight: '1',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '0 12px',
+                                    marginBottom: '8px',
                                 }}
                             >
-                                {section.header}
-                            </p>
+                                <p
+                                    style={{
+                                        fontSize: '0.6875rem',
+                                        fontWeight: 700,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.08em',
+                                        color: 'rgba(255,255,255,0.5)',
+                                        lineHeight: '1',
+                                        margin: 0,
+                                    }}
+                                >
+                                    {section.header}
+                                </p>
+                                {section.badge && (
+                                    <span
+                                        style={{
+                                            fontSize: '0.5625rem',
+                                            fontWeight: 600,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.04em',
+                                            color: 'var(--g-brand-3308)',
+                                            backgroundColor: 'var(--g-brand-bright)',
+                                            borderRadius: 'var(--g-radius-full)',
+                                            padding: '2px 8px',
+                                            lineHeight: '1.4',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        {section.badge}
+                                    </span>
+                                )}
+                            </div>
                         ) : sIdx > 0 ? (
                             <hr
                                 className="mx-3 mb-3"
@@ -132,8 +216,24 @@ export default function Sidebar() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             {section.items.map((item) => {
-                                const isActive = pathname === item.path ||
-                                    (item.path !== '/' && pathname.startsWith(item.path));
+                                /* Active detection:
+                                   - "/" matches only exactly
+                                   - "/projects/[id]" (project overview) matches only exactly
+                                   - All other paths use startsWith for sub-routes */
+                                const isProjectOverview =
+                                    PROJECT_ID_RE.test(item.path) &&
+                                    item.path.replace(PROJECT_ID_RE, '').replace(/^\//, '') === '';
+
+                                let isActive: boolean;
+                                if (item.path === '/') {
+                                    isActive = pathname === '/';
+                                } else if (isProjectOverview) {
+                                    isActive = pathname === item.path;
+                                } else {
+                                    isActive = pathname === item.path ||
+                                        pathname.startsWith(item.path + '/');
+                                }
+
                                 return (
                                     <Link
                                         key={item.path}
@@ -195,7 +295,7 @@ export default function Sidebar() {
                     borderColor: 'var(--g-sidebar-border)',
                     opacity: 0.5,
                 }}
-                aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+                aria-label={collapsed ? 'Expandir menu' : 'Colapsar menu'}
             >
                 {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
