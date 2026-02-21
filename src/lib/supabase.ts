@@ -1,5 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Re-export auth types and helpers for convenience
+export type { ProjectRole, ReviewDepth, ProjectUserRole, RolePermissions } from './supabase-auth';
+export {
+    createAuthSupabase,
+    getAuthSupabase,
+    ROLE_PERMISSIONS,
+    hasPermission,
+    getRoleLabel,
+    getRoleColor,
+    getReviewDepthLabel,
+    getReviewDepthConfig,
+} from './supabase-auth';
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
@@ -17,6 +30,8 @@ export interface DDProject {
     engagement_date: string | null;
     deadline: string | null;
     scope_notes: string | null;
+    review_depth: 'light' | 'standard' | 'enhanced';
+    review_depth_config: Record<string, unknown>;
     created_at: string;
     updated_at: string;
 }
@@ -336,6 +351,12 @@ export interface DDReport {
     status: 'pending' | 'generating' | 'done' | 'failed';
     created_at: string;
     updated_at: string;
+    report_category?: 'operational' | 'workstream' | 'consolidated' | 'transactional' | 'final' | 'negotiation';
+    version_number?: number;
+    is_frozen?: boolean;
+    frozen_at?: string | null;
+    frozen_by?: string | null;
+    visibility?: 'internal' | 'client' | 'deal_team' | 'counterparty' | 'committee';
 }
 
 export interface DDSourceLog {
@@ -483,6 +504,225 @@ export interface DDDocument {
     category: string;
     uploaded_by: string | null;
     metadata: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
+}
+
+// ============================================================
+// VDR v2 — Virtual Data Room
+// ============================================================
+
+export interface VDRFolder {
+    id: string;
+    project_id: string;
+    parent_id: string | null;
+    name: string;
+    area_code: string | null;
+    sort_order: number;
+    created_by: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface VDRDocument {
+    id: string;
+    project_id: string;
+    folder_id: string | null;
+    area_code: string | null;
+    name: string;
+    description: string | null;
+    category: string;
+    status: 'draft' | 'staged' | 'uploaded' | 'processing' | 'indexed' | 'superseded' | 'archived' | 'error';
+    is_confidential: boolean;
+    tags: string[];
+    uploaded_by: string | null;
+    approved_by: string | null;
+    approved_at: string | null;
+    metadata: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface VDRDocumentVersion {
+    id: string;
+    document_id: string;
+    version_number: number;
+    original_filename: string;
+    file_type: string;
+    file_size_bytes: number;
+    storage_path: string;
+    checksum_sha256: string | null;
+    change_notes: string | null;
+    uploaded_by: string | null;
+    created_at: string;
+}
+
+export interface VDRACL {
+    id: string;
+    project_id: string;
+    document_id: string | null;
+    folder_id: string | null;
+    role: string;
+    area_code: string | null;
+    permission: 'view' | 'download' | 'upload' | 'edit' | 'delete' | 'manage';
+    created_at: string;
+}
+
+export interface VDRLink {
+    id: string;
+    document_id: string | null;
+    folder_id: string | null;
+    token: string;
+    permission: 'view' | 'download';
+    expires_at: string;
+    max_downloads: number | null;
+    downloads_count: number;
+    is_revoked: boolean;
+    created_by: string | null;
+    created_at: string;
+}
+
+// ============================================================
+// Q&A Module
+// ============================================================
+
+export interface QAThread {
+    id: string;
+    project_id: string;
+    area_code: string | null;
+    thread_number: number;
+    subject: string;
+    priority: 'critical' | 'high' | 'medium' | 'low';
+    status: 'draft' | 'sent' | 'pending_response' | 'answered' | 'follow_up' | 'escalated' | 'closed';
+    source: 'manual' | 'ai_generated' | 'gap_analysis' | 'cross_check';
+    assigned_to: string | null;
+    due_date: string | null;
+    sla_hours: number | null;
+    sla_breached: boolean;
+    client_visible: boolean;
+    related_task_id: string | null;
+    related_contingency_id: string | null;
+    tags: string[];
+    created_by: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface QAMessage {
+    id: string;
+    thread_id: string;
+    sender_role: 'advisor' | 'target' | 'system' | 'ai';
+    sender_id: string | null;
+    content: string;
+    attachments: Record<string, unknown>[];
+    is_internal: boolean;
+    created_at: string;
+}
+
+export interface QAAssignment {
+    id: string;
+    project_id: string;
+    area_code: string;
+    default_assignee: string | null;
+    sla_hours: number;
+    escalation_after_hours: number;
+    escalation_to: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface QASLA {
+    id: string;
+    thread_id: string;
+    sla_type: 'response' | 'resolution' | 'escalation';
+    target_at: string;
+    actual_at: string | null;
+    is_met: boolean | null;
+    created_at: string;
+}
+
+export interface QALink {
+    id: string;
+    thread_id: string;
+    entity_type: 'task' | 'contingency' | 'document_version' | 'evidence' | 'report';
+    entity_id: string;
+    link_type: 'related' | 'blocking' | 'caused_by';
+    created_at: string;
+}
+
+// ============================================================
+// Fase 3: Negotiation Module
+// ============================================================
+
+export interface DDContingencyExt {
+    id: string;
+    contingency_id: string;
+    buy_position: string | null;
+    sell_position: string | null;
+    treatment: 'indemnity' | 'retention' | 'escrow' | 'price_adjustment' | 'insurance' | 'waiver' | null;
+    cap_amount: number | null;
+    basket_type: 'deductible' | 'tipping' | 'mini_basket' | 'none' | null;
+    basket_amount: number | null;
+    survival_months: number | null;
+    rwi_coverage: boolean;
+    spa_clause_ref: string | null;
+    negotiation_status: 'open' | 'proposed' | 'agreed' | 'rejected' | 'deferred';
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface DDSPAClause {
+    id: string;
+    clause_key: string;
+    clause_type: 'r_and_w' | 'indemnity' | 'limitation' | 'condition_precedent' | 'definition' | 'boilerplate';
+    title: string;
+    standard_text: string;
+    area_code: string | null;
+    version: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface DDContingencyClauseMap {
+    id: string;
+    contingency_id: string;
+    clause_key: string;
+    merge_fields: Record<string, unknown>;
+    is_primary: boolean;
+    created_at: string;
+}
+
+// ============================================================
+// Fase 4: Enterprise Governance
+// ============================================================
+
+export interface DDAuditLog {
+    id: string;
+    project_id: string | null;
+    user_id: string | null;
+    action: string;
+    entity_type: string;
+    entity_id: string | null;
+    details: Record<string, unknown>;
+    ip_address: string | null;
+    user_agent: string | null;
+    created_at: string;
+}
+
+export interface DDDomainEnum {
+    id: string;
+    domain: string;
+    code: string;
+    label: string;
+    label_en: string | null;
+    color: string | null;
+    icon: string | null;
+    sort_order: number;
+    is_active: boolean;
+    metadata: Record<string, unknown>;
+    version: number;
     created_at: string;
     updated_at: string;
 }

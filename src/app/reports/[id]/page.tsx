@@ -5,11 +5,11 @@ import Link from 'next/link';
 import {
     ArrowLeft, FileBarChart, ChevronDown, ChevronUp,
     AlertTriangle, AlertCircle, Info, Bot, FileText,
-    ExternalLink, Loader2
+    ExternalLink, Loader2, Lock, Eye, Shield
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { DDReport } from '@/lib/supabase';
-import { cn, formatDate, REPORT_FAMILY_CONFIG } from '@/lib/utils';
+import { cn, formatDate, REPORT_FAMILY_CONFIG, REPORT_CATEGORY_CONFIG, REPORT_VISIBILITY_CONFIG } from '@/lib/utils';
 
 const REPORT_STATUS_CONFIG: Record<DDReport['status'], { label: string; bg: string; fg: string }> = {
     pending:    { label: 'Pendiente',   bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
@@ -265,6 +265,8 @@ export default function ReportViewerPage({ params }: { params: Promise<{ id: str
     const statusCfg = REPORT_STATUS_CONFIG[report.status];
     const isProcessing = report.status === 'pending' || report.status === 'generating';
     const evidenceSources = (report.evidence_pack as Record<string, unknown>)?.sources as Array<Record<string, unknown>> | undefined;
+    const categoryCfg = report.report_category ? REPORT_CATEGORY_CONFIG[report.report_category] : null;
+    const visibilityCfg = report.visibility ? REPORT_VISIBILITY_CONFIG[report.visibility] : null;
 
     return (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-6)' }}>
@@ -291,9 +293,12 @@ export default function ReportViewerPage({ params }: { params: Promise<{ id: str
                         {report.updated_at && report.updated_at !== report.created_at && (
                             <> &middot; Actualizado: {formatDate(report.updated_at)}</>
                         )}
+                        {report.is_frozen && report.frozen_at && (
+                            <> &middot; <span style={{ color: 'var(--status-error)' }}>Congelado: {formatDate(report.frozen_at)}</span></>
+                        )}
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {familyCfg && (
                         <span
                             className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium"
@@ -304,6 +309,58 @@ export default function ReportViewerPage({ params }: { params: Promise<{ id: str
                             }}
                         >
                             {familyCfg.label}
+                        </span>
+                    )}
+                    {categoryCfg && (
+                        <span
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-medium"
+                            style={{
+                                borderRadius: 'var(--g-radius-full)',
+                                backgroundColor: categoryCfg.bg,
+                                color: categoryCfg.fg,
+                            }}
+                        >
+                            <Shield className="h-3 w-3" />
+                            {categoryCfg.label}
+                        </span>
+                    )}
+                    {visibilityCfg && (
+                        <span
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-medium"
+                            style={{
+                                borderRadius: 'var(--g-radius-full)',
+                                backgroundColor: 'var(--g-surface-muted)',
+                                color: visibilityCfg.color,
+                                border: `1px solid ${visibilityCfg.color}40`,
+                            }}
+                        >
+                            <Eye className="h-3 w-3" />
+                            {visibilityCfg.label}
+                        </span>
+                    )}
+                    {report.is_frozen && (
+                        <span
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold"
+                            style={{
+                                borderRadius: 'var(--g-radius-full)',
+                                backgroundColor: 'var(--status-error)',
+                                color: 'var(--g-text-inverse)',
+                            }}
+                        >
+                            <Lock className="h-3 w-3" />
+                            Congelado
+                        </span>
+                    )}
+                    {report.version_number && report.version_number > 1 && (
+                        <span
+                            className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium"
+                            style={{
+                                borderRadius: 'var(--g-radius-full)',
+                                backgroundColor: 'var(--g-surface-muted)',
+                                color: 'var(--g-text-secondary)',
+                            }}
+                        >
+                            v{report.version_number}
                         </span>
                     )}
                     <span
@@ -343,6 +400,29 @@ export default function ReportViewerPage({ params }: { params: Promise<{ id: str
                                 Esta pagina se actualiza automaticamente cada 5 segundos
                             </p>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Frozen Notice */}
+            {report.is_frozen && !isProcessing && (
+                <div
+                    className="p-4 border flex items-center gap-3"
+                    style={{
+                        backgroundColor: 'var(--g-surface-card)',
+                        borderColor: 'var(--status-error)',
+                        borderRadius: 'var(--g-radius-lg)',
+                    }}
+                >
+                    <Lock className="h-5 w-5 shrink-0" style={{ color: 'var(--status-error)' }} />
+                    <div>
+                        <p className="text-sm font-medium" style={{ color: 'var(--g-text-primary)' }}>
+                            Este informe esta congelado y no puede ser editado
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--g-text-secondary)' }}>
+                            Congelado el {formatDate(report.frozen_at || '')}
+                            {report.version_number && <> &middot; Version {report.version_number}</>}
+                        </p>
                     </div>
                 </div>
             )}

@@ -1,11 +1,13 @@
 import type { ReportTemplate } from './report-engine';
 
 /**
- * DD Report Templates — 31 templates across 3 families
+ * DD Report Templates — 35 templates across 5 families
  *
- * Transactional (15): Due diligence area reports
- * PMO (8):           Project management reports
- * Compliance (7):    Audit & observability reports
+ * Transactional (15):  Due diligence area reports
+ * PMO (8):             Project management reports
+ * Compliance (7):      Audit & observability reports
+ * Negotiation (4):     Negotiation-specific reports
+ * Consolidated (1):    Cross-cutting executive reports
  */
 
 export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
@@ -403,6 +405,80 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         cadencia: 'monthly',
         audience: ['pm'],
     },
+
+    // ============================================================
+    // NEGOTIATION — Informes de negociacion
+    // ============================================================
+
+    negotiation_summary: {
+        report_type: 'negotiation_summary',
+        family: 'negotiation',
+        title_template: 'Resumen de Negociación — {project_name}',
+        description: 'Resumen ejecutivo de posiciones de negociación, tratamientos acordados y estado de las contingencias',
+        required_sections: ['contingencias_overview', 'posiciones_buy_sell', 'tratamientos', 'clausulas_spa', 'pendientes'],
+        evidence_pack_version: '1.1',
+        grounding_required: false,
+        export_formats: ['pdf', 'json', 'markdown'],
+        cadencia: 'on_demand',
+        audience: ['equipo', 'cliente', 'pm'],
+    },
+
+    disclosure_schedule: {
+        report_type: 'disclosure_schedule',
+        family: 'negotiation',
+        title_template: 'Disclosure Schedules — {project_name}',
+        description: 'Schedules de revelación para anexar al SPA, organizados por representación y garantía',
+        required_sections: ['r_and_w_disclosures', 'specific_indemnities', 'permitted_leakage', 'material_contracts'],
+        evidence_pack_version: '1.1',
+        grounding_required: false,
+        export_formats: ['pdf', 'json', 'markdown'],
+        cadencia: 'on_demand',
+        audience: ['equipo', 'cliente'],
+    },
+
+    spa_worksheet: {
+        report_type: 'spa_worksheet',
+        family: 'negotiation',
+        title_template: 'SPA Worksheet — {project_name}',
+        description: 'Hoja de trabajo con posiciones de negociación, caps, baskets y supervivencia por cláusula SPA',
+        required_sections: ['cap_basket_summary', 'survival_periods', 'special_indemnities', 'conditions_precedent', 'definitions'],
+        evidence_pack_version: '1.1',
+        grounding_required: false,
+        export_formats: ['pdf', 'json', 'markdown'],
+        cadencia: 'on_demand',
+        audience: ['equipo', 'cliente'],
+    },
+
+    contingency_impact_report: {
+        report_type: 'contingency_impact_report',
+        family: 'negotiation',
+        title_template: 'Análisis de Impacto de Contingencias — {project_name}',
+        description: 'Análisis detallado del impacto económico de contingencias con escenarios de tratamiento',
+        required_sections: ['resumen_impacto', 'contingencias_por_area', 'escenarios_tratamiento', 'recomendaciones'],
+        evidence_pack_version: '1.1',
+        grounding_required: true,
+        harvey_skill_key: 'contingencias.analisis_impacto',
+        export_formats: ['pdf', 'json', 'markdown'],
+        cadencia: 'on_demand',
+        audience: ['equipo', 'cliente', 'pm'],
+    },
+
+    // ============================================================
+    // CONSOLIDATED — Informes ejecutivos consolidados
+    // ============================================================
+
+    deal_summary_executive: {
+        report_type: 'deal_summary_executive',
+        family: 'consolidated',
+        title_template: 'Resumen Ejecutivo del Deal — {project_name}',
+        description: 'Informe consolidado para comité de inversión con métricas del deal, contingencias clave y estado de negociación',
+        required_sections: ['overview_deal', 'metricas_clave', 'contingencias_criticas', 'estado_negociacion', 'proximos_pasos'],
+        evidence_pack_version: '1.1',
+        grounding_required: false,
+        export_formats: ['pdf', 'html', 'json'],
+        cadencia: 'on_demand',
+        audience: ['equipo', 'cliente', 'pm'],
+    },
 };
 
 // Helper functions
@@ -410,7 +486,7 @@ export function getTemplate(reportType: string): ReportTemplate | undefined {
     return REPORT_TEMPLATES[reportType];
 }
 
-export function getTemplatesByFamily(family: 'transactional' | 'pmo' | 'compliance'): ReportTemplate[] {
+export function getTemplatesByFamily(family: 'transactional' | 'pmo' | 'compliance' | 'negotiation' | 'consolidated'): ReportTemplate[] {
     return Object.values(REPORT_TEMPLATES).filter(t => t.family === family);
 }
 

@@ -6,8 +6,9 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export interface ReportTemplate {
     report_type: string;
-    family: 'transactional' | 'pmo' | 'compliance';
+    family: 'transactional' | 'pmo' | 'compliance' | 'negotiation' | 'consolidated';
     title_template: string;
+    description?: string;
     required_sections: string[];
     evidence_pack_version: string;
     grounding_required: boolean;

@@ -1,0 +1,458 @@
+'use client';
+
+import { useEffect, useState, use } from 'react';
+import Link from 'next/link';
+import {
+    ArrowLeft, FolderOpen, FolderPlus, FileText, Upload, ChevronRight,
+    ChevronDown, Clock, Shield, AlertTriangle, CheckCircle2, Search,
+    MoreHorizontal, Eye, Download, Trash2, Plus
+} from 'lucide-react';
+
+interface VDRFolder {
+    id: string; project_id: string; parent_id: string | null; name: string;
+    area_code: string | null; sort_order: number; created_at: string;
+}
+
+interface VDRDocument {
+    id: string; project_id: string; folder_id: string | null; area_code: string | null;
+    name: string; description: string | null; category: string; status: string;
+    is_confidential: boolean; tags: string[]; created_at: string; updated_at: string;
+}
+
+interface VDRVersion {
+    id: string; document_id: string; version_number: number; original_filename: string;
+    file_type: string; file_size_bytes: number; storage_path: string;
+    checksum_sha256: string | null; change_notes: string | null; created_at: string;
+}
+
+interface GapStats {
+    total_expected: number; total_uploaded: number; gaps_count: number; coverage_pct: number;
+}
+
+const VDR_STATUS: Record<string, { label: string; bg: string; fg: string }> = {
+    draft: { label: 'Borrador', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
+    staged: { label: 'Preparado', bg: 'var(--status-info)', fg: 'var(--g-text-inverse)' },
+    uploaded: { label: 'Subido', bg: 'var(--status-info)', fg: 'var(--g-text-inverse)' },
+    processing: { label: 'Procesando', bg: 'var(--status-warning)', fg: 'var(--g-text-inverse)' },
+    indexed: { label: 'Indexado', bg: 'var(--status-success)', fg: 'var(--g-text-inverse)' },
+    superseded: { label: 'Superado', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-secondary)' },
+    archived: { label: 'Archivado', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-secondary)' },
+    error: { label: 'Error', bg: 'var(--status-error)', fg: 'var(--g-text-inverse)' },
+};
+
+export default function VDRPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
+    const [folders, setFolders] = useState<VDRFolder[]>([]);
+    const [documents, setDocuments] = useState<VDRDocument[]>([]);
+    const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+    const [selectedDoc, setSelectedDoc] = useState<VDRDocument | null>(null);
+    const [versions, setVersions] = useState<VDRVersion[]>([]);
+    const [gapStats, setGapStats] = useState<GapStats | null>(null);
+    const [gaps, setGaps] = useState<Array<{ id: string; area_code: string; category: string; name: string; is_mandatory: boolean }>>([]);
+    const [showGaps, setShowGaps] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [showNewFolder, setShowNewFolder] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+    const [showUpload, setShowUpload] = useState(false);
+    const [uploadName, setUploadName] = useState('');
+    const [uploadCategory, setUploadCategory] = useState('general');
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const fetchData = async () => {
+        const [foldersRes, docsRes, gapRes] = await Promise.all([
+            fetch(`/api/vdr/folders?project_id=${id}`).then(r => r.json()),
+            fetch(`/api/vdr/documents?project_id=${id}`).then(r => r.json()),
+            fetch(`/api/vdr/gap-analysis?project_id=${id}`).then(r => r.json()),
+        ]);
+        setFolders(foldersRes.folders || []);
+        setDocuments(docsRes.documents || []);
+        setGapStats(gapRes.stats || null);
+        setGaps(gapRes.gaps || []);
+        setLoading(false);
+    };
+
+    useEffect(() => { fetchData(); }, [id]);
+
+    const fetchVersions = async (docId: string) => {
+        const res = await fetch(`/api/vdr/documents/${docId}/versions`);
+        const data = await res.json();
+        setVersions(data.versions || []);
+    };
+
+    const handleSelectDoc = (doc: VDRDocument) => {
+        setSelectedDoc(doc);
+        fetchVersions(doc.id);
+    };
+
+    const handleCreateFolder = async () => {
+        if (!newFolderName.trim()) return;
+        await fetch('/api/vdr/folders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: id, parent_id: selectedFolder, name: newFolderName }),
+        });
+        setNewFolderName('');
+        setShowNewFolder(false);
+        fetchData();
+    };
+
+    const handleUploadDoc = async () => {
+        if (!uploadName.trim()) return;
+        const res = await fetch('/api/vdr/documents', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                project_id: id,
+                folder_id: selectedFolder,
+                name: uploadName,
+                category: uploadCategory,
+            }),
+        });
+        const data = await res.json();
+        if (data.success && data.document) {
+            // Create initial version
+            await fetch(`/api/vdr/documents/${data.document.id}/versions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    original_filename: uploadName,
+                    file_type: uploadName.split('.').pop() || 'pdf',
+                    storage_path: `projects/${id}/${Date.now()}_${uploadName}`,
+                }),
+            });
+        }
+        setUploadName('');
+        setUploadCategory('general');
+        setShowUpload(false);
+        fetchData();
+    };
+
+    const formatFileSize = (bytes: number): string => {
+        if (bytes === 0) return '0 B';
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
+    const formatDate = (d: string) => new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(d));
+
+    const rootFolders = folders.filter(f => !f.parent_id);
+    const getChildFolders = (parentId: string) => folders.filter(f => f.parent_id === parentId);
+    const filteredDocs = documents.filter(d => {
+        const matchesFolder = selectedFolder ? d.folder_id === selectedFolder : true;
+        const matchesSearch = searchTerm ? d.name.toLowerCase().includes(searchTerm.toLowerCase()) : true;
+        return matchesFolder && matchesSearch;
+    });
+
+    if (loading) {
+        return (
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-6)' }}>
+                <div className="skeleton h-8 w-64" style={{ borderRadius: 'var(--g-radius-md)' }} />
+                <div className="skeleton h-96 w-full" style={{ borderRadius: 'var(--g-radius-lg)' }} />
+            </div>
+        );
+    }
+
+    return (
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-6)' }}>
+            {/* Header */}
+            <div className="flex items-start justify-between">
+                <div>
+                    <Link href={`/projects/${id}`} className="inline-flex items-center gap-1 text-sm mb-3" style={{ color: 'var(--g-link)' }}>
+                        <ArrowLeft className="h-4 w-4" /> Proyecto
+                    </Link>
+                    <h1 className="font-bold" style={{ fontSize: 'var(--g-text-h1)', color: 'var(--g-text-primary)' }}>
+                        Data Room Virtual
+                    </h1>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowGaps(!showGaps)}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium border"
+                        style={{
+                            borderRadius: 'var(--g-radius-md)',
+                            borderColor: gapStats && gapStats.gaps_count > 0 ? 'var(--status-warning)' : 'var(--g-border-default)',
+                            color: gapStats && gapStats.gaps_count > 0 ? 'var(--status-warning)' : 'var(--g-text-secondary)',
+                        }}
+                    >
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        {gapStats ? `${gapStats.gaps_count} gaps · ${gapStats.coverage_pct}% cobertura` : 'Gap Analysis'}
+                    </button>
+                    <button
+                        onClick={() => setShowUpload(true)}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium"
+                        style={{
+                            borderRadius: 'var(--g-radius-md)',
+                            backgroundColor: 'var(--g-brand-3308)',
+                            color: 'var(--g-text-inverse)',
+                        }}
+                    >
+                        <Upload className="h-3.5 w-3.5" /> Subir Documento
+                    </button>
+                </div>
+            </div>
+
+            {/* Gap Analysis Panel */}
+            {showGaps && gapStats && (
+                <div className="g-card p-4" style={{ borderRadius: 'var(--g-radius-lg)', borderLeft: '3px solid var(--status-warning)' }}>
+                    <h3 className="font-bold text-sm mb-3" style={{ color: 'var(--g-text-primary)' }}>
+                        Analisis de Brechas Documentales
+                    </h3>
+                    <div className="grid grid-cols-4 gap-3 mb-3">
+                        {[
+                            { label: 'Esperados', value: gapStats.total_expected, color: 'var(--g-text-primary)' },
+                            { label: 'Subidos', value: gapStats.total_uploaded, color: 'var(--status-success)' },
+                            { label: 'Pendientes', value: gapStats.gaps_count, color: 'var(--status-warning)' },
+                            { label: 'Cobertura', value: `${gapStats.coverage_pct}%`, color: gapStats.coverage_pct >= 80 ? 'var(--status-success)' : 'var(--status-warning)' },
+                        ].map((s, i) => (
+                            <div key={i} className="text-center p-2 border" style={{ borderRadius: 'var(--g-radius-md)', borderColor: 'var(--g-border-default)' }}>
+                                <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
+                                <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>{s.label}</p>
+                            </div>
+                        ))}
+                    </div>
+                    {gaps.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {gaps.slice(0, 10).map((g, i) => (
+                                <div key={i} className="flex items-center gap-2 text-xs p-2" style={{ backgroundColor: 'var(--g-surface-muted)', borderRadius: 'var(--g-radius-sm)' }}>
+                                    <AlertTriangle className="h-3 w-3" style={{ color: g.is_mandatory ? 'var(--status-error)' : 'var(--status-warning)' }} />
+                                    <span style={{ color: 'var(--g-text-primary)' }}>{g.name}</span>
+                                    <span style={{ color: 'var(--g-text-secondary)' }}>{'\u00B7'} {g.area_code} {'\u00B7'} {g.category}</span>
+                                    {g.is_mandatory && <span className="px-1 text-xs font-medium" style={{ color: 'var(--status-error)' }}>Obligatorio</span>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Main Layout: Folder Tree + Document List + Detail */}
+            <div className="grid grid-cols-12 gap-4" style={{ minHeight: '500px' }}>
+                {/* Folder Tree */}
+                <div className="col-span-3 g-card p-4" style={{ borderRadius: 'var(--g-radius-lg)' }}>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-bold text-sm" style={{ color: 'var(--g-text-primary)' }}>Carpetas</h3>
+                        <button onClick={() => setShowNewFolder(true)} className="p-1 hover:opacity-70" style={{ color: 'var(--g-text-secondary)' }}>
+                            <FolderPlus className="h-4 w-4" />
+                        </button>
+                    </div>
+                    {showNewFolder && (
+                        <div className="flex gap-2 mb-3">
+                            <input
+                                value={newFolderName}
+                                onChange={e => setNewFolderName(e.target.value)}
+                                placeholder="Nombre carpeta"
+                                className="flex-1 h-7 px-2 text-xs border"
+                                style={{ borderRadius: 'var(--g-radius-sm)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }}
+                                onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
+                            />
+                            <button onClick={handleCreateFolder} className="px-2 h-7 text-xs font-medium" style={{ borderRadius: 'var(--g-radius-sm)', backgroundColor: 'var(--g-brand-3308)', color: 'var(--g-text-inverse)' }}>
+                                OK
+                            </button>
+                        </div>
+                    )}
+                    <button
+                        onClick={() => setSelectedFolder(null)}
+                        className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-xs"
+                        style={{
+                            borderRadius: 'var(--g-radius-sm)',
+                            backgroundColor: !selectedFolder ? 'var(--g-sec-100)' : 'transparent',
+                            color: 'var(--g-text-primary)',
+                            fontWeight: !selectedFolder ? 600 : 400,
+                        }}
+                    >
+                        <FolderOpen className="h-3.5 w-3.5" /> Todos los documentos
+                    </button>
+                    {rootFolders.map(folder => (
+                        <div key={folder.id}>
+                            <button
+                                onClick={() => setSelectedFolder(folder.id)}
+                                className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-xs mt-0.5"
+                                style={{
+                                    borderRadius: 'var(--g-radius-sm)',
+                                    backgroundColor: selectedFolder === folder.id ? 'var(--g-sec-100)' : 'transparent',
+                                    color: 'var(--g-text-primary)',
+                                    fontWeight: selectedFolder === folder.id ? 600 : 400,
+                                }}
+                            >
+                                <FolderOpen className="h-3.5 w-3.5" style={{ color: 'var(--g-brand-3308)' }} />
+                                {folder.name}
+                                {folder.area_code && <span className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>({folder.area_code})</span>}
+                            </button>
+                            {getChildFolders(folder.id).map(child => (
+                                <button
+                                    key={child.id}
+                                    onClick={() => setSelectedFolder(child.id)}
+                                    className="w-full text-left flex items-center gap-2 pl-6 pr-2 py-1 text-xs mt-0.5"
+                                    style={{
+                                        borderRadius: 'var(--g-radius-sm)',
+                                        backgroundColor: selectedFolder === child.id ? 'var(--g-sec-100)' : 'transparent',
+                                        color: 'var(--g-text-secondary)',
+                                        fontWeight: selectedFolder === child.id ? 600 : 400,
+                                    }}
+                                >
+                                    <FolderOpen className="h-3 w-3" /> {child.name}
+                                </button>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Document List */}
+                <div className="col-span-5 g-card p-4" style={{ borderRadius: 'var(--g-radius-lg)' }}>
+                    <div className="flex items-center gap-2 mb-3">
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--g-text-secondary)' }} />
+                            <input
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                placeholder="Buscar documentos..."
+                                className="w-full h-8 pl-7 pr-3 text-xs border"
+                                style={{ borderRadius: 'var(--g-radius-md)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }}
+                            />
+                        </div>
+                        <span className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>{filteredDocs.length} docs</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {filteredDocs.length === 0 ? (
+                            <p className="text-xs text-center py-8" style={{ color: 'var(--g-text-secondary)' }}>
+                                No hay documentos{selectedFolder ? ' en esta carpeta' : ''}.
+                            </p>
+                        ) : filteredDocs.map(doc => {
+                            const st = VDR_STATUS[doc.status] || VDR_STATUS.draft;
+                            return (
+                                <button
+                                    key={doc.id}
+                                    onClick={() => handleSelectDoc(doc)}
+                                    className="w-full text-left flex items-center gap-3 p-2.5 border transition-all hover:translate-y-[-1px]"
+                                    style={{
+                                        borderRadius: 'var(--g-radius-md)',
+                                        borderColor: selectedDoc?.id === doc.id ? 'var(--g-brand-3308)' : 'var(--g-border-default)',
+                                        backgroundColor: selectedDoc?.id === doc.id ? 'var(--g-sec-100)' : 'var(--g-surface-card)',
+                                    }}
+                                >
+                                    <FileText className="h-4 w-4 shrink-0" style={{ color: 'var(--g-brand-3308)' }} />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium truncate" style={{ color: 'var(--g-text-primary)' }}>{doc.name}</p>
+                                        <p className="text-xs truncate" style={{ color: 'var(--g-text-secondary)' }}>
+                                            {doc.area_code || 'General'} {'\u00B7'} {doc.category} {'\u00B7'} {formatDate(doc.created_at)}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        {doc.is_confidential && <Shield className="h-3 w-3" style={{ color: 'var(--status-error)' }} />}
+                                        <span className="px-1.5 py-0.5 text-xs" style={{ borderRadius: 'var(--g-radius-sm)', backgroundColor: st.bg, color: st.fg }}>{st.label}</span>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Document Detail + Versions */}
+                <div className="col-span-4 g-card p-4" style={{ borderRadius: 'var(--g-radius-lg)' }}>
+                    {selectedDoc ? (
+                        <>
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-bold text-sm" style={{ color: 'var(--g-text-primary)' }}>Detalle</h3>
+                                <button onClick={() => { setSelectedDoc(null); setVersions([]); }} className="p-1" style={{ color: 'var(--g-text-secondary)' }}>
+                                    <ChevronRight className="h-4 w-4" />
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-3)' }}>
+                                <div>
+                                    <p className="text-xs font-medium" style={{ color: 'var(--g-text-secondary)' }}>Nombre</p>
+                                    <p className="text-sm" style={{ color: 'var(--g-text-primary)' }}>{selectedDoc.name}</p>
+                                </div>
+                                {selectedDoc.description && (
+                                    <div>
+                                        <p className="text-xs font-medium" style={{ color: 'var(--g-text-secondary)' }}>Descripcion</p>
+                                        <p className="text-xs" style={{ color: 'var(--g-text-primary)' }}>{selectedDoc.description}</p>
+                                    </div>
+                                )}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <p className="text-xs font-medium" style={{ color: 'var(--g-text-secondary)' }}>Area</p>
+                                        <p className="text-xs" style={{ color: 'var(--g-text-primary)' }}>{selectedDoc.area_code || 'General'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium" style={{ color: 'var(--g-text-secondary)' }}>Categoria</p>
+                                        <p className="text-xs" style={{ color: 'var(--g-text-primary)' }}>{selectedDoc.category}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {selectedDoc.is_confidential && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs" style={{ borderRadius: 'var(--g-radius-sm)', backgroundColor: 'var(--status-error)', color: 'var(--g-text-inverse)' }}>
+                                            <Shield className="h-3 w-3" /> Confidencial
+                                        </span>
+                                    )}
+                                    {selectedDoc.tags.map((tag, i) => (
+                                        <span key={i} className="px-2 py-0.5 text-xs" style={{ borderRadius: 'var(--g-radius-sm)', backgroundColor: 'var(--g-surface-muted)', color: 'var(--g-text-secondary)' }}>
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+
+                                {/* Version History */}
+                                <div className="border-t pt-3" style={{ borderColor: 'var(--g-border-default)' }}>
+                                    <h4 className="font-bold text-xs mb-2" style={{ color: 'var(--g-text-primary)' }}>
+                                        Historial de Versiones ({versions.length})
+                                    </h4>
+                                    {versions.length === 0 ? (
+                                        <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>Sin versiones registradas.</p>
+                                    ) : versions.map(v => (
+                                        <div key={v.id} className="flex items-center gap-2 p-2 mb-1 border" style={{ borderRadius: 'var(--g-radius-sm)', borderColor: 'var(--g-border-default)' }}>
+                                            <span className="font-bold text-xs" style={{ color: 'var(--g-brand-3308)' }}>v{v.version_number}</span>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs truncate" style={{ color: 'var(--g-text-primary)' }}>{v.original_filename}</p>
+                                                <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>
+                                                    {formatFileSize(v.file_size_bytes)} {'\u00B7'} {v.file_type} {'\u00B7'} {formatDate(v.created_at)}
+                                                </p>
+                                            </div>
+                                            {v.checksum_sha256 && (
+                                                <span title="SHA-256 verificado">
+                                                    <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: 'var(--status-success)' }} />
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                            <FileText className="h-10 w-10 mb-3" style={{ color: 'var(--g-text-secondary)', opacity: 0.3 }} />
+                            <p className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>Selecciona un documento para ver su detalle</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Upload Modal */}
+            {showUpload && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="g-card p-6 w-full max-w-md" style={{ borderRadius: 'var(--g-radius-xl)' }}>
+                        <h3 className="font-bold mb-4" style={{ fontSize: 'var(--g-text-h3)', color: 'var(--g-text-primary)' }}>Nuevo Documento</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-3)' }}>
+                            <div>
+                                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--g-text-primary)' }}>Nombre *</label>
+                                <input value={uploadName} onChange={e => setUploadName(e.target.value)} className="w-full h-9 px-3 text-sm border" style={{ borderRadius: 'var(--g-radius-md)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--g-text-primary)' }}>Categoria</label>
+                                <select value={uploadCategory} onChange={e => setUploadCategory(e.target.value)} className="w-full h-9 px-3 text-sm border" style={{ borderRadius: 'var(--g-radius-md)', borderColor: 'var(--g-border-default)', backgroundColor: 'var(--g-surface-card)' }}>
+                                    {['general','contrato','escritura','estatutos','cuentas_anuales','nomina','poliza','licencia','sentencia','informe','certificado'].map(c => (
+                                        <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1).replace('_', ' ')}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                            <button onClick={() => setShowUpload(false)} className="px-4 py-2 text-sm border" style={{ borderRadius: 'var(--g-radius-md)', borderColor: 'var(--g-border-default)' }}>Cancelar</button>
+                            <button onClick={handleUploadDoc} disabled={!uploadName.trim()} className="px-4 py-2 text-sm font-medium disabled:opacity-50" style={{ borderRadius: 'var(--g-radius-md)', backgroundColor: 'var(--g-brand-3308)', color: 'var(--g-text-inverse)' }}>Crear</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

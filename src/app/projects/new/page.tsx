@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, FolderKanban, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { REVIEW_DEPTH_CONFIG } from '@/lib/utils';
+import type { ReviewDepth } from '@/lib/supabase-auth';
 
 type DataRoomMode = 'espejo_controlado' | 'indice_referenciado' | 'hibrido_contextual';
 type DealTemplate = 'express_dd' | 'full_dd' | 'vendor_due_diligence';
@@ -54,6 +56,7 @@ export default function NewProjectPage() {
         client_name: '', deadline: '', scope_notes: '',
         dataroom_mode: 'indice_referenciado' as DataRoomMode,
         template: 'express_dd' as DealTemplate,
+        review_depth: 'standard' as ReviewDepth,
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -63,6 +66,7 @@ export default function NewProjectPage() {
         const setupSummary = [
             form.scope_notes?.trim() || null,
             `Modo Data Room: ${form.dataroom_mode}`,
+            `Profundidad: ${form.review_depth}`,
             `Plantilla inicial: ${form.template}`,
         ].filter(Boolean).join('\n');
 
@@ -74,6 +78,7 @@ export default function NewProjectPage() {
             client_name: form.client_name,
             deadline: form.deadline || null,
             scope_notes: setupSummary || null,
+            review_depth: form.review_depth,
             status: 'draft',
             engagement_date: new Date().toISOString().split('T')[0],
         }).select().single();
@@ -121,17 +126,18 @@ export default function NewProjectPage() {
                             Nuevo Proyecto Due Diligence
                         </h1>
                         <p className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>
-                            Configura el proyecto en 3 pasos para empezar sin fricción
+                            Configura el proyecto en 4 pasos para empezar sin fricción
                         </p>
                     </div>
                 </div>
 
                 <div className="mb-6">
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-4 gap-3">
                         {[
                             { id: 1, title: 'Datos base' },
                             { id: 2, title: 'Data Room' },
-                            { id: 3, title: 'Plantilla' },
+                            { id: 3, title: 'Revisión' },
+                            { id: 4, title: 'Plantilla' },
                         ].map((s) => (
                             <div
                                 key={s.id}
@@ -284,6 +290,43 @@ export default function NewProjectPage() {
                     )}
 
                     {step === 3 && (
+                        <div className="space-y-3">
+                            <h2 className="text-sm font-bold" style={{ color: 'var(--g-text-primary)' }}>
+                                Profundidad de revisión
+                            </h2>
+                            <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>
+                                Define el nivel de rigor del análisis y los umbrales de validación
+                            </p>
+                            {Object.entries(REVIEW_DEPTH_CONFIG).map(([key, config]) => (
+                                <button
+                                    type="button"
+                                    key={key}
+                                    onClick={() => setForm({ ...form, review_depth: key as ReviewDepth })}
+                                    className="w-full text-left p-4 border transition-all hover:translate-y-[-1px]"
+                                    style={{
+                                        borderRadius: 'var(--g-radius-lg)',
+                                        borderColor: form.review_depth === key ? 'var(--g-brand-3308)' : 'var(--g-border-default)',
+                                        backgroundColor: form.review_depth === key ? 'var(--g-sec-100)' : 'var(--g-surface-card)',
+                                    }}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span
+                                            className="inline-block h-2 w-2"
+                                            style={{ borderRadius: 'var(--g-radius-full)', backgroundColor: config.color }}
+                                        />
+                                        <p className="font-medium text-sm" style={{ color: 'var(--g-text-primary)' }}>
+                                            {config.labelEs}
+                                        </p>
+                                    </div>
+                                    <p className="text-xs mt-1" style={{ color: 'var(--g-text-secondary)' }}>
+                                        {config.description}
+                                    </p>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {step === 4 && (
                         <>
                             <div className="space-y-3">
                                 <h2 className="text-sm font-bold" style={{ color: 'var(--g-text-primary)' }}>
@@ -358,7 +401,7 @@ export default function NewProjectPage() {
                         </div>
 
                         <div className="flex gap-3">
-                            {step < 3 ? (
+                            {step < 4 ? (
                                 <button
                                     type="button"
                                     disabled={step === 1 && !canGoNextFromStep1}

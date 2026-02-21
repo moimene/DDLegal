@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 /**
  * Harvey AI Integration — API Route
  * This route proxies requests to Harvey AI (or n8n webhook which orchestrates Harvey).
  * Enhanced with skills catalog lookup for richer prompts.
+ * Includes telemetry tracking for tool executions.
  * POST /api/harvey
  */
 export async function POST(req: NextRequest) {
     try {
+        const startTime = Date.now();
+
         const body = await req.json();
         const { project_id, process_id, prompt, target_company, sector } = body;
 
@@ -151,10 +155,63 @@ export async function POST(req: NextRequest) {
 
         await taskFilter;
 
+        // ============================================================
+        // Telemetry: record execution metrics in dd_tool_executions
+        // ============================================================
+        const durationMs = Date.now() - startTime;
+
+        try {
+            // Extract telemetry data from AI response when available
+            const tokensIn = typeof aiResult.tokens_in === 'number' ? aiResult.tokens_in : null;
+            const tokensOut = typeof aiResult.tokens_out === 'number' ? aiResult.tokens_out : null;
+            const modelUsed = typeof aiResult.model === 'string' ? aiResult.model : 'harvey-default';
+            const groundingScore = typeof aiResult.grounding_score === 'number'
+                ? aiResult.grounding_score
+                : null;
+            const agentStatus = aiResult.status === 'queued' ? 'pending' : 'completed';
+
+            // Find the harvey tool in dd_tools (best-effort)
+            const { data: harveyTool } = await supabaseAdmin
+                .from('dd_tools')
+                .select('id')
+                .eq('slug', 'harvey-ai')
+                .maybeSingle();
+
+            if (harveyTool) {
+                await supabaseAdmin.from('dd_tool_executions').insert({
+                    tool_id: harveyTool.id,
+                    project_id,
+                    input_params: {
+                        process_id,
+                        prompt: enrichedPrompt.substring(0, 500), // truncate for storage
+                        target_company,
+                        sector,
+                        skill_enriched: !!skillContext,
+                    },
+                    output_data: {
+                        tokens_in: tokensIn,
+                        tokens_out: tokensOut,
+                        model_used: modelUsed,
+                        grounding_score: groundingScore,
+                    },
+                    status: agentStatus,
+                    duration_ms: durationMs,
+                    started_at: new Date(startTime).toISOString(),
+                    completed_at: new Date().toISOString(),
+                });
+            }
+        } catch (telemetryError) {
+            // Telemetry is best-effort; do not fail the main request
+            console.warn('Harvey telemetry write failed:', telemetryError);
+        }
+
         return NextResponse.json({
             success: true,
             result: aiResult,
             skill_enriched: !!skillContext,
+            telemetry: {
+                duration_ms: durationMs,
+            },
         });
 
     } catch (error) {

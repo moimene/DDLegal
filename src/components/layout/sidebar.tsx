@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, FolderKanban, ChevronLeft, ChevronRight,
-    Scale, Bot, Wrench, Building2, Shield, BookOpen, Settings, FileBarChart
+    Scale, Bot, Wrench, Building2, Shield, BookOpen, Settings, FileBarChart,
+    Database, MessageCircle, FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -38,12 +39,20 @@ const NAV_SECTIONS: NavSection[] = [
         ],
     },
     {
+        header: 'Proyecto',
+        items: [
+            { label: 'Data Room', icon: Database, path: '/projects' },
+            { label: 'Q&A', icon: MessageCircle, path: '/projects' },
+        ],
+    },
+    {
         header: 'Configuración',
         items: [
             { label: 'Estado del Sistema', icon: Settings, path: '/configuracion' },
             { label: 'Catálogo Skills', icon: BookOpen, path: '/skills' },
             { label: 'Gestión Herramientas', icon: Wrench, path: '/configuracion/herramientas' },
             { label: 'Gestión Skills', icon: BookOpen, path: '/configuracion/skills' },
+            { label: 'Plantillas', icon: FileText, path: '/configuracion/templates' },
         ],
     },
 ];

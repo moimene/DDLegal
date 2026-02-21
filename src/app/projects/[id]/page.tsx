@@ -7,11 +7,11 @@ import {
     FileText, MessageSquare, CheckCircle2,
     Loader2, ListChecks, Sparkles, ChevronDown,
     ChevronUp, Zap, FileSearch, Brain,
-    Upload, FolderOpen, ChevronRight, X, ShieldCheck
+    Upload, FolderOpen, ChevronRight, X, ShieldCheck, Users
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { DDProject, DDArea, DDProcess, DDTask, DDContingency, DDQA, DDDeliverable, DDSkill, DDDocument } from '@/lib/supabase';
-import { cn, STATUS_CONFIG, SEVERITY_CONFIG, SKILL_CATEGORY_CONFIG, formatDate, formatCurrency } from '@/lib/utils';
+import { cn, STATUS_CONFIG, SEVERITY_CONFIG, SKILL_CATEGORY_CONFIG, REVIEW_DEPTH_CONFIG, ROLE_CONFIG, formatDate, formatCurrency } from '@/lib/utils';
 
 const PROJECT_STATUS_CONFIG: Record<DDProject['status'], { label: string; bg: string; fg: string }> = {
     draft: { label: 'Borrador', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
@@ -72,6 +72,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
     const [expandedArea, setExpandedArea] = useState<string | null>(null);
     const [skillOutput, setSkillOutput] = useState<Record<string, unknown> | null>(null);
+    const [teamRoles, setTeamRoles] = useState<Array<{id: string; user_id: string; role: string; area_code: string | null; is_active: boolean; granted_at: string}>>([]);
 
     // Data Room state
     interface ExpectedDoc { id: string; area_code: string; category: string; name: string; description: string | null; is_mandatory: boolean; sort_order: number; }
@@ -108,6 +109,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             fetchDocuments();
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, id]);
+
+    useEffect(() => {
+        if (activeTab === 'team') {
+            fetch(`/api/projects/${id}/roles`)
+                .then(r => r.json())
+                .then(data => setTeamRoles(data.roles || []))
+                .catch(err => console.error('Error fetching team:', err));
+        }
     }, [activeTab, id]);
 
     const handleDocUpload = async () => {
@@ -257,6 +267,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         { id: 'contingencies', label: 'Contingencias', icon: AlertTriangle },
         { id: 'documents', label: 'Documentos', icon: FileText },
         { id: 'qa', label: 'Q&A', icon: MessageSquare },
+        { id: 'team', label: 'Equipo', icon: Users },
     ];
 
     if (loading) {
@@ -317,6 +328,19 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     >
                         Portal cliente
                     </Link>
+                    {project.review_depth && (
+                        <span
+                            className="inline-flex items-center px-3 py-1 text-xs font-medium"
+                            style={{
+                                borderRadius: 'var(--g-radius-md)',
+                                backgroundColor: REVIEW_DEPTH_CONFIG[project.review_depth]?.color + '20',
+                                color: REVIEW_DEPTH_CONFIG[project.review_depth]?.color,
+                                border: `1px solid ${REVIEW_DEPTH_CONFIG[project.review_depth]?.color}40`,
+                            }}
+                        >
+                            {REVIEW_DEPTH_CONFIG[project.review_depth]?.labelEs || project.review_depth}
+                        </span>
+                    )}
                     <span
                         className="inline-flex items-center px-3 py-1 text-sm font-medium"
                         style={{
@@ -402,7 +426,18 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     monitorizacion: <Zap className="h-3.5 w-3.5" />,
                 };
 
-                const skillsByCategory = skills.reduce<Record<string, number>>((acc, s) => {
+                // Filter skills by review_depth: light=P0, standard=P0+P1, enhanced=all
+                const allowedPriorities: Record<string, string[]> = {
+                    light: ['P0'],
+                    standard: ['P0', 'P1'],
+                    enhanced: ['P0', 'P1', 'P2', 'P3'],
+                };
+                const depth = project.review_depth || 'standard';
+                const allowed = allowedPriorities[depth] || allowedPriorities.standard;
+                const filteredSkills = skills.filter(s => !s.priority || allowed.includes(s.priority));
+                const hiddenCount = skills.length - filteredSkills.length;
+
+                const skillsByCategory = filteredSkills.reduce<Record<string, number>>((acc, s) => {
                     acc[s.category] = (acc[s.category] || 0) + 1;
                     return acc;
                 }, {});
@@ -416,13 +451,18 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                             <div className="flex items-center gap-2">
                                 <Sparkles className="h-4 w-4" style={{ color: 'var(--g-brand-bright)' }} />
                                 <span className="text-sm font-medium" style={{ color: 'var(--g-text-secondary)' }}>
-                                    {skills.length} skills activos
+                                    {filteredSkills.length} skills activos
+                                    {hiddenCount > 0 && (
+                                        <span className="text-xs ml-1" style={{ color: 'var(--g-text-muted)' }}>
+                                            ({hiddenCount} ocultos por {REVIEW_DEPTH_CONFIG[depth]?.labelEs || depth})
+                                        </span>
+                                    )}
                                 </span>
                             </div>
                         </div>
 
                         {tasksByArea.filter(g => g.processes.length > 0).map(({ area, processes: areaProcs, tasks: areaTasks }) => {
-                            const areaSkills = skills.filter(s => s.area_code === area.code);
+                            const areaSkills = filteredSkills.filter(s => s.area_code === area.code);
                             const isExpanded = expandedArea === area.id;
 
                             return (
@@ -1434,6 +1474,71 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                     )}
                                 </div>
                             ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'team' && (
+                <div className="g-card p-6" style={{ borderRadius: 'var(--g-radius-xl)' }}>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="font-bold" style={{ fontSize: 'var(--g-text-h3)', color: 'var(--g-text-primary)' }}>
+                            Equipo del Proyecto
+                        </h2>
+                        <span className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>
+                            {teamRoles.filter(r => r.is_active).length} miembros activos
+                        </span>
+                    </div>
+                    {teamRoles.length === 0 ? (
+                        <p className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>
+                            No hay miembros asignados al proyecto.
+                        </p>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-2)' }}>
+                            {teamRoles.filter(r => r.is_active).map(member => {
+                                const roleConfig = ROLE_CONFIG[member.role] || { labelEs: member.role, color: '#6B7280' };
+                                return (
+                                    <div
+                                        key={member.id}
+                                        className="flex items-center justify-between p-3 border"
+                                        style={{
+                                            borderRadius: 'var(--g-radius-md)',
+                                            borderColor: 'var(--g-border-default)',
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span
+                                                className="h-8 w-8 flex items-center justify-center text-xs font-bold"
+                                                style={{
+                                                    borderRadius: 'var(--g-radius-full)',
+                                                    backgroundColor: roleConfig.color + '20',
+                                                    color: roleConfig.color,
+                                                }}
+                                            >
+                                                {roleConfig.label?.charAt(0) || 'U'}
+                                            </span>
+                                            <div>
+                                                <p className="text-sm font-medium" style={{ color: 'var(--g-text-primary)' }}>
+                                                    {member.user_id.substring(0, 8)}...
+                                                </p>
+                                                <p className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>
+                                                    {roleConfig.labelEs}{member.area_code ? ` · ${member.area_code}` : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span
+                                            className="inline-flex items-center px-2 py-0.5 text-xs font-medium"
+                                            style={{
+                                                borderRadius: 'var(--g-radius-sm)',
+                                                backgroundColor: roleConfig.color + '15',
+                                                color: roleConfig.color,
+                                            }}
+                                        >
+                                            {roleConfig.label}
+                                        </span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

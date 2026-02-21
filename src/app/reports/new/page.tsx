@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { DDProject } from '@/lib/supabase';
-import { cn, REPORT_FAMILY_CONFIG } from '@/lib/utils';
+import { cn, REPORT_FAMILY_CONFIG, REPORT_CATEGORY_CONFIG, REPORT_VISIBILITY_CONFIG } from '@/lib/utils';
 
 interface ReportTemplateItem {
     key: string;
@@ -56,6 +56,8 @@ export default function NewReportPage() {
     const [templateSearch, setTemplateSearch] = useState('');
     const [selectedProjectId, setSelectedProjectId] = useState<string>('');
     const [extraInstructions, setExtraInstructions] = useState('');
+    const [reportCategory, setReportCategory] = useState<string>('transactional');
+    const [reportVisibility, setReportVisibility] = useState<string>('internal');
 
     // Load templates and projects
     useEffect(() => {
@@ -104,6 +106,8 @@ export default function NewReportPage() {
             const body: Record<string, unknown> = {
                 template_type: selectedTemplate.key,
                 params: {},
+                report_category: reportCategory,
+                visibility: reportVisibility,
             };
 
             if (selectedProjectId) {
@@ -452,6 +456,67 @@ export default function NewReportPage() {
                             </p>
                         </div>
 
+                        {/* Report category */}
+                        <div>
+                            <label
+                                htmlFor="report-category"
+                                className="block text-xs font-medium mb-1.5"
+                                style={{ color: 'var(--g-text-primary)' }}
+                            >
+                                Categoria del informe
+                            </label>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                {Object.entries(REPORT_CATEGORY_CONFIG).map(([key, cfg]) => (
+                                    <button
+                                        key={key}
+                                        type="button"
+                                        onClick={() => setReportCategory(key)}
+                                        className="px-3 py-1.5 text-xs font-medium transition-all"
+                                        style={{
+                                            borderRadius: 'var(--g-radius-full)',
+                                            backgroundColor: reportCategory === key ? cfg.bg : 'var(--g-surface-muted)',
+                                            color: reportCategory === key ? cfg.fg : 'var(--g-text-primary)',
+                                            border: reportCategory === key ? '2px solid transparent' : '2px solid var(--g-border-default)',
+                                        }}
+                                    >
+                                        {cfg.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Report visibility */}
+                        <div>
+                            <label
+                                htmlFor="report-visibility"
+                                className="block text-xs font-medium mb-1.5"
+                                style={{ color: 'var(--g-text-primary)' }}
+                            >
+                                Visibilidad
+                            </label>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                {Object.entries(REPORT_VISIBILITY_CONFIG).map(([key, cfg]) => (
+                                    <button
+                                        key={key}
+                                        type="button"
+                                        onClick={() => setReportVisibility(key)}
+                                        className="px-3 py-1.5 text-xs font-medium transition-all"
+                                        style={{
+                                            borderRadius: 'var(--g-radius-full)',
+                                            backgroundColor: reportVisibility === key ? 'var(--g-surface-subtle)' : 'var(--g-surface-muted)',
+                                            color: cfg.color,
+                                            border: reportVisibility === key ? `2px solid ${cfg.color}` : '2px solid var(--g-border-default)',
+                                        }}
+                                    >
+                                        {cfg.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs mt-1" style={{ color: 'var(--g-text-muted)' }}>
+                                Determina quien puede ver este informe
+                            </p>
+                        </div>
+
                         {/* Extra instructions */}
                         <div>
                             <label
@@ -558,6 +623,25 @@ export default function NewReportPage() {
                                             <span style={{ color: 'var(--g-text-secondary)' }}>Secciones:</span>
                                             <span className="font-medium" style={{ color: 'var(--g-text-primary)' }}>
                                                 {selectedTemplate.required_sections.join(', ')}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span style={{ color: 'var(--g-text-secondary)' }}>Categoria:</span>
+                                            <span
+                                                className="inline-flex items-center px-2 py-0.5 text-xs font-medium"
+                                                style={{
+                                                    borderRadius: 'var(--g-radius-full)',
+                                                    backgroundColor: REPORT_CATEGORY_CONFIG[reportCategory]?.bg || 'var(--g-surface-muted)',
+                                                    color: REPORT_CATEGORY_CONFIG[reportCategory]?.fg || 'var(--g-text-primary)',
+                                                }}
+                                            >
+                                                {REPORT_CATEGORY_CONFIG[reportCategory]?.label || reportCategory}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span style={{ color: 'var(--g-text-secondary)' }}>Visibilidad:</span>
+                                            <span className="font-medium text-xs" style={{ color: REPORT_VISIBILITY_CONFIG[reportVisibility]?.color || 'var(--g-text-primary)' }}>
+                                                {REPORT_VISIBILITY_CONFIG[reportVisibility]?.label || reportVisibility}
                                             </span>
                                         </div>
                                         {selectedProjectId && (

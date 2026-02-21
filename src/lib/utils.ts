@@ -218,3 +218,109 @@ export const NIZA_CLASSES: Record<number, string> = {
     44: 'Servicios medicos, veterinarios',
     45: 'Servicios juridicos, seguridad',
 };
+
+// ============================================================
+// Role & Review Depth configs (Phase 1 — PMO Evolution)
+// ============================================================
+
+export const ROLE_CONFIG: Record<string, { label: string; labelEs: string; color: string; icon: string }> = {
+    clo: { label: 'CLO', labelEs: 'CLO / Director Legal', color: '#7C3AED', icon: 'Crown' },
+    pm_transaccion: { label: 'PM', labelEs: 'PM de Transaccion', color: '#2563EB', icon: 'ClipboardList' },
+    abogado_area: { label: 'Area', labelEs: 'Abogado por Area', color: '#059669', icon: 'Scale' },
+    deal_sponsor: { label: 'Sponsor', labelEs: 'Deal Sponsor', color: '#D97706', icon: 'Star' },
+    target_liaison: { label: 'Target', labelEs: 'Contacto Target', color: '#DC2626', icon: 'Building2' },
+    stakeholder_negocio: { label: 'Stakeholder', labelEs: 'Stakeholder Negocio', color: '#7C3AED', icon: 'Briefcase' },
+    cliente_externo: { label: 'Cliente', labelEs: 'Cliente Externo', color: '#6B7280', icon: 'Eye' },
+};
+
+export const REVIEW_DEPTH_CONFIG: Record<string, { label: string; labelEs: string; color: string; description: string }> = {
+    light: { label: 'Light', labelEs: 'Revision Ligera', color: '#10B981', description: 'Subconjunto critico, umbrales reducidos' },
+    standard: { label: 'Standard', labelEs: 'Revision Estandar', color: '#3B82F6', description: 'Parametros base del sistema' },
+    enhanced: { label: 'Enhanced', labelEs: 'Revision Intensiva', color: '#EF4444', description: 'Maximo rigor, HITL ampliado' },
+};
+
+// ============================================================
+// VDR & Q&A configs (Phase 2 — PMO Evolution)
+// ============================================================
+
+export const VDR_STATUS_CONFIG: Record<string, { label: string; bg: string; fg: string }> = {
+    draft: { label: 'Borrador', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
+    staged: { label: 'Preparado', bg: 'var(--status-info)', fg: 'var(--g-text-inverse)' },
+    uploaded: { label: 'Subido', bg: 'var(--status-info)', fg: 'var(--g-text-inverse)' },
+    processing: { label: 'Procesando', bg: 'var(--status-warning)', fg: 'var(--g-text-inverse)' },
+    indexed: { label: 'Indexado', bg: 'var(--status-success)', fg: 'var(--g-text-inverse)' },
+    superseded: { label: 'Superado', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-secondary)' },
+    archived: { label: 'Archivado', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-secondary)' },
+    error: { label: 'Error', bg: 'var(--status-error)', fg: 'var(--g-text-inverse)' },
+};
+
+export const QA_STATUS_CONFIG: Record<string, { label: string; bg: string; fg: string }> = {
+    draft: { label: 'Borrador', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
+    sent: { label: 'Enviada', bg: 'var(--status-info)', fg: 'var(--g-text-inverse)' },
+    pending_response: { label: 'Pendiente', bg: 'var(--status-warning)', fg: 'var(--g-text-inverse)' },
+    answered: { label: 'Respondida', bg: 'var(--status-success)', fg: 'var(--g-text-inverse)' },
+    follow_up: { label: 'Seguimiento', bg: 'var(--status-info)', fg: 'var(--g-text-inverse)' },
+    escalated: { label: 'Escalada', bg: 'var(--status-error)', fg: 'var(--g-text-inverse)' },
+    closed: { label: 'Cerrada', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-secondary)' },
+};
+
+export const QA_PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
+    critical: { label: 'Critica', color: 'var(--g-severity-critical)' },
+    high: { label: 'Alta', color: 'var(--g-severity-high)' },
+    medium: { label: 'Media', color: 'var(--g-severity-medium)' },
+    low: { label: 'Baja', color: 'var(--g-severity-low)' },
+};
+
+export const REPORT_CATEGORY_CONFIG: Record<string, { label: string; bg: string; fg: string }> = {
+    operational: { label: 'Operativo', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
+    workstream: { label: 'Workstream', bg: 'var(--status-info)', fg: 'var(--g-text-inverse)' },
+    consolidated: { label: 'Consolidado', bg: 'var(--g-brand-3308)', fg: 'var(--g-text-inverse)' },
+    transactional: { label: 'Transaccional', bg: 'var(--g-brand-3308)', fg: 'var(--g-text-inverse)' },
+    final: { label: 'Final', bg: 'var(--g-sec-700)', fg: 'var(--g-text-inverse)' },
+    negotiation: { label: 'Negociacion', bg: 'var(--status-warning)', fg: 'var(--g-text-inverse)' },
+};
+
+export const REPORT_VISIBILITY_CONFIG: Record<string, { label: string; color: string }> = {
+    internal: { label: 'Interno', color: 'var(--g-text-secondary)' },
+    client: { label: 'Cliente', color: 'var(--status-info)' },
+    deal_team: { label: 'Deal Team', color: 'var(--g-brand-3308)' },
+    counterparty: { label: 'Contraparte', color: 'var(--status-warning)' },
+    committee: { label: 'Comite', color: 'var(--g-sec-700)' },
+};
+
+// ============================================================
+// Fase 3: Negotiation Constants
+// ============================================================
+
+export const NEGOTIATION_STATUS_CONFIG: Record<string, { label: string; bg: string; fg: string }> = {
+    open: { label: 'Abierto', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
+    proposed: { label: 'Propuesto', bg: 'var(--status-info)', fg: 'var(--g-text-inverse)' },
+    agreed: { label: 'Acordado', bg: 'var(--status-success)', fg: 'var(--g-text-inverse)' },
+    rejected: { label: 'Rechazado', bg: 'var(--status-error)', fg: 'var(--g-text-inverse)' },
+    deferred: { label: 'Diferido', bg: 'var(--status-warning)', fg: 'var(--g-text-inverse)' },
+};
+
+export const TREATMENT_CONFIG: Record<string, { label: string; description: string; color: string }> = {
+    indemnity: { label: 'Indemnizacion', description: 'Indemnizacion por danos y perjuicios', color: 'var(--status-error)' },
+    retention: { label: 'Retencion', description: 'Retencion de parte del precio', color: 'var(--status-warning)' },
+    escrow: { label: 'Escrow', description: 'Deposito en cuenta escrow', color: 'var(--status-info)' },
+    price_adjustment: { label: 'Ajuste de Precio', description: 'Ajuste al precio de compra', color: 'var(--g-brand-3308)' },
+    insurance: { label: 'Seguro R&W', description: 'Cubierto por seguro de representaciones', color: 'var(--g-sec-700)' },
+    waiver: { label: 'Renuncia', description: 'Riesgo asumido sin proteccion', color: 'var(--g-text-muted)' },
+};
+
+export const CLAUSE_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
+    r_and_w: { label: 'Representaciones y Garantias', color: 'var(--g-brand-3308)' },
+    indemnity: { label: 'Indemnizacion', color: 'var(--status-error)' },
+    limitation: { label: 'Limitacion', color: 'var(--status-warning)' },
+    condition_precedent: { label: 'Condicion Precedente', color: 'var(--status-info)' },
+    definition: { label: 'Definicion', color: 'var(--g-text-secondary)' },
+    boilerplate: { label: 'Boilerplate', color: 'var(--g-text-muted)' },
+};
+
+export const BASKET_TYPE_CONFIG: Record<string, { label: string; description: string }> = {
+    deductible: { label: 'Deductible', description: 'Solo se indemniza el exceso sobre el basket' },
+    tipping: { label: 'Tipping', description: 'Una vez superado el basket, se indemniza desde el primer euro' },
+    mini_basket: { label: 'Mini-basket', description: 'Umbral minimo por reclamacion individual' },
+    none: { label: 'Sin basket', description: 'Sin umbral minimo de reclamacion' },
+};
