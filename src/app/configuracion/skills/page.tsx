@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { BookOpen, ChevronDown, ChevronRight, Search, Shield, AlertTriangle, Users, Zap, Eye, BarChart3, Activity, Clock, Target, TrendingUp, Plus, X } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, Search, Shield, AlertTriangle, Users, Zap, Eye, BarChart3, Activity, Clock, Target, TrendingUp, Plus, X, Copy, Play, History, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import type { DDSkill, DDArea } from '@/lib/supabase';
 import ToggleSwitch from '@/components/configuracion/toggle-switch';
@@ -143,6 +144,271 @@ function LifecycleBadge({ skill }: { skill: DDSkill }) {
         }}>
             {cfg.label}
         </span>
+    );
+}
+
+// ============================================================
+// Prompt Version History (collapsible, per-skill)
+// ============================================================
+
+function VersionHistory({ skill }: { skill: DDSkill }) {
+    const [open, setOpen] = useState(false);
+    const [showPrompt, setShowPrompt] = useState(false);
+
+    // MVP: derive version entries from the current version + updated_at
+    const versions = useMemo(() => {
+        const entries: { version: number; date: string; summary: string }[] = [];
+        for (let v = skill.version; v >= 1; v--) {
+            if (v === skill.version) {
+                entries.push({
+                    version: v,
+                    date: new Date(skill.updated_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }),
+                    summary: 'Version actual del prompt',
+                });
+            } else {
+                // Approximate earlier versions based on created_at
+                const created = new Date(skill.created_at);
+                const updated = new Date(skill.updated_at);
+                const span = updated.getTime() - created.getTime();
+                const step = span / skill.version;
+                const approxDate = new Date(created.getTime() + step * v);
+                entries.push({
+                    version: v,
+                    date: approxDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }),
+                    summary: v === 1 ? 'Version inicial' : 'Ajuste de prompt',
+                });
+            }
+        }
+        return entries;
+    }, [skill]);
+
+    return (
+        <div style={{ marginTop: 'var(--g-space-4)' }}>
+            <button
+                onClick={() => setOpen(prev => !prev)}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: 'var(--g-space-2)',
+                    background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
+                    fontSize: 'var(--g-text-sm)', fontWeight: 600, color: 'var(--g-text-secondary)',
+                }}
+            >
+                <History style={{ width: '14px', height: '14px' }} />
+                Historial de versiones
+                {open ? <ChevronDown style={{ width: '14px', height: '14px' }} /> : <ChevronRight style={{ width: '14px', height: '14px' }} />}
+            </button>
+            {open && (
+                <div style={{
+                    marginTop: 'var(--g-space-3)', padding: 'var(--g-space-4)',
+                    backgroundColor: 'var(--g-surface-muted)', borderRadius: 'var(--g-radius-md)',
+                    border: '1px solid var(--g-border-subtle)',
+                }}>
+                    {/* Timeline */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-3)' }}>
+                        {versions.map((entry, idx) => (
+                            <div key={entry.version} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--g-space-3)' }}>
+                                {/* Timeline dot + line */}
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '20px', paddingTop: '2px' }}>
+                                    <div style={{
+                                        width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0,
+                                        backgroundColor: idx === 0 ? 'hsl(217, 91%, 60%)' : 'var(--g-border-default)',
+                                    }} />
+                                    {idx < versions.length - 1 && (
+                                        <div style={{ width: '2px', height: '24px', backgroundColor: 'var(--g-border-subtle)', marginTop: '4px' }} />
+                                    )}
+                                </div>
+                                {/* Version badge + info */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-2)' }}>
+                                        <span style={{
+                                            display: 'inline-flex', alignItems: 'center', padding: '1px 8px',
+                                            fontSize: '10px', fontWeight: 700, borderRadius: 'var(--g-radius-full)',
+                                            backgroundColor: idx === 0 ? 'hsla(217, 91%, 60%, 0.12)' : 'var(--g-surface-card)',
+                                            color: idx === 0 ? 'hsl(217, 91%, 60%)' : 'var(--g-text-muted)',
+                                            border: '1px solid var(--g-border-subtle)',
+                                        }}>
+                                            v{entry.version}
+                                        </span>
+                                        <span style={{ fontSize: 'var(--g-text-caption)', color: 'var(--g-text-muted)' }}>{entry.date}</span>
+                                    </div>
+                                    <span style={{ fontSize: 'var(--g-text-caption)', color: 'var(--g-text-secondary)' }}>{entry.summary}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    {/* Show prompt button */}
+                    <div style={{ marginTop: 'var(--g-space-4)' }}>
+                        <button
+                            onClick={() => setShowPrompt(prev => !prev)}
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                padding: '6px 14px', fontSize: 'var(--g-text-caption)', fontWeight: 600,
+                                borderRadius: 'var(--g-radius-md)',
+                                border: '1px solid var(--g-border-default)',
+                                backgroundColor: 'var(--g-surface-card)', color: 'var(--g-text-secondary)',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            <Eye style={{ width: '12px', height: '12px' }} />
+                            {showPrompt ? 'Ocultar prompt' : 'Ver prompt anterior'}
+                        </button>
+                        {showPrompt && (
+                            <div style={{ marginTop: 'var(--g-space-3)' }}>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: 'var(--g-space-2)',
+                                    marginBottom: 'var(--g-space-2)',
+                                }}>
+                                    <span style={{
+                                        display: 'inline-flex', alignItems: 'center', padding: '1px 8px',
+                                        fontSize: '10px', fontWeight: 700, borderRadius: 'var(--g-radius-full)',
+                                        backgroundColor: 'hsla(217, 91%, 60%, 0.12)', color: 'hsl(217, 91%, 60%)',
+                                    }}>
+                                        v{skill.version}
+                                    </span>
+                                    <span style={{ fontSize: 'var(--g-text-caption)', color: 'var(--g-text-muted)', fontStyle: 'italic' }}>
+                                        Version actual
+                                    </span>
+                                </div>
+                                <textarea
+                                    readOnly
+                                    value={skill.prompt_template}
+                                    style={{
+                                        width: '100%', minHeight: '120px', resize: 'vertical',
+                                        padding: 'var(--g-space-3)', fontSize: 'var(--g-text-caption)',
+                                        fontFamily: 'monospace', borderRadius: 'var(--g-radius-md)',
+                                        border: '1px solid var(--g-border-subtle)',
+                                        backgroundColor: 'var(--g-surface-card)', color: 'var(--g-text-primary)',
+                                        outline: 'none',
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ============================================================
+// Skill Testing Panel (inline, per-skill)
+// ============================================================
+
+function SkillTestPanel({ skill }: { skill: DDSkill }) {
+    const [open, setOpen] = useState(false);
+    const [status, setStatus] = useState<'ready' | 'running' | 'done'>('ready');
+    const [formValues, setFormValues] = useState<Record<string, string>>({});
+
+    const inputs = (skill.inputs_required as string[]) || [];
+
+    const statusConfig = {
+        ready:   { label: 'Listo para prueba', color: 'var(--g-text-secondary)', bg: 'var(--g-surface-muted)' },
+        running: { label: 'Ejecutando...', color: 'hsl(45, 80%, 42%)', bg: 'hsla(45, 80%, 42%, 0.1)' },
+        done:    { label: 'Completado', color: 'var(--status-success)', bg: 'hsla(142, 71%, 45%, 0.12)' },
+    };
+
+    const sc = statusConfig[status];
+
+    return (
+        <div style={{ marginTop: 'var(--g-space-4)' }}>
+            <button
+                onClick={() => setOpen(prev => !prev)}
+                style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 14px', fontSize: 'var(--g-text-caption)', fontWeight: 600,
+                    borderRadius: 'var(--g-radius-md)',
+                    border: '1px solid var(--g-border-default)',
+                    backgroundColor: 'var(--g-surface-card)', color: 'var(--g-brand-3308)',
+                    cursor: 'pointer',
+                }}
+            >
+                <Play style={{ width: '12px', height: '12px' }} />
+                Probar Skill
+            </button>
+            {open && (
+                <div style={{
+                    marginTop: 'var(--g-space-3)', padding: 'var(--g-space-4)',
+                    backgroundColor: 'var(--g-surface-muted)', borderRadius: 'var(--g-radius-md)',
+                    border: '1px solid var(--g-border-subtle)',
+                }}>
+                    {/* Status indicator */}
+                    <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        padding: '4px 12px', marginBottom: 'var(--g-space-4)',
+                        fontSize: 'var(--g-text-caption)', fontWeight: 600,
+                        borderRadius: 'var(--g-radius-full)',
+                        backgroundColor: sc.bg, color: sc.color,
+                    }}>
+                        {status === 'done' && <CheckCircle2 style={{ width: '12px', height: '12px' }} />}
+                        {sc.label}
+                    </div>
+
+                    {/* Input fields */}
+                    {inputs.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-3)', marginBottom: 'var(--g-space-4)' }}>
+                            {inputs.map(inp => (
+                                <div key={inp}>
+                                    <label style={{
+                                        display: 'block', marginBottom: '4px',
+                                        fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const,
+                                        letterSpacing: '0.04em', color: 'var(--g-text-muted)',
+                                    }}>
+                                        {inp}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder={`Valor para ${inp}`}
+                                        value={formValues[inp] || ''}
+                                        onChange={e => setFormValues(prev => ({ ...prev, [inp]: e.target.value }))}
+                                        style={{
+                                            width: '100%', padding: '8px 12px',
+                                            border: '1px solid var(--g-border-default)', borderRadius: 'var(--g-radius-md)',
+                                            backgroundColor: 'var(--g-surface-card)', color: 'var(--g-text-primary)',
+                                            fontSize: 'var(--g-text-sm)', outline: 'none',
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p style={{ fontSize: 'var(--g-text-caption)', color: 'var(--g-text-muted)', margin: '0 0 var(--g-space-4) 0' }}>
+                            Este skill no define inputs requeridos.
+                        </p>
+                    )}
+
+                    {/* Execute button (disabled) */}
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <button
+                            disabled
+                            title="Requiere conexion Harvey AI"
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                padding: '8px 20px', fontSize: 'var(--g-text-sm)', fontWeight: 600,
+                                borderRadius: 'var(--g-radius-md)', border: 'none',
+                                backgroundColor: 'var(--g-brand-3308)', color: 'white',
+                                opacity: 0.5, cursor: 'not-allowed',
+                            }}
+                        >
+                            <Play style={{ width: '14px', height: '14px' }} />
+                            Ejecutar prueba
+                        </button>
+                    </div>
+
+                    {/* Mock response area */}
+                    <div style={{
+                        marginTop: 'var(--g-space-4)', padding: 'var(--g-space-4)',
+                        backgroundColor: 'var(--g-surface-card)', borderRadius: 'var(--g-radius-md)',
+                        border: '1px dashed var(--g-border-subtle)', minHeight: '80px',
+                    }}>
+                        <p style={{
+                            fontSize: 'var(--g-text-caption)', color: 'var(--g-text-muted)',
+                            margin: 0, fontStyle: 'italic', textAlign: 'center', lineHeight: 1.6,
+                        }}>
+                            Los resultados de la prueba apareceran aqui
+                        </p>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
 

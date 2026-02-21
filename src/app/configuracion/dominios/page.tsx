@@ -12,6 +12,13 @@ import {
     Palette,
     Search,
     ChevronRight,
+    Clock,
+    Eye,
+    EyeOff,
+    CheckSquare,
+    Square,
+    Power,
+    PowerOff,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { DDDomainEnum } from '@/lib/supabase';
@@ -159,6 +166,9 @@ export default function DominiosPage() {
     const [showAdd, setShowAdd] = useState(false);
     const [newForm, setNewForm] = useState<NewEnumForm>({ ...EMPTY_FORM });
     const [saving, setSaving] = useState(false);
+    const [showInactive, setShowInactive] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 
     // -----------------------------------------------------------------------
     // Load all enums once
@@ -186,6 +196,9 @@ export default function DominiosPage() {
 
     const domainEnums = useMemo(() => {
         let items = enums.filter(e => e.domain === selectedDomain);
+        if (!showInactive) {
+            items = items.filter(e => e.is_active);
+        }
         if (search.trim()) {
             const q = search.toLowerCase();
             items = items.filter(
@@ -196,7 +209,7 @@ export default function DominiosPage() {
             );
         }
         return items.sort((a, b) => a.sort_order - b.sort_order);
-    }, [enums, selectedDomain, search]);
+    }, [enums, selectedDomain, search, showInactive]);
 
     const maxVersion = useMemo(() => {
         const versions = enums.filter(e => e.domain === selectedDomain).map(e => e.version);
@@ -315,6 +328,64 @@ export default function DominiosPage() {
             setSaving(false);
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Clear selection when domain changes
+    // -----------------------------------------------------------------------
+    useEffect(() => {
+        setSelectedIds(new Set());
+        setSelectedEntryId(null);
+    }, [selectedDomain]);
+
+    // -----------------------------------------------------------------------
+    // Selection helpers
+    // -----------------------------------------------------------------------
+    function toggleSelection(id: string) {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }
+
+    function toggleAllSelection() {
+        if (selectedIds.size === domainEnums.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(domainEnums.map(e => e.id)));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Bulk activate / deactivate
+    // -----------------------------------------------------------------------
+    async function handleBulkSetActive(active: boolean) {
+        const ids = Array.from(selectedIds);
+        if (ids.length === 0) return;
+
+        // Optimistic update
+        setEnums(prev =>
+            prev.map(e => (ids.includes(e.id) ? { ...e, is_active: active } : e))
+        );
+        setSelectedIds(new Set());
+
+        try {
+            await Promise.all(
+                ids.map(id => apiCall('PATCH', { id, is_active: active }))
+            );
+        } catch {
+            await loadEnums();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Version history for selected entry
+    // -----------------------------------------------------------------------
+    const selectedEntry = useMemo(() => {
+        if (!selectedEntryId) return null;
+        return enums.find(e => e.id === selectedEntryId) ?? null;
+    }, [enums, selectedEntryId]);
 
     // -----------------------------------------------------------------------
     // Loading skeleton
@@ -470,6 +541,27 @@ export default function DominiosPage() {
                             />
                         </div>
 
+                        {/* Show inactive toggle */}
+                        <button
+                            onClick={() => setShowInactive(!showInactive)}
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                padding: '5px 12px', border: '1px solid var(--g-border-default)',
+                                borderRadius: 'var(--g-radius-md)',
+                                backgroundColor: showInactive ? 'hsla(217, 91%, 60%, 0.08)' : 'transparent',
+                                color: showInactive ? 'var(--g-brand-3308)' : 'var(--g-text-secondary)',
+                                fontSize: 'var(--g-text-caption)', fontWeight: 500,
+                                cursor: 'pointer', transition: 'all var(--g-transition-fast)',
+                            }}
+                            aria-label="Mostrar inactivos"
+                        >
+                            {showInactive
+                                ? <Eye style={{ width: '14px', height: '14px' }} />
+                                : <EyeOff style={{ width: '14px', height: '14px' }} />
+                            }
+                            Mostrar inactivos
+                        </button>
+
                         {/* Add button */}
                         <button
                             onClick={() => setShowAdd(!showAdd)}
@@ -565,7 +657,7 @@ export default function DominiosPage() {
                     {/* Table header */}
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: '48px 120px 1fr 140px 90px 60px 80px 80px 56px',
+                        gridTemplateColumns: '32px 48px 120px 1fr 140px 90px 60px 80px 80px 56px',
                         alignItems: 'center',
                         padding: 'var(--g-space-2) var(--g-space-4)',
                         borderBottom: '1px solid var(--g-border-default)',
@@ -573,6 +665,26 @@ export default function DominiosPage() {
                         fontSize: '10px', fontWeight: 700, textTransform: 'uppercase',
                         letterSpacing: '0.06em', color: 'var(--g-text-muted)',
                     }}>
+                        {/* Select-all checkbox */}
+                        <span style={{ display: 'flex', justifyContent: 'center' }}>
+                            <button
+                                onClick={toggleAllSelection}
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    color: selectedIds.size === domainEnums.length && domainEnums.length > 0
+                                        ? 'var(--g-brand-3308)'
+                                        : 'var(--g-text-muted)',
+                                    padding: '2px',
+                                }}
+                                aria-label="Seleccionar todos"
+                            >
+                                {selectedIds.size === domainEnums.length && domainEnums.length > 0
+                                    ? <CheckSquare style={{ width: '15px', height: '15px' }} />
+                                    : <Square style={{ width: '15px', height: '15px' }} />
+                                }
+                            </button>
+                        </span>
                         <span>Orden</span>
                         <span>Code</span>
                         <span>Label</span>
@@ -596,21 +708,50 @@ export default function DominiosPage() {
                             </p>
                         </div>
                     ) : (
-                        domainEnums.map((item, idx) => (
+                        domainEnums.map((item, idx) => {
+                            const isRowSelected = selectedEntryId === item.id;
+                            return (
                             <div
                                 key={item.id}
+                                onClick={() => setSelectedEntryId(prev => prev === item.id ? null : item.id)}
                                 style={{
                                     display: 'grid',
-                                    gridTemplateColumns: '48px 120px 1fr 140px 90px 60px 80px 80px 56px',
+                                    gridTemplateColumns: '32px 48px 120px 1fr 140px 90px 60px 80px 80px 56px',
                                     alignItems: 'center',
                                     padding: 'var(--g-space-2) var(--g-space-4)',
                                     borderBottom: '1px solid var(--g-border-subtle)',
-                                    opacity: item.is_active ? 1 : 0.55,
+                                    opacity: item.is_active ? 1 : 0.5,
                                     transition: 'opacity var(--g-transition-fast), background var(--g-transition-fast)',
+                                    cursor: 'pointer',
+                                    backgroundColor: isRowSelected ? 'hsla(217, 91%, 60%, 0.06)' : 'transparent',
+                                    borderLeft: isRowSelected ? '3px solid var(--g-brand-3308)' : '3px solid transparent',
                                 }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--g-surface-subtle)'; }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+                                onMouseEnter={e => {
+                                    if (!isRowSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--g-surface-subtle)';
+                                }}
+                                onMouseLeave={e => {
+                                    if (!isRowSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                                }}
                             >
+                                {/* Checkbox */}
+                                <span style={{ display: 'flex', justifyContent: 'center' }}>
+                                    <button
+                                        onClick={e => { e.stopPropagation(); toggleSelection(item.id); }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            background: 'none', border: 'none', cursor: 'pointer',
+                                            color: selectedIds.has(item.id) ? 'var(--g-brand-3308)' : 'var(--g-text-muted)',
+                                            padding: '2px',
+                                        }}
+                                        aria-label={`Seleccionar ${item.code}`}
+                                    >
+                                        {selectedIds.has(item.id)
+                                            ? <CheckSquare style={{ width: '15px', height: '15px' }} />
+                                            : <Square style={{ width: '15px', height: '15px' }} />
+                                        }
+                                    </button>
+                                </span>
+
                                 {/* Up / Down arrows */}
                                 <span style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
                                     <button
@@ -698,7 +839,8 @@ export default function DominiosPage() {
                                     </button>
                                 </span>
                             </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </div>

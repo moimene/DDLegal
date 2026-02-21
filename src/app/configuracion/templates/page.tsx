@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
 import {
     FileText, ChevronDown, ChevronRight, Search, Plus, Pencil, Trash2,
     Check, X, Clock, Filter, ListChecks, FileBarChart, Layers,
     Briefcase, GitMerge, Handshake, Scissors, Store, AlertTriangle,
-    Shield, FileCheck, Zap
+    Shield, FileCheck, Zap, Upload, Copy, RotateCcw, Save
 } from 'lucide-react';
 
 // ============================================================
@@ -215,6 +216,31 @@ const DEAL_PRESETS: DealPreset[] = [
     },
 ];
 
+// ============================================================
+// Custom Deal Preset (serializable, stored in localStorage)
+// ============================================================
+
+interface CustomDealPreset {
+    id: string;
+    name: string;
+    description: string;
+    deal_type: string;
+    deal_type_color: string;
+    emoji: string;
+    review_depth: 'light' | 'standard' | 'enhanced';
+    areas: string[];
+    expected_documents_count: number;
+    mandatory_documents_count: number;
+    active_skills_count: number;
+    notes: string;
+    is_custom: true;
+}
+
+const EMOJI_OPTIONS = ['📁', '📋', '📊', '📈', '🔍', '⚖️', '🏢', '💼', '🤝', '📑', '🛡️', '⚡', '🔧', '🏗️', '🌐'];
+
+const LS_KEY_REPORT_OVERRIDES = 'dd_report_template_overrides';
+const LS_KEY_CUSTOM_PRESETS = 'dd_custom_presets';
+
 type TabId = 'documentos' | 'reportes' | 'presets';
 
 // ============================================================
@@ -406,6 +432,47 @@ export default function TemplatesPage() {
 
     const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
 
+    // Report template editing state
+    const [editingReportKey, setEditingReportKey] = useState<string | null>(null);
+    const [reportOverrides, setReportOverrides] = useState<Record<string, Partial<ReportTemplateItem>>>({});
+
+    // Custom presets state
+    const [customPresets, setCustomPresets] = useState<CustomDealPreset[]>([]);
+    const [showPresetForm, setShowPresetForm] = useState(false);
+    const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
+    const [presetForm, setPresetForm] = useState<Omit<CustomDealPreset, 'id' | 'is_custom'>>({
+        name: '', description: '', deal_type: '', deal_type_color: '217, 91%, 60%',
+        emoji: '📁', review_depth: 'standard', areas: [],
+        expected_documents_count: 0, mandatory_documents_count: 0,
+        active_skills_count: 0, notes: '',
+    });
+
+    // CSV import state
+    const [csvPreview, setCsvPreview] = useState<Array<Record<string, string>> | null>(null);
+    const [csvImporting, setCsvImporting] = useState(false);
+
+    // Load localStorage on mount
+    useEffect(() => {
+        try {
+            const overridesRaw = localStorage.getItem(LS_KEY_REPORT_OVERRIDES);
+            if (overridesRaw) setReportOverrides(JSON.parse(overridesRaw));
+            const presetsRaw = localStorage.getItem(LS_KEY_CUSTOM_PRESETS);
+            if (presetsRaw) setCustomPresets(JSON.parse(presetsRaw));
+        } catch { /* ignore corrupt data */ }
+    }, []);
+
+    // Persist report overrides
+    function saveReportOverrides(overrides: Record<string, Partial<ReportTemplateItem>>) {
+        setReportOverrides(overrides);
+        localStorage.setItem(LS_KEY_REPORT_OVERRIDES, JSON.stringify(overrides));
+    }
+
+    // Persist custom presets
+    function saveCustomPresets(presets: CustomDealPreset[]) {
+        setCustomPresets(presets);
+        localStorage.setItem(LS_KEY_CUSTOM_PRESETS, JSON.stringify(presets));
+    }
+
     // --------------------------------------------------------
     // Data loading
     // --------------------------------------------------------
@@ -487,6 +554,237 @@ export default function TemplatesPage() {
         });
         if (res.ok) {
             await loadDocuments();
+        }
+    }
+
+    // --------------------------------------------------------
+    // Report Template editing
+    // --------------------------------------------------------
+
+    function getReportTemplate(tmpl: ReportTemplateItem): ReportTemplateItem {
+        const overrides = reportOverrides[tmpl.key];
+        if (!overrides) return tmpl;
+        return { ...tmpl, ...overrides };
+    }
+
+    function handleSaveReportEdit(key: string, edits: Partial<ReportTemplateItem>) {
+        const newOverrides = { ...reportOverrides, [key]: { ...reportOverrides[key], ...edits } };
+        saveReportOverrides(newOverrides);
+        setEditingReportKey(null);
+        toast.success('Cambios guardados (local)');
+    }
+
+    function handleRestoreReport(key: string) {
+        const newOverrides = { ...reportOverrides };
+        delete newOverrides[key];
+        saveReportOverrides(newOverrides);
+        toast.success('Plantilla restaurada al original');
+    }
+
+    // --------------------------------------------------------
+    // Report Template Editor (inline)
+    // --------------------------------------------------------
+
+    function ReportTemplateEditor({ tmpl, onSave, onCancel }: {
+        tmpl: ReportTemplateItem;
+        onSave: (edits: Partial<ReportTemplateItem>) => void;
+        onCancel: () => void;
+    }) {
+        const [name, setName] = useState(tmpl.title_template);
+        const [desc, setDesc] = useState(tmpl.description || '');
+        const [audience, setAudience] = useState(tmpl.audience.join(', '));
+        const [cadencia, setCadencia] = useState(tmpl.cadencia);
+        const [grounding, setGrounding] = useState(tmpl.grounding_required);
+
+        return (
+            <div key={tmpl.key} className="g-card" style={{ padding: 'var(--g-space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--g-space-3)', border: '2px solid var(--g-brand-3308)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: 'var(--g-text-caption)', fontWeight: 600, color: 'var(--g-text-muted)' }}>{tmpl.key}</span>
+                    <span style={{ fontSize: 'var(--g-text-caption)', fontWeight: 600, color: 'var(--g-brand-3308)', textTransform: 'uppercase' }}>Editando</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-2)' }}>
+                    <label style={{ fontSize: 'var(--g-text-caption)', fontWeight: 600, color: 'var(--g-text-secondary)' }}>Nombre</label>
+                    <input value={name} onChange={e => setName(e.target.value)} style={{ padding: '6px 10px', borderRadius: 'var(--g-radius-md)', border: '1px solid var(--g-border)', fontSize: 'var(--g-text-body)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-2)' }}>
+                    <label style={{ fontSize: 'var(--g-text-caption)', fontWeight: 600, color: 'var(--g-text-secondary)' }}>Descripción</label>
+                    <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2} style={{ padding: '6px 10px', borderRadius: 'var(--g-radius-md)', border: '1px solid var(--g-border)', fontSize: 'var(--g-text-body)', resize: 'vertical' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 'var(--g-space-3)' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--g-space-2)' }}>
+                        <label style={{ fontSize: 'var(--g-text-caption)', fontWeight: 600, color: 'var(--g-text-secondary)' }}>Audiencia (separada por comas)</label>
+                        <input value={audience} onChange={e => setAudience(e.target.value)} style={{ padding: '6px 10px', borderRadius: 'var(--g-radius-md)', border: '1px solid var(--g-border)', fontSize: 'var(--g-text-body)' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-2)' }}>
+                        <label style={{ fontSize: 'var(--g-text-caption)', fontWeight: 600, color: 'var(--g-text-secondary)' }}>Cadencia</label>
+                        <select value={cadencia} onChange={e => setCadencia(e.target.value)} style={{ padding: '6px 10px', borderRadius: 'var(--g-radius-md)', border: '1px solid var(--g-border)', fontSize: 'var(--g-text-body)' }}>
+                            {Object.entries(CADENCIA_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                        </select>
+                    </div>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-2)', fontSize: 'var(--g-text-body)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={grounding} onChange={e => setGrounding(e.target.checked)} />
+                    Requiere grounding
+                </label>
+                <div style={{ display: 'flex', gap: 'var(--g-space-2)', justifyContent: 'flex-end' }}>
+                    <button onClick={onCancel} style={{ padding: '6px 16px', borderRadius: 'var(--g-radius-md)', border: '1px solid var(--g-border)', background: 'white', fontSize: 'var(--g-text-body)', cursor: 'pointer' }}>Cancelar</button>
+                    <button onClick={() => onSave({ title_template: name, description: desc, audience: audience.split(',').map(a => a.trim()).filter(Boolean), cadencia, grounding_required: grounding })} style={{ padding: '6px 16px', borderRadius: 'var(--g-radius-md)', border: 'none', background: 'var(--g-brand-3308)', color: 'white', fontSize: 'var(--g-text-body)', fontWeight: 600, cursor: 'pointer' }}>Guardar</button>
+                </div>
+            </div>
+        );
+    }
+
+    // --------------------------------------------------------
+    // Deal Preset create / clone
+    // --------------------------------------------------------
+
+    function handleClonePreset(preset: DealPreset) {
+        const newPreset: CustomDealPreset = {
+            id: `custom-${Date.now()}`,
+            name: `Copia de ${preset.name}`,
+            description: preset.description,
+            deal_type: preset.deal_type,
+            deal_type_color: preset.deal_type_color,
+            emoji: '📋',
+            review_depth: preset.review_depth,
+            areas: [...preset.areas],
+            expected_documents_count: preset.expected_documents_count,
+            mandatory_documents_count: preset.mandatory_documents_count,
+            active_skills_count: preset.skills_count,
+            notes: preset.notes || '',
+            is_custom: true,
+        };
+        const updated = [...customPresets, newPreset];
+        saveCustomPresets(updated);
+        setEditingPresetId(newPreset.id);
+        toast.success(`Preset clonado: ${newPreset.name}`);
+    }
+
+    function handleCloneCustomPreset(preset: CustomDealPreset) {
+        const newPreset: CustomDealPreset = {
+            ...preset,
+            id: `custom-${Date.now()}`,
+            name: `Copia de ${preset.name}`,
+        };
+        const updated = [...customPresets, newPreset];
+        saveCustomPresets(updated);
+        setEditingPresetId(newPreset.id);
+        toast.success(`Preset clonado: ${newPreset.name}`);
+    }
+
+    function openCreatePresetForm() {
+        setPresetForm({
+            name: '', description: '', deal_type: '', deal_type_color: '217, 91%, 60%',
+            emoji: '📁', review_depth: 'standard', areas: [],
+            expected_documents_count: 0, mandatory_documents_count: 0,
+            active_skills_count: 0, notes: '',
+        });
+        setShowPresetForm(true);
+        setEditingPresetId(null);
+    }
+
+    function handleSaveNewPreset() {
+        if (!presetForm.name.trim()) {
+            toast.error('El nombre del preset es obligatorio');
+            return;
+        }
+        const newPreset: CustomDealPreset = {
+            ...presetForm,
+            id: `custom-${Date.now()}`,
+            is_custom: true,
+        };
+        const updated = [...customPresets, newPreset];
+        saveCustomPresets(updated);
+        setShowPresetForm(false);
+        toast.success(`Preset creado: ${newPreset.name}`);
+    }
+
+    function handleSaveEditedPreset(id: string, edits: Partial<CustomDealPreset>) {
+        const updated = customPresets.map(p => p.id === id ? { ...p, ...edits } : p);
+        saveCustomPresets(updated);
+        setEditingPresetId(null);
+        toast.success('Preset actualizado (local)');
+    }
+
+    function handleDeleteCustomPreset(id: string) {
+        const updated = customPresets.filter(p => p.id !== id);
+        saveCustomPresets(updated);
+        toast.success('Preset eliminado');
+    }
+
+    // --------------------------------------------------------
+    // CSV Import
+    // --------------------------------------------------------
+
+    function handleCsvFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const text = evt.target?.result as string;
+            if (!text) return;
+            const lines = text.split('\n').filter(l => l.trim());
+            if (lines.length < 2) {
+                toast.error('El CSV debe tener al menos un encabezado y una fila de datos');
+                return;
+            }
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            const requiredCols = ['name', 'area_code', 'category', 'is_mandatory', 'review_depth'];
+            const missing = requiredCols.filter(c => !headers.includes(c));
+            if (missing.length > 0) {
+                toast.error(`Columnas faltantes en CSV: ${missing.join(', ')}`);
+                return;
+            }
+            const rows = lines.slice(1).map(line => {
+                const values = line.split(',').map(v => v.trim());
+                const row: Record<string, string> = {};
+                headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
+                return row;
+            }).filter(row => row.name);
+            if (rows.length === 0) {
+                toast.error('No se encontraron filas validas en el CSV');
+                return;
+            }
+            setCsvPreview(rows);
+        };
+        reader.readAsText(file);
+        // Reset input
+        e.target.value = '';
+    }
+
+    async function handleCsvImportConfirm() {
+        if (!csvPreview || csvPreview.length === 0) return;
+        setCsvImporting(true);
+        let successCount = 0;
+        let errorCount = 0;
+        for (const row of csvPreview) {
+            try {
+                const body = {
+                    name: row.name,
+                    area_code: row.area_code || 'GENERAL',
+                    category: row.category || 'general',
+                    is_mandatory: row.is_mandatory === 'true' || row.is_mandatory === '1' || row.is_mandatory === 'si',
+                    review_depth: row.review_depth || 'standard',
+                    description: row.description || '',
+                };
+                const res = await fetch('/api/configuracion/templates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                if (res.ok) successCount++;
+                else errorCount++;
+            } catch {
+                errorCount++;
+            }
+        }
+        await loadDocuments();
+        setCsvPreview(null);
+        setCsvImporting(false);
+        if (errorCount === 0) {
+            toast.success(`${successCount} documento(s) importado(s) correctamente`);
+        } else {
+            toast.warning(`Importados: ${successCount}, errores: ${errorCount}`);
         }
     }
 
@@ -970,9 +1268,23 @@ export default function TemplatesPage() {
 
                                 {/* Templates */}
                                 {isExpanded && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-1)' }}>
-                                        {items.map(tmpl => {
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-2)' }}>
+                                        {items.map(rawTmpl => {
+                                            const tmpl = getReportTemplate(rawTmpl);
                                             const cadCfg = CADENCIA_CONFIG[tmpl.cadencia];
+                                            const isEditing = editingReportKey === tmpl.key;
+                                            const hasOverride = !!reportOverrides[tmpl.key];
+
+                                            if (isEditing) {
+                                                return (
+                                                    <ReportTemplateEditor
+                                                        key={tmpl.key}
+                                                        tmpl={tmpl}
+                                                        onSave={(edits) => handleSaveReportEdit(tmpl.key, edits)}
+                                                        onCancel={() => setEditingReportKey(null)}
+                                                    />
+                                                );
+                                            }
 
                                             return (
                                                 <div
@@ -1031,6 +1343,20 @@ export default function TemplatesPage() {
                                                         </span>
                                                     )}
 
+                                                    {/* Modified badge */}
+                                                    {hasOverride && (
+                                                        <span style={{
+                                                            display: 'inline-flex', alignItems: 'center',
+                                                            padding: '2px 6px', fontSize: '9px', fontWeight: 600,
+                                                            borderRadius: 'var(--g-radius-sm)',
+                                                            backgroundColor: 'hsla(45, 80%, 42%, 0.1)',
+                                                            color: 'hsl(45, 80%, 42%)',
+                                                            whiteSpace: 'nowrap', flexShrink: 0,
+                                                        }}>
+                                                            Modificado
+                                                        </span>
+                                                    )}
+
                                                     <div style={{ flex: 1 }} />
 
                                                     {/* Audience badges */}
@@ -1062,6 +1388,40 @@ export default function TemplatesPage() {
                                                             Grounding
                                                         </span>
                                                     )}
+
+                                                    {/* Actions */}
+                                                    <div style={{ display: 'flex', gap: 'var(--g-space-1)', flexShrink: 0 }}>
+                                                        <button
+                                                            onClick={() => setEditingReportKey(tmpl.key)}
+                                                            title="Editar"
+                                                            aria-label={`Editar ${tmpl.title_template}`}
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                width: '28px', height: '28px',
+                                                                borderRadius: 'var(--g-radius-md)', border: '1px solid var(--g-border-subtle)',
+                                                                backgroundColor: 'transparent', color: 'var(--g-text-muted)',
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            <Pencil style={{ width: '13px', height: '13px' }} />
+                                                        </button>
+                                                        {hasOverride && (
+                                                            <button
+                                                                onClick={() => handleRestoreReport(tmpl.key)}
+                                                                title="Restaurar original"
+                                                                aria-label={`Restaurar ${tmpl.title_template}`}
+                                                                style={{
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    width: '28px', height: '28px',
+                                                                    borderRadius: 'var(--g-radius-md)', border: '1px solid var(--g-border-subtle)',
+                                                                    backgroundColor: 'transparent', color: 'var(--g-text-muted)',
+                                                                    cursor: 'pointer',
+                                                                }}
+                                                            >
+                                                                <RotateCcw style={{ width: '13px', height: '13px' }} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
