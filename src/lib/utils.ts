@@ -341,3 +341,22 @@ export const KANBAN_STATE_CONFIG: Record<string, { label: string; color: string;
   integrado_en_informe: { label: 'Integrado en informe', color: 'var(--g-status-success)', icon: 'BookCheck' },
   bloqueado: { label: 'Bloqueado', color: 'var(--g-severity-critical)', icon: 'AlertOctagon' },
 };
+
+// ── War Room (S6) ──────────────────────────────────────
+
+export const DECISION_TYPE_CONFIG: Record<string, { label: string; color: string; description: string }> = {
+  accept_risk: { label: 'Aceptar riesgo', color: '#6B7280', description: 'Riesgo aceptado sin accion adicional' },
+  mitigate: { label: 'Mitigar', color: '#10B981', description: 'Accion de mitigacion implementada' },
+  transfer: { label: 'Transferir', color: '#3B82F6', description: 'Riesgo transferido (seguro, escrow, etc.)' },
+  reject: { label: 'Rechazar', color: '#EF4444', description: 'Deal breaker — no se acepta' },
+  defer: { label: 'Diferir', color: '#F59E0B', description: 'Decision aplazada pendiente mas informacion' },
+  escalate: { label: 'Escalar', color: '#8B5CF6', description: 'Escalado a comite / CLO / socio' },
+};
+
+export const NOTIFICATION_TYPE_CONFIG: Record<string, { label: string; icon: string }> = {
+  severity_change: { label: 'Cambio de severidad', icon: '⚠️' },
+  new_blocker: { label: 'Nuevo bloqueante', icon: '🚫' },
+  request_overdue: { label: 'Solicitud vencida', icon: '⏰' },
+  decision_required: { label: 'Decision requerida', icon: '⚖️' },
+  red_flag_new: { label: 'Nuevo red flag', icon: '🚩' },
+};

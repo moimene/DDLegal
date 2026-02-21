@@ -782,3 +782,70 @@ export interface DDKanbanConfig {
   created_at: string;
   updated_at: string;
 }
+
+// ── VDR Vectorization (S4) ──────────────────────────────
+
+export interface VDRChunk {
+  id: string;
+  document_id: string;
+  version_id: string | null;
+  content: string;
+  embedding?: number[];
+  chunk_index: number;
+  page_number: number | null;
+  section_title: string | null;
+  category: string | null;
+  token_count: number | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface VDRIngestionJob {
+  id: string;
+  document_id: string;
+  version_id: string | null;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  chunks_created: number;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+// ── War Room (S6) ───────────────────────────────────────
+
+export type WarRoomDecisionType = 'accept_risk' | 'mitigate' | 'transfer' | 'reject' | 'defer' | 'escalate';
+
+export interface DDWarRoomDecision {
+  id: string;
+  project_id: string;
+  contingency_id: string | null;
+  alert_id: string | null;
+  decision_type: WarRoomDecisionType;
+  title: string;
+  rationale: string | null;
+  evidence_refs: unknown[];
+  decided_by: string | null;
+  decided_at: string;
+  client_visible: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type WarRoomNotificationType = 'severity_change' | 'new_blocker' | 'request_overdue' | 'decision_required' | 'red_flag_new';
+
+export interface DDWarRoomNotification {
+  id: string;
+  project_id: string;
+  notification_type: WarRoomNotificationType;
+  title: string;
+  description: string | null;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  source_type: string | null;
+  source_id: string | null;
+  is_read: boolean;
+  read_by: string | null;
+  read_at: string | null;
+  created_at: string;
+}
