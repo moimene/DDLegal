@@ -65,19 +65,19 @@ ALTER TABLE dd_kanban_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dd_kanban_config ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "kanban_tasks_select" ON dd_kanban_tasks
-  FOR SELECT USING (auth.user_has_project_role(project_id));
+  FOR SELECT USING (public.user_has_project_role(project_id));
 
 CREATE POLICY "kanban_tasks_insert" ON dd_kanban_tasks
-  FOR INSERT WITH CHECK (auth.user_has_permission(project_id, 'can_edit_tasks'));
+  FOR INSERT WITH CHECK (public.user_has_permission(project_id, 'can_edit_tasks'));
 
 CREATE POLICY "kanban_tasks_update" ON dd_kanban_tasks
-  FOR UPDATE USING (auth.user_has_permission(project_id, 'can_edit_tasks'));
+  FOR UPDATE USING (public.user_has_permission(project_id, 'can_edit_tasks'));
 
 CREATE POLICY "kanban_config_select" ON dd_kanban_config
-  FOR SELECT USING (auth.user_has_project_role(project_id));
+  FOR SELECT USING (public.user_has_project_role(project_id));
 
 CREATE POLICY "kanban_config_update" ON dd_kanban_config
-  FOR UPDATE USING (auth.user_has_permission(project_id, 'can_manage_roles'));
+  FOR UPDATE USING (public.user_has_permission(project_id, 'can_manage_roles'));
 
 CREATE OR REPLACE FUNCTION update_kanban_state_timestamp()
 RETURNS TRIGGER AS $$

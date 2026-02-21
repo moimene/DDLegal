@@ -1,17 +1,17 @@
 -- S1: Enable RLS on all core tables and add policies
+-- Functions in public schema (auth schema requires elevated permissions)
 
--- Enable RLS
-ALTER TABLE IF EXISTS dd_projects ENABLE ROW LEVEL SECURITY;
+-- Enable RLS (IF EXISTS for safety - some may already have it)
 ALTER TABLE IF EXISTS dd_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS dd_contingencies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS dd_qa ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS dd_deliverables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS dd_evidence ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS dd_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS dd_event_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS dd_project_user_roles ENABLE ROW LEVEL SECURITY;
 
 -- Helper function: check if user has role on project
-CREATE OR REPLACE FUNCTION auth.user_has_project_role(p_project_id UUID)
+CREATE OR REPLACE FUNCTION public.user_has_project_role(p_project_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
@@ -24,7 +24,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Helper function: check specific permission
-CREATE OR REPLACE FUNCTION auth.user_has_permission(p_project_id UUID, p_permission TEXT)
+CREATE OR REPLACE FUNCTION public.user_has_permission(p_project_id UUID, p_permission TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
   v_role TEXT;
@@ -59,63 +59,78 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Projects: users can see projects they are assigned to
+-- Projects: add policies (RLS already enabled on dd_projects)
+-- Drop existing if re-running
+DROP POLICY IF EXISTS "projects_select" ON dd_projects;
+DROP POLICY IF EXISTS "projects_insert" ON dd_projects;
+DROP POLICY IF EXISTS "projects_update" ON dd_projects;
+
 CREATE POLICY "projects_select" ON dd_projects
-  FOR SELECT USING (auth.user_has_project_role(id));
+  FOR SELECT USING (public.user_has_project_role(id));
 
 CREATE POLICY "projects_insert" ON dd_projects
   FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "projects_update" ON dd_projects
-  FOR UPDATE USING (auth.user_has_permission(id, 'can_manage_roles'));
+  FOR UPDATE USING (public.user_has_permission(id, 'can_manage_roles'));
 
 -- Tasks
 CREATE POLICY "tasks_select" ON dd_tasks
-  FOR SELECT USING (auth.user_has_project_role(project_id));
+  FOR SELECT USING (public.user_has_project_role(project_id));
 
 CREATE POLICY "tasks_update" ON dd_tasks
-  FOR UPDATE USING (auth.user_has_permission(project_id, 'can_edit_tasks'));
+  FOR UPDATE USING (public.user_has_permission(project_id, 'can_edit_tasks'));
 
 CREATE POLICY "tasks_insert" ON dd_tasks
-  FOR INSERT WITH CHECK (auth.user_has_permission(project_id, 'can_edit_tasks'));
+  FOR INSERT WITH CHECK (public.user_has_permission(project_id, 'can_edit_tasks'));
 
 -- Contingencies
 CREATE POLICY "contingencies_select" ON dd_contingencies
-  FOR SELECT USING (auth.user_has_permission(project_id, 'can_view_contingencies'));
+  FOR SELECT USING (public.user_has_permission(project_id, 'can_view_contingencies'));
 
 CREATE POLICY "contingencies_update" ON dd_contingencies
-  FOR UPDATE USING (auth.user_has_permission(project_id, 'can_edit_contingencies'));
+  FOR UPDATE USING (public.user_has_permission(project_id, 'can_edit_contingencies'));
 
 -- QA
 CREATE POLICY "qa_select" ON dd_qa
-  FOR SELECT USING (auth.user_has_project_role(project_id));
+  FOR SELECT USING (public.user_has_project_role(project_id));
 
 CREATE POLICY "qa_insert" ON dd_qa
-  FOR INSERT WITH CHECK (auth.user_has_project_role(project_id));
+  FOR INSERT WITH CHECK (public.user_has_project_role(project_id));
 
 -- Deliverables
 CREATE POLICY "deliverables_select" ON dd_deliverables
-  FOR SELECT USING (auth.user_has_project_role(project_id));
+  FOR SELECT USING (public.user_has_project_role(project_id));
 
 -- Evidence
 CREATE POLICY "evidence_select" ON dd_evidence
-  FOR SELECT USING (auth.user_has_project_role(project_id));
+  FOR SELECT USING (public.user_has_project_role(project_id));
 
--- Reports
+-- Reports: accessible to any authenticated user with at least one active role
+-- (dd_requests doesn't have project_id; reports are linked via request_id → sociedad_id)
+DROP POLICY IF EXISTS "reports_select" ON dd_reports;
 CREATE POLICY "reports_select" ON dd_reports
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM dd_requests r
-      JOIN dd_project_user_roles pur ON pur.project_id = r.project_id
-      WHERE r.id = dd_reports.request_id
-      AND pur.user_id = auth.uid()
-      AND pur.is_active = true
+      SELECT 1 FROM dd_project_user_roles
+      WHERE user_id = auth.uid()
+      AND is_active = true
     )
   );
 
--- Event log
+-- Event log: uses project_id column directly
 CREATE POLICY "events_select" ON dd_event_log
   FOR SELECT USING (
-    auth.user_has_project_role((metadata->>'project_id')::UUID)
-    OR (metadata->>'project_id') IS NULL
+    public.user_has_project_role(project_id)
+    OR project_id IS NULL
   );
+
+-- Project user roles: users can see their own roles
+CREATE POLICY "pur_select" ON dd_project_user_roles
+  FOR SELECT USING (user_id = auth.uid() OR public.user_has_permission(project_id, 'can_manage_roles'));
+
+CREATE POLICY "pur_insert" ON dd_project_user_roles
+  FOR INSERT WITH CHECK (public.user_has_permission(project_id, 'can_manage_roles'));
+
+CREATE POLICY "pur_update" ON dd_project_user_roles
+  FOR UPDATE USING (public.user_has_permission(project_id, 'can_manage_roles'));
