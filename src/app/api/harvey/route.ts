@@ -92,52 +92,40 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Attempt to call Harvey via n8n webhook
-        const n8nUrl = process.env.N8N_WEBHOOK_BASE_URL;
+        // ============================================================
+        // Harvey Gateway routing (S0 Strangler Fig)
+        // Feature flag: 'gateway' = direct Harvey API, 'n8n' = legacy webhook
+        // ============================================================
+        const featureFlag = process.env.HARVEY_FEATURE_FLAG || 'gateway';
         let aiResult: Record<string, unknown> = {};
 
-        if (n8nUrl) {
+        if (featureFlag === 'gateway') {
+            // Direct Harvey call via Gateway
             try {
-                const n8nPayload: Record<string, unknown> = {
+                const { getHarveyGateway } = await import('@/lib/harvey');
+                const gateway = getHarveyGateway();
+                const harveyResult = await gateway.completion({
                     prompt: enrichedPrompt,
-                    project_id,
-                    process_id,
-                    target_company,
-                    sector,
-                };
-
-                // Include skills context when available
-                if (skillContext) {
-                    n8nPayload.skill_prompt = skillContext.prompt_template;
-                    n8nPayload.expected_output_schema = skillContext.expected_output_schema;
-                    n8nPayload.evidence_requirements = skillContext.evidence_requirements;
-                    n8nPayload.agent_pipeline = skillContext.agent_pipeline;
-                }
-
-                const n8nResp = await fetch(`${n8nUrl}/dd-harvey-invoke`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(n8nPayload),
+                    system_prompt: skillContext?.prompt_template,
+                    client_matter_id: `${project_id}:${process_id}`,
                 });
-                if (n8nResp.ok) {
-                    aiResult = await n8nResp.json();
-                }
-            } catch {
-                // n8n not reachable, store prompt for later
                 aiResult = {
-                    status: 'queued',
-                    message: 'n8n webhook not reachable. Prompt stored for manual execution.',
-                    prompt: enrichedPrompt,
+                    text: harveyResult.text,
+                    model: harveyResult.model,
+                    id: harveyResult.id,
+                    tokens_in: harveyResult.usage?.prompt_tokens,
+                    tokens_out: harveyResult.usage?.completion_tokens,
+                    source: 'gateway',
                     skill_enriched: !!skillContext,
                 };
+            } catch (gatewayError) {
+                console.warn('Gateway call failed, falling back to n8n:', gatewayError);
+                // Fallback to n8n on gateway failure
+                aiResult = await callN8nFallback(enrichedPrompt, project_id, process_id, target_company, sector, skillContext);
             }
         } else {
-            aiResult = {
-                status: 'queued',
-                message: 'Harvey integration pending. Prompt stored.',
-                prompt: enrichedPrompt,
-                skill_enriched: !!skillContext,
-            };
+            // Legacy n8n path
+            aiResult = await callN8nFallback(enrichedPrompt, project_id, process_id, target_company, sector, skillContext);
         }
 
         // Update task with result
@@ -221,4 +209,63 @@ export async function POST(req: NextRequest) {
             { status: 500 }
         );
     }
+}
+
+/**
+ * Legacy n8n fallback for Harvey AI calls.
+ * Used when HARVEY_FEATURE_FLAG=n8n or when gateway fails.
+ */
+async function callN8nFallback(
+    enrichedPrompt: string,
+    project_id: string,
+    process_id: string,
+    target_company: string | undefined,
+    sector: string | undefined,
+    skillContext: {
+        prompt_template?: string;
+        expected_output_schema?: Record<string, unknown> | null;
+        evidence_requirements?: unknown;
+        agent_pipeline?: string[] | null;
+    } | null
+): Promise<Record<string, unknown>> {
+    const n8nUrl = process.env.N8N_WEBHOOK_BASE_URL;
+
+    if (n8nUrl) {
+        try {
+            const n8nPayload: Record<string, unknown> = {
+                prompt: enrichedPrompt,
+                project_id,
+                process_id,
+                target_company,
+                sector,
+            };
+
+            if (skillContext) {
+                n8nPayload.skill_prompt = skillContext.prompt_template;
+                n8nPayload.expected_output_schema = skillContext.expected_output_schema;
+                n8nPayload.evidence_requirements = skillContext.evidence_requirements;
+                n8nPayload.agent_pipeline = skillContext.agent_pipeline;
+            }
+
+            const n8nResp = await fetch(`${n8nUrl}/dd-harvey-invoke`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(n8nPayload),
+            });
+            if (n8nResp.ok) {
+                const result = await n8nResp.json();
+                return { ...result, source: 'n8n' };
+            }
+        } catch {
+            // n8n not reachable
+        }
+    }
+
+    return {
+        status: 'queued',
+        message: 'Harvey integration pending. Prompt stored for manual execution.',
+        prompt: enrichedPrompt,
+        skill_enriched: !!skillContext,
+        source: 'fallback',
+    };
 }

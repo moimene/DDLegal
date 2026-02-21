@@ -726,3 +726,59 @@ export interface DDDomainEnum {
     created_at: string;
     updated_at: string;
 }
+
+// ============================================================
+// Kanban Types (S2)
+// ============================================================
+
+export type KanbanState =
+  | 'backlog'
+  | 'info_solicitada'
+  | 'info_recibida'
+  | 'lista_para_analisis'
+  | 'en_analisis'
+  | 'ia_propuesta'
+  | 'hitl_revision'
+  | 'conclusion'
+  | 'integrado_en_informe'
+  | 'bloqueado';
+
+export interface DDKanbanTask {
+  id: string;
+  project_id: string;
+  area_code: string;
+  title: string;
+  description: string | null;
+  state: KanbanState;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  assigned_to: string | null;
+  reviewer: string | null;
+  due_date: string | null;
+  ai_output: Record<string, unknown> | null;
+  ai_status: 'pending' | 'running' | 'done' | 'failed' | null;
+  ai_confidence: number | null;
+  hitl_required: boolean;
+  hitl_decision: string | null;
+  hitl_decided_by: string | null;
+  hitl_decided_at: string | null;
+  entered_state_at: string;
+  evidence_refs: Array<{ source_id: string; snippet?: string }>;
+  legacy_task_id: string | null;
+  workflow_key: string | null;
+  skill_key: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DDKanbanConfig {
+  id: string;
+  project_id: string;
+  column_state: KanbanState;
+  wip_limit: number;
+  dor_criteria: Array<{ check: string; required: boolean }>;
+  dod_criteria: Array<{ check: string; required: boolean }>;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}

@@ -324,3 +324,20 @@ export const BASKET_TYPE_CONFIG: Record<string, { label: string; description: st
     mini_basket: { label: 'Mini-basket', description: 'Umbral minimo por reclamacion individual' },
     none: { label: 'Sin basket', description: 'Sin umbral minimo de reclamacion' },
 };
+
+// ============================================================
+// Kanban State Config (S2)
+// ============================================================
+
+export const KANBAN_STATE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  backlog: { label: 'Backlog', color: 'var(--g-status-neutral)', icon: 'Inbox' },
+  info_solicitada: { label: 'Info solicitada', color: 'var(--g-status-warning)', icon: 'Send' },
+  info_recibida: { label: 'Info recibida', color: 'var(--g-status-info)', icon: 'Download' },
+  lista_para_analisis: { label: 'Lista para análisis', color: 'var(--g-status-info)', icon: 'CheckCircle' },
+  en_analisis: { label: 'En análisis', color: 'var(--g-status-active)', icon: 'Search' },
+  ia_propuesta: { label: 'IA propuesta', color: 'var(--g-status-ai)', icon: 'Sparkles' },
+  hitl_revision: { label: 'HITL revisión', color: 'var(--g-status-warning)', icon: 'UserCheck' },
+  conclusion: { label: 'Conclusión', color: 'var(--g-status-success)', icon: 'FileCheck' },
+  integrado_en_informe: { label: 'Integrado en informe', color: 'var(--g-status-success)', icon: 'BookCheck' },
+  bloqueado: { label: 'Bloqueado', color: 'var(--g-severity-critical)', icon: 'AlertOctagon' },
+};
