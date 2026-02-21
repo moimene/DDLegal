@@ -4,11 +4,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
     FolderKanban, FileText,
-    TrendingUp, Clock, CheckCircle2, ArrowRight, AlertTriangle, Bot
+    TrendingUp, Clock, CheckCircle2, ArrowRight, AlertTriangle, Bot,
+    LayoutDashboard, Eye,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { DDProject, DDArea, DDTask } from '@/lib/supabase';
 import { STATUS_CONFIG } from '@/lib/utils';
+import { useUser } from '@/contexts/UserContext';
+import { LawyerDashboard, LeaderDashboard, PMODashboard, ClientDashboard } from '@/components/dashboards';
 
 const PROJECT_STATUS_LABEL: Record<DDProject['status'], string> = {
     draft: 'Borrador',
@@ -17,11 +20,50 @@ const PROJECT_STATUS_LABEL: Record<DDProject['status'], string> = {
     closed: 'Cerrado',
 };
 
+const ROLE_LABELS: Record<string, string> = {
+    clo: 'CLO',
+    pm_transaccion: 'PM Transaccion',
+    abogado_area: 'Abogado de Area',
+    deal_sponsor: 'Deal Sponsor',
+    target_liaison: 'Contacto Target',
+    stakeholder_negocio: 'Stakeholder',
+    cliente_externo: 'Cliente',
+};
+
+/** Returns the role-specific dashboard component, or null for generic */
+function RoleDashboard({ role, projectId }: { role: string; projectId?: string }) {
+    switch (role) {
+        case 'abogado_area':
+            return <LawyerDashboard projectId={projectId} />;
+        case 'clo':
+        case 'deal_sponsor':
+            return <LeaderDashboard projectId={projectId} />;
+        case 'pm_transaccion':
+            return <PMODashboard projectId={projectId} />;
+        case 'cliente_externo':
+        case 'stakeholder_negocio':
+            return <ClientDashboard projectId={projectId} />;
+        default:
+            return null;
+    }
+}
+
 export default function DashboardPage() {
+    const { primaryRole, roles } = useUser();
     const [projects, setProjects] = useState<DDProject[]>([]);
     const [areas, setAreas] = useState<DDArea[]>([]);
     const [tasks, setTasks] = useState<DDTask[]>([]);
     const [loading, setLoading] = useState(true);
+    const [dashboardView, setDashboardView] = useState<'role' | 'general'>(
+        // Default to role view when a role-specific dashboard exists
+        'role',
+    );
+
+    // Determine the first project id from roles for the role dashboard
+    const firstProjectId = roles.length > 0 ? roles[0].project_id : undefined;
+
+    // Does the current role have a specialized dashboard?
+    const hasRoleDashboard = primaryRole != null && ['abogado_area', 'clo', 'deal_sponsor', 'pm_transaccion', 'cliente_externo', 'stakeholder_negocio'].includes(primaryRole);
 
     useEffect(() => {
         async function load() {
@@ -60,6 +102,47 @@ export default function DashboardPage() {
     ).slice(0, 3);
     const projectById = new Map(projects.map(p => [p.id, p]));
 
+    // -------------------------------------------------------------------
+    // Role-specific dashboard view
+    // -------------------------------------------------------------------
+    if (hasRoleDashboard && dashboardView === 'role' && primaryRole) {
+        return (
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-6)' }}>
+                {/* Role dashboard header with toggle */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 style={{ fontSize: 'var(--g-text-h1)', color: 'var(--g-text-primary)' }}>
+                            Dashboard — {ROLE_LABELS[primaryRole] || primaryRole}
+                        </h1>
+                        <p style={{ color: 'var(--g-text-secondary)', fontSize: 'var(--g-text-body)', marginTop: '2px' }}>
+                            Vista contextual para tu rol en el proyecto
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setDashboardView('general')}
+                        className="inline-flex items-center gap-2 font-medium transition-all hover:opacity-90"
+                        style={{
+                            backgroundColor: 'var(--g-surface-subtle)',
+                            color: 'var(--g-text-primary)',
+                            borderRadius: 'var(--g-radius-md)',
+                            border: '1px solid var(--g-border-default)',
+                            padding: 'var(--g-space-2) var(--g-space-4)',
+                            fontSize: 'var(--g-text-body)',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <Eye className="h-4 w-4" aria-hidden="true" />
+                        Vista General
+                    </button>
+                </div>
+                <RoleDashboard role={primaryRole} projectId={firstProjectId} />
+            </div>
+        );
+    }
+
+    // -------------------------------------------------------------------
+    // General dashboard (default or fallback)
+    // -------------------------------------------------------------------
     return (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-8)' }}>
             {/* Header */}
@@ -72,21 +155,41 @@ export default function DashboardPage() {
                         Gestión integral de Due Diligence Legal
                     </p>
                 </div>
-                <Link
-                    href="/projects/new"
-                    className="inline-flex items-center gap-2 font-medium transition-all hover:opacity-90"
-                    style={{
-                        backgroundColor: 'var(--g-brand-3308)',
-                        color: 'var(--g-text-inverse)',
-                        borderRadius: 'var(--g-radius-md)',
-                        boxShadow: 'var(--g-shadow-brand)',
-                        padding: 'var(--g-space-2) var(--g-space-5)',
-                        fontSize: 'var(--g-text-body)',
-                    }}
-                >
-                    <FolderKanban className="h-4 w-4" aria-hidden="true" />
-                    Nuevo Proyecto DD
-                </Link>
+                <div className="flex items-center gap-3">
+                    {hasRoleDashboard && (
+                        <button
+                            onClick={() => setDashboardView('role')}
+                            className="inline-flex items-center gap-2 font-medium transition-all hover:opacity-90"
+                            style={{
+                                backgroundColor: 'var(--g-surface-subtle)',
+                                color: 'var(--g-text-primary)',
+                                borderRadius: 'var(--g-radius-md)',
+                                border: '1px solid var(--g-border-default)',
+                                padding: 'var(--g-space-2) var(--g-space-4)',
+                                fontSize: 'var(--g-text-body)',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+                            Mi Dashboard
+                        </button>
+                    )}
+                    <Link
+                        href="/projects/new"
+                        className="inline-flex items-center gap-2 font-medium transition-all hover:opacity-90"
+                        style={{
+                            backgroundColor: 'var(--g-brand-3308)',
+                            color: 'var(--g-text-inverse)',
+                            borderRadius: 'var(--g-radius-md)',
+                            boxShadow: 'var(--g-shadow-brand)',
+                            padding: 'var(--g-space-2) var(--g-space-5)',
+                            fontSize: 'var(--g-text-body)',
+                        }}
+                    >
+                        <FolderKanban className="h-4 w-4" aria-hidden="true" />
+                        Nuevo Proyecto DD
+                    </Link>
+                </div>
             </div>
 
             {/* KPI Cards */}
