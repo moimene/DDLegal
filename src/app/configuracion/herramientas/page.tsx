@@ -212,7 +212,7 @@ export default function HerramientasAdminPage() {
 
                                 {/* Area code pills */}
                                 <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', flexShrink: 0 }}>
-                                    {tool.area_codes.map(code => (
+                                    {(tool.area_codes || []).map(code => (
                                         <span
                                             key={code}
                                             style={{
@@ -288,7 +288,7 @@ export default function HerramientasAdminPage() {
                                                 Skills utilizadas:
                                             </p>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                                {tool.skills_used.map(skill => (
+                                                {(tool.skills_used || []).map(skill => (
                                                     <code
                                                         key={skill}
                                                         style={{

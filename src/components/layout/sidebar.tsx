@@ -41,8 +41,8 @@ const NAV_SECTIONS: NavSection[] = [
     {
         header: 'Proyecto',
         items: [
-            { label: 'Data Room', icon: Database, path: '/projects' },
-            { label: 'Q&A', icon: MessageCircle, path: '/projects' },
+            { label: 'Data Room', icon: Database, path: '/vdr' },
+            { label: 'Q&A', icon: MessageCircle, path: '/qa' },
         ],
     },
     {

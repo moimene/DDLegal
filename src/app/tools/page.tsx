@@ -113,7 +113,7 @@ export default function ToolsHubPage() {
                                         <Icon className="h-6 w-6" style={{ color: 'var(--g-brand-3308)' }} aria-hidden="true" />
                                     </div>
                                     <div className="flex flex-wrap gap-1">
-                                        {tool.area_codes.map((code) => {
+                                        {(tool.area_codes || []).map((code) => {
                                             const color = AREA_COLORS[code] || AREA_COLORS.GENERAL;
                                             return (
                                                 <span
