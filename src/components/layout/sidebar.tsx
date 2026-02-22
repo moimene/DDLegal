@@ -11,6 +11,7 @@ import {
     Swords, Workflow, Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ProjectSelector from './project-selector';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -164,6 +165,9 @@ export default function Sidebar() {
                     </div>
                 )}
             </div>
+
+            {/* Project Selector */}
+            <ProjectSelector collapsed={collapsed} />
 
             {/* Navigation */}
             <nav className="flex-1 py-5 px-3 overflow-y-auto">
