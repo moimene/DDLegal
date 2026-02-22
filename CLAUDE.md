@@ -1,14 +1,14 @@
 # DD Legal PMO
 
-Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 63 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room y Observabilidad. 94+ endpoints, 25 suites.
+Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room y Observabilidad. 110+ endpoints, 28 suites, 37 migrations.
 
 ## Stack
 
 - **Frontend**: Next.js 14 (App Router), React 18, Zustand, TanStack Table, Lucide icons, Montserrat (Garrigues)
-- **Backend**: Next.js API routes (94+ endpoints), Supabase (Postgres + RLS + pgvector)
+- **Backend**: Next.js API routes (100+ endpoints), Supabase (Postgres + RLS + pgvector + BM25)
 - **AI**: Harvey AI gateway, OpenAI embeddings (text-embedding-3-small, 1536d)
 - **Infra**: Vercel (produccion), Supabase hosted, n8n workflows
-- **Tests**: Playwright E2E (25 suites, 180+ tests)
+- **Tests**: Playwright E2E (28 suites, 230+ tests), Vitest unit tests
 
 ## Commands
 
@@ -25,7 +25,7 @@ Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n
 ```
 src/
   app/
-    api/                    # 94+ API routes across 30+ groups
+    api/                    # 100+ API routes across 30+ groups
       ai/                   # classify, suggest
       alerts/               # SLA alerts
       auth/                 # login, me, roles, setup-test-users
@@ -33,14 +33,16 @@ src/
       evidence/             # link-chunks, pack builder (Evidence Pack v2)
       gateway/              # Harvey AI proxy (whoami, health, completion)
       kanban/               # board, metrics, tasks CRUD + move + alerts
-      observability/        # SLO dashboard, telemetry ingestion
+      cron/                  # Vercel Cron: audit-sync (15-min telemetry flush)
+      observability/        # SLO dashboard (workflow phases), telemetry ingestion, alerts
       vdr/                  # documents, folders, bulk, search, audit
         ingest/             # S4: async vectorization pipeline
         search/semantic/    # S4: pgvector semantic search
         rag/query/          # S0: Vault RAG query endpoint
         vault/sync/         # S4→S0: VDR to Harvey Vault sync
-      war-room/             # S6: dashboard, decisions, red-flags, export
-      workflows/            # list, execute (Strangler workflow engine)
+      scoring/              # H3: Deal Risk Score (POST/GET per project)
+      war-room/             # S6: dashboard, decisions, red-flags, export, negotiation-actions, spa-mapping, timeline, negotiation-dashboard, decision-resolution
+      workflows/            # templates, instantiate, instances, phase, list, execute
       # + 16 more: client, configuracion, documents, events, evidence,
       #   harvey, hitl, ip, negotiation, notifications, projects, qa,
       #   reports, skills, societario, system, tools
@@ -52,12 +54,19 @@ src/
   lib/
     auth/                   # require-permission middleware
     embeddings/             # OpenAI embedding client (batch, retry)
-    harvey/                 # Harvey AI gateway + factory
+    harvey/                 # Harvey AI gateway (circuit breaker + Retry-After + per-family rate limits) + factory
     observability/          # Telemetry writer
-    vdr/                    # Chunker, ingest pipeline, semantic search
+    vdr/                    # Chunker, ingest pipeline, semantic search, hybrid search (BM25+pgvector), adaptive chunking
     war-room/               # Notifications, severity bridge
-    reporting/              # Report engine, evidence pack builder
-    workflows/              # Strangler workflow engine + constants
+    scoring/                # Deal Risk Score engine (severity×probability×timing×area weighting)
+    reporting/              # Report engine, evidence pack builder, red flag generator, final report compiler
+    workflows/              # Template-based engine + instantiation + phase advancement
+      template-types.ts     # 6 phases, 9 categories, template/instance types
+      template-loader.ts    # DB-backed loader with 5-min cache
+      instantiate.ts        # Template → instance → task groups → kanban
+      phase-engine.ts       # Phase advancement with template-aware ordering
+      engine.ts             # Dual-run: template path vs legacy path
+      constants.ts          # Legacy WORKFLOW_DEFINITIONS (6 hardcoded)
     supabase.ts             # Types + client (service_role + anon)
     supabase-auth.ts        # ProjectRole type, ROLE_PERMISSIONS matrix
     utils.ts                # Helpers, configs, constants
@@ -65,21 +74,31 @@ src/
     tokens.css              # Garrigues design tokens (--g-* CSS variables)
   middleware.ts             # Auth + feature flag middleware
 supabase/
-  migrations/               # 31 SQL migrations (RLS, pgvector, seeds, kanban, observability)
-e2e/                        # 25 Playwright test suites
+  migrations/               # 37 SQL migrations (RLS, pgvector, seeds, kanban, workflows, observability, security hardening, BM25, H3 scoring)
+e2e/                        # 26 Playwright test suites
 ```
 
 ## Strangler Slices (v3.0) — All deployed
 
 | Slice | Nombre | Estado |
 |-------|--------|--------|
-| S0 | Harvey Gateway | ✅ Produccion |
+| S0 | Harvey Gateway (circuit breaker + Retry-After) | ✅ Produccion |
 | S1 | Auth + RLS + Middleware | ✅ Produccion |
-| S2 | Kanban Tasks | ✅ Produccion |
-| S3 | Workflow Engine | ✅ Produccion |
+| S2 | Kanban Tasks (10 estados + WIP + aging) | ✅ Produccion |
+| S3 | Workflow Engine (16 templates DB-backed, 6 fases DD) | ✅ Produccion |
 | S4 | VDR Vectorizacion (pgvector + embeddings) | ✅ Produccion |
 | S5 | Observabilidad (SLOs + telemetria) | ✅ Produccion |
-| S6 | War Room (decisiones + red flags) | ✅ Produccion |
+| S6 | War Room (decisiones + red flags + negotiation actions) | ✅ Produccion |
+
+## Workflow Spec v1 (16 templates)
+
+6 fases DD: `obtencion → gestion → analisis → valoracion → informe → propuesta_transaccional`
+
+| Estado | Workflows | Detalles |
+|--------|-----------|----------|
+| Published (16) | WF-01 a WF-06 (v2, 6 fases), WF-07 a WF-12 (v2, area skills), WF-13 a WF-16 (synthesis/deliverable) | All operational |
+
+Feature flag: `WORKFLOW_TEMPLATES_V1` — cuando `false`, usa `WORKFLOW_DEFINITIONS` legacy. 9 categorias: transversal, area, area_multi, synthesis, deliverable, negotiation, transactional, compliance, operational.
 
 ## Demo Users
 
@@ -111,6 +130,19 @@ Seed migration: `supabase/migrations/202602270001_seed_demo_users.sql`.
 | Day 4 | 28 E2E tests covering all sprint features | `b69c81a` | +588 |
 | Day 5 | Hardening + Documentation (tsc fixes, CLAUDE.md, PRD.md) | `a4b9b06` | +72 |
 
+### Workflow Spec v1 Evolution (12 commits)
+
+| Commit | Scope |
+|--------|-------|
+| `89bf7f5` | DB: 5 tablas workflow (templates, versions, instances, task_groups, negotiation_actions) |
+| `0af15d9` | DB: seed 6 MVP workflows como templates versionadas |
+| `6f11f55` | DB: expand phase enum 5→6 (informe + propuesta_transaccional) |
+| `ef91b5e` | DB: seed catalogo expandido 16 workflows YAML v1 |
+| `3956ae3`..`a87de16` | TS: types + loader + instantiate + dual-run + phase engine |
+| `5775cf5` | API: 5 routes (templates, instantiate, instances, phase, negotiation-actions) |
+| `2310c81` | Gateway: Retry-After parsing + circuit breaker (30% threshold, 60s cooldown) |
+| `7445614` | E2E: tests catalogo, auth, circuit breaker |
+
 ## Critical Rules
 
 - **NEVER** expose `SUPABASE_SERVICE_ROLE_KEY` in client-side code. Only in `src/app/api/` routes.
@@ -119,10 +151,12 @@ Seed migration: `supabase/migrations/202602270001_seed_demo_users.sql`.
 - HITL is **mandatory** for CONT, LAB, FISC, LIT area outputs.
 - Path alias: `@/*` maps to `./src/*`.
 - Design system: Garrigues tokens in `src/styles/tokens.css` — use `--g-*` CSS variables, never hardcode colors. Brand: `--g-brand-3308: #004438`. Font: Montserrat.
-- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602270001_seed_demo_users.sql`). Next available: `202602270002`.
+- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602270001_seed_demo_users.sql`). Next available: `202602270011`.
 - Next.js dynamic params use `{ params }: { params: Promise<{ id: string }> }` pattern.
 - pgvector embeddings are 1536 dimensions (OpenAI text-embedding-3-small). HNSW index with cosine distance.
-- Supabase RPC: `match_vdr_chunks` for semantic search. Never call pgvector directly from client.
+- Supabase RPC: `match_vdr_chunks` for semantic search, `bm25_search_vdr_chunks` for full-text. Never call pgvector directly from client.
+- Hybrid search: `hybridSearch()` merges BM25 + pgvector via RRF (k=60). Use for VDR queries needing both keyword and semantic relevance.
+- Per-family gateway rate limits: completion=5, history=3, rag=2 concurrent (total 10, under Harvey 20 rpm cap).
 - Auth login via `POST /api/auth/login` → returns `{ session: { access_token } }`. Token stored in `localStorage` as `dd_session_token`. All API calls use `Authorization: Bearer <token>`.
 
 ## Environment Variables
@@ -131,14 +165,13 @@ Required in `.env.local` (never commit):
 - `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon key (public)
 - `SUPABASE_SERVICE_ROLE_KEY` — Supabase service role (server only)
-- `HARVEY_API_KEY` — Harvey AI API key
-- `HARVEY_ENDPOINT` — Harvey API endpoint
-- `HARVEY_HISTORY_ENDPOINT` — Harvey history endpoint
-- `HARVEY_FEATURE_FLAG` — `gateway` | `n8n` | `shadow` (controls Harvey routing)
-- `OPENAI_API_KEY` — OpenAI API key (for embeddings in S4)
 - `HARVEY_ENDPOINT_V1` — Harvey completion endpoint (EU region)
 - `HARVEY_ENDPOINT_HISTORY` — Harvey history/audit endpoint
 - `HARVEY_TOKEN` — Harvey bearer token (server only)
+- `HARVEY_FEATURE_FLAG` — `gateway` | `n8n` | `shadow` (controls Harvey routing)
+- `WORKFLOW_TEMPLATES_V1` — `true` | `false` (enables template-based workflow engine)
+- `OPENAI_API_KEY` — OpenAI API key (for embeddings in S4)
+- `CRON_SECRET` — Vercel Cron auth secret (protects `/api/cron/*` routes)
 
 ## Deployment
 
@@ -156,3 +189,4 @@ Required in `.env.local` (never commit):
 - [AI Pipeline & Harvey](.claude/docs/ai-pipeline.md)
 - [Testing](.claude/docs/testing.md)
 - [Refactor Plan (Strangler Fig)](.claude/docs/refactor-plan.md)
+- [Workflow Spec v1 Evolution Plan](docs/plans/2026-02-22-workflow-spec-v1-evolution.md)

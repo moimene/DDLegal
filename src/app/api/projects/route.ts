@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const projectIds = [...new Set((roles || []).map(r => r.project_id))];
+    const projectIds = Array.from(new Set((roles || []).map(r => r.project_id)));
 
     if (projectIds.length === 0) {
       return NextResponse.json({ success: true, data: [], count: 0 });

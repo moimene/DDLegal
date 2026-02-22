@@ -1,5 +1,5 @@
 # PRD - DD Legal PMO v3.0
-**Ultima actualizacion: 22 febrero 2026**
+**Ultima actualizacion: 22 febrero 2026 (Workflow Spec v1 + 16 templates)**
 
 ## 1. Contexto y problema
 
@@ -266,41 +266,85 @@ Paginas nuevas:
 
 **Estado actual:** ✅ Implementado (10-state enum, WIP limits, DoR/DoD criteria, aging metrics, task CRUD + move, board endpoint, Kanban UI page, aging alerts endpoint). E2E tests.
 
-#### 4.B.4 Workflows MVP (Slice S3)
+#### 4.B.4 Workflows MVP (Slice S3) → Workflow Spec v1
 
-6 workflows que cubren deal breakers tipicos y control de proyecto:
+**Evolucion:** De 6 workflows hardcoded en constants.ts a **16 workflow templates DB-backed versionados** con 6 fases DD explicitas.
 
-| # | Workflow | Area | Objetivo | Salida |
-|---|---------|------|----------|--------|
-| 1 | Arranque DD + backlog | Transversal | Crear tablero, grupos y tareas base | Checklist + RACI + cronograma + Q&A |
-| 2 | Data Room + gap list | Transversal | Control de documentacion | Gap list viva + solicitudes + trazabilidad |
-| 3 | Societario | MERC | Snapshot + discrepancias + red flags | Hallazgos + CP/acciones + evidencias |
-| 4 | Contratos materiales | CONT | Clausulas criticas y change of control | Tabla contratos + red flags + mitigacion |
-| 5 | IP titularidad | PI | Riesgo titularidad/uso/encumbrances | Snapshot IP + red flags + acciones |
-| 6 | Laboral & Fiscal | LAB/FISC | Pasivos contingentes y riesgos | Risk register rankeado + mitigacion |
+##### 6 Fases DD (expandidas de 5)
+
+```
+obtencion → gestion → analisis → valoracion → informe → propuesta_transaccional
+```
+
+Cada fase declara: inputs, skills, artefactos, DoR/DoD, kanban_start/end_state, hitl_required, gateway_config.
+
+##### 16 Workflow Templates
+
+| # | Key | Area | Categoria | HITL | Estado |
+|---|-----|------|-----------|------|--------|
+| WF-01 | `arranque_dd` | GENERAL | transversal | No | Published v2 |
+| WF-02 | `data_room_gap` | GENERAL | transversal | No | Published v2 |
+| WF-03 | `societario` | MERC | area | No | Published v2 |
+| WF-04 | `contratos_materiales` | CONT | area | **Si** | Published v2 |
+| WF-05 | `ip_titularidad` | PI | area | No | Published v2 |
+| WF-06 | `laboral_fiscal` | LAB, FISC | area_multi | **Si** | Published v2 |
+| WF-07 | `inmobiliario` | INM | area | **Si** | Planned |
+| WF-08 | `litigios` | LIT | area | **Si** | Planned |
+| WF-09 | `regulatorio` | REG | area | No | Planned |
+| WF-10 | `medioambiental` | ENV | area | No | Planned |
+| WF-11 | `proteccion_datos` | DATA | area | No | Planned |
+| WF-12 | `competencia` | COMP | area | No | Planned |
+| WF-13 | `consolidacion_contingencias` | GENERAL | synthesis | No | Published v1 |
+| WF-14 | `red_flag_report` | GENERAL | deliverable | No | Published v1 |
+| WF-15 | `spa_mapping` | GENERAL | negotiation | No | Published v1 |
+| WF-16 | `informe_final` | GENERAL | deliverable | No | Published v1 |
+
+##### Arquitectura del engine
+
+- **Template loader** (`template-loader.ts`): Lee templates de DB con cache 5-min TTL
+- **Instantiation engine** (`instantiate.ts`): Template → instance → task_groups → kanban tasks
+- **Phase engine** (`phase-engine.ts`): Avance de fases con DoD validation, template-aware ordering
+- **Dual-run** (`engine.ts`): Feature flag `WORKFLOW_TEMPLATES_V1` → template path vs legacy path
+- **Circuit breaker** en gateway: 30% threshold, 60s cooldown, Retry-After header parsing
+
+##### DB Schema (4 migraciones)
+
+| Tabla | Proposito |
+|-------|-----------|
+| `dd_workflow_templates` | Templates maestros (template_key, area_codes, category) |
+| `dd_workflow_template_versions` | Versiones inmutables (phases JSONB, hitl_policy, schemas) |
+| `dd_workflow_instances` | Ejecucion por proyecto (status, current_phase, phase_status) |
+| `dd_workflow_task_groups` | Grupo de tareas por fase de instancia |
+| `dd_negotiation_actions` | Acciones de negociacion (fase propuesta_transaccional) |
+
+##### API (7 endpoints)
+
+```
+GET    /api/workflows/templates               -> { templates[] }
+POST   /api/workflows/instantiate             -> { instance, tasks_created }
+GET    /api/workflows/instances?project_id=X  -> { instances[] }
+PATCH  /api/workflows/instances/[id]/phase    -> { instance, next_phase, hitl_required }
+POST   /api/war-room/[project_id]/negotiation-actions -> { action }
+GET    /api/workflows/list                    -> { workflows[] } (legacy)
+POST   /api/workflows/execute                 -> { result, findings } (legacy)
+```
 
 Cada workflow produce:
-1. Hallazgos estructurados con ranking.
+1. Hallazgos estructurados con ranking (severidad/probabilidad/impacto).
 2. Red flags destacados (deal critical).
 3. Recomendacion de mitigacion/negociacion.
 4. Seccion del informe-conclusion de area.
 5. Evidence pack con trazabilidad.
 
-Workflows 3 y 5 ya existen. Se crean workflows 1, 2, 4 y 6.
-
-Skills a activar para workflows nuevos:
-- CONT: `cont_extractor_clausulas`, `cont_change_of_control`, `cont_scoring_riesgo`, `cont_tabla_contratos`.
-- LAB: `lab_categoria_personal`, `lab_contingencia_laboral`, `lab_incentivos`, `lab_convenio_colectivo`.
-- FISC: activar skills FMC seeded.
-
 **DoD:**
-1. Cada workflow produce seccion de informe-conclusion de area.
-2. Hallazgos con ranking (severidad/probabilidad/impacto) y red flags.
-3. HITL obligatorio donde aplique (CONT, LAB, FISC).
-4. Trazabilidad a evidencia (evidence_refs).
-5. Rollback posible a workflow n8n equivalente via feature flag.
+1. ~~Cada template de workflow declara 5 fases~~ → **6 fases** con inputs, skills, artefactos y DoD.
+2. Instanciar un workflow crea grupos de tareas + tarjetas Kanban con DoR/DoD por fase.
+3. Ejecucion respeta route A/B de gateway segun grounding mode.
+4. HITL obligatorio donde aplique (CONT, LAB, FISC, LIT).
+5. Feature flag `WORKFLOW_TEMPLATES_V1=false` revierte a legacy sin perdida.
+6. 16 templates seedeados (10 published, 6 planned).
 
-**Estado actual:** ✅ Implementado (6 workflow definitions, execution engine with gateway/n8n routing, HITL auto-creation for critical findings, workflow list/execute API, skills activation for CONT + LAB + FISC). E2E tests.
+**Estado actual:** ✅ Implementado (16 template DB-backed versionados, 6 fases DD, dual-run engine, instantiation + phase advancement, 7 API endpoints, circuit breaker + Retry-After, negotiation actions). E2E tests.
 
 #### 4.B.5 VDR v2 + Vectorizacion (Slice S4)
 
@@ -409,27 +453,37 @@ POST /api/war-room/[project_id]/export    -> { file_url } (PDF/Excel)
 
 **Estado actual:** ✅ Implementado (dashboard, decisions, red-flags, export endpoints, severity change notifications via event bus bridge, contingency PATCH with change detection). E2E tests.
 
-### 4.C Pendiente (P1/P2)
+### 4.C Pendiente (Horizonte 2/3)
 
-- Skills operativos Phase C-F: Fiscal, Inmobiliario, Litigios, Regulatorio, Medioambiental, Datos.
-- Tools UI dedicados para Contratos, Laboral, Fiscal, Inmobiliario.
-- Integracion con Registro de la Propiedad, CCAA, escrituras.
-- Fichas modelo Garrigues completas (17 campos societaria, cuadro socios, fichas contratos).
+**Horizonte 2 — Expansion Areas + Golden Path (60 dias):**
+- Publicar 6 workflows planned (WF-07 a WF-12: INM, LIT, REG, ENV, DATA, COMP) con skills completos.
+- Golden path E2E: validar WF-04 Contratos Materiales (DoR→IA→HITL→War Room→Informe).
+- AP-level Kanban: 1 tarea por Analysis Point (no 1 por fase).
+- DoR enforcement via VDR semantic search.
+- Evidence linking automatico (findings→vdr_chunks).
+- Gateway rate limit por familia (completion/vault/audit).
+- Observability: Vercel Cron para audit sync, metricas por fase, alertas SLO→War Room.
+- RLS hardening: CI lint + matriz rol×endpoint E2E.
+- Retrieval hibrido: BM25 + pgvector + chunking adaptativo.
+
+**Horizonte 3 — Scoring + Reporting Comite (90 dias):**
+- Scoring consolidado cross-area (Deal Risk Score).
+- Reporting para comite de inversion (WF-16 Informe Final → PDF Garrigues).
+- War Room completo: timeline negociacion + dashboard negotiation actions.
 - Review Tables y Tabular Review (herramientas Harvey nativas).
-- Scoring cross-area avanzado.
-- Reporting para comite de inversion.
+- Fichas modelo Garrigues (17 campos societaria, cuadro socios).
 
 ## 5. Arquitectura tecnica
 
 ### Stack
 - **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Garrigues Design System.
 - **State**: Zustand 5.0 (client), UserContext (auth/roles).
-- **Backend**: Next.js API Routes (94+ endpoints server-side).
+- **Backend**: Next.js API Routes (97 endpoints server-side).
 - **Base de datos**: Supabase (PostgreSQL + RLS + pgvector).
 - **IA**: Harvey AI via Harvey Gateway (con fallback a n8n).
 - **Orquestacion**: n8n Cloud (9 workflows, migracion progresiva a gateway).
 - **Deploy**: Vercel (production + preview, auto-deploy desde main).
-- **Tests**: Playwright E2E (25+ suites).
+- **Tests**: Playwright E2E (26 suites, 200+ tests).
 
 ### Diagrama E2E
 
@@ -450,7 +504,7 @@ VDR interno (docs + versiones + permisos)
 
 ### Modelo de datos
 
-#### Tablas existentes (19+)
+#### Tablas existentes (64 total en public schema)
 
 | Tabla | Descripcion |
 |-------|-------------|
@@ -476,22 +530,26 @@ VDR interno (docs + versiones + permisos)
 | Negotiation | dd_contingency_ext, dd_spa_clauses, dd_contingency_clause_map |
 | Events/Audit | dd_event_log, dd_audit_log |
 
-#### Tablas nuevas (v3.0)
+#### Tablas nuevas (v3.0 + Workflow Spec v1)
 
 | Tabla | Slice | Descripcion |
 |-------|-------|-------------|
 | `dd_project_roles` | S1 | Roles por proyecto (user_id, project_id, role) |
-| `dd_kanban_columns` | S2 | Config de columnas Kanban por proyecto (order, wip_limit, dor, dod) |
-| `dd_kanban_tasks` | S2 | Modelo extendido de tarjeta Kanban (ver 4.B.3) |
-| `dd_task_groups` | S2 | Agrupaciones de tareas por area/workflow |
-| `dd_gateway_logs` | S0 | Log de llamadas Gateway (route, latency, status, rate_limit_remaining) |
-| `dd_gateway_metrics` | S0 | Metricas agregadas (p95, error_rate, 429_ratio) |
+| `dd_kanban_config` | S2 | Config de columnas Kanban por proyecto (order, wip_limit, dor, dod) |
+| `dd_kanban_tasks` | S2 | Modelo extendido de tarjeta Kanban (+ workflow_instance_id, workflow_phase) |
+| `dd_gateway_telemetry` | S0 | Log de llamadas Gateway (route, latency, status, rate_limit_remaining) |
+| `dd_slo_snapshots` | S5 | Snapshots periodicos de metricas SLO |
 | `vdr_chunks` | S4 | Chunks con embeddings vector(1536) + metadata |
 | `vdr_ingestion_jobs` | S4 | Jobs de ingestion asincrona |
 | `dd_war_room_decisions` | S6 | Registro de decisiones con evidence refs |
-| `dd_slo_snapshots` | S5 | Snapshots periodicos de metricas SLO |
+| `dd_war_room_notifications` | S6 | Notificaciones de cambio de severidad |
+| `dd_workflow_templates` | S3 | Templates maestros (22 rows, 16 unicos) |
+| `dd_workflow_template_versions` | S3 | Versiones inmutables (phases JSONB, hitl_policy) |
+| `dd_workflow_instances` | S3 | Ejecucion por proyecto (status, current_phase) |
+| `dd_workflow_task_groups` | S3 | Grupo de tareas por fase de instancia |
+| `dd_negotiation_actions` | S3/S6 | Acciones de negociacion (fase propuesta_transaccional) |
 
-### Migraciones existentes (31)
+### Migraciones existentes (32)
 
 ```
 supabase/migrations/
@@ -501,7 +559,12 @@ supabase/migrations/
   202602260001_rls_core_tables.sql          # S1: RLS policies
   202602260002_kanban_tasks.sql             # S2: Kanban engine
   202602260003_observability.sql            # S5: Telemetry + SLO
-  ... + 18 more (skills, seeds, vdr, war room)
+  202602270001_seed_demo_users.sql          # Auth: 8 demo users
+  202602270002_workflow_templates.sql       # S3: 5 tables + enum + RLS
+  202602270003_seed_workflow_templates.sql  # S3: 6 MVP seeds (v1)
+  202602270004_expand_workflow_phases.sql   # S3: enum +2 (informe, propuesta_transaccional)
+  202602270005_expanded_workflow_catalog.sql # S3: 16 templates YAML v1
+  ... + 14 more (skills, seeds, vdr, war room)
 ```
 
 ### Flujo IA end-to-end (v3.0)
@@ -566,12 +629,22 @@ GET /api/observability/harvey   -> { p95, error_rate, retry_ratio, throughput, b
 GET /api/observability/pipeline -> { pass_rate, correction_rate, latency_by_skill }
 ```
 
-#### War Room (4)
+#### War Room (5)
 ```
-GET  /api/war-room/[project_id]           -> { red_flags[], blockers[], progress{}, decisions[] }
-POST /api/war-room/[project_id]/decisions -> { success, decision }
-GET  /api/war-room/[project_id]/red-flags -> { flags[]{severity, probability, impact, evidence, action} }
-POST /api/war-room/[project_id]/export    -> { file_url, format }
+GET  /api/war-room/[project_id]                       -> { red_flags[], blockers[], progress{}, decisions[] }
+POST /api/war-room/[project_id]/decisions             -> { success, decision }
+GET  /api/war-room/[project_id]/red-flags             -> { flags[]{severity, probability, impact, evidence, action} }
+POST /api/war-room/[project_id]/export                -> { file_url, format }
+POST /api/war-room/[project_id]/negotiation-actions   -> { success, action }
+GET  /api/war-room/[project_id]/negotiation-actions   -> { actions[] }
+```
+
+#### Workflows v1 (5 nuevos)
+```
+GET    /api/workflows/templates               -> { templates[] }
+POST   /api/workflows/instantiate             -> { instance, tasks_created }
+GET    /api/workflows/instances?project_id=X  -> { instances[] }
+PATCH  /api/workflows/instances/[id]/phase    -> { instance, next_phase, hitl_required }
 ```
 
 ## 7. Ranking de hallazgos y red flags
@@ -682,33 +755,36 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 - Role-based dashboards (Lawyer, Leader, PMO, Client)
 - Deploy Vercel + env vars + Supabase migrations (10)
 
-### P0 — Marco operativo (Slices S0-S3 en paralelo) — ✅ Sprint Feb 2026
-1. **S0**: Harvey Gateway v1 ✅ — backoff, feature flag, metricas, Vault RAG, SLO p95.
-2. **S1**: Supabase Auth + RLS ✅ — roles por proyecto, middleware, requirePermission.
-3. **S2**: Kanban operativo ✅ — 10 estados, WIP, aging, DoR/DoD, alerts.
-4. **S3**: 6 workflows MVP ✅ — arranque, gap list, contractual, laboral/fiscal + skills CONT + LAB + FISC.
+### P0 — Marco operativo (Slices S0-S6) — ✅ Sprint Feb 2026
+1. **S0**: Harvey Gateway v1 ✅ — backoff, feature flag, metricas, Vault RAG, SLO p95, **circuit breaker**, **Retry-After**.
+2. **S1**: Supabase Auth + RLS ✅ — roles por proyecto, middleware, requirePermission (82 routes).
+3. **S2**: Kanban operativo ✅ — 10 estados, WIP, aging, DoR/DoD, alerts, **workflow_instance_id**.
+4. **S3**: **16 workflow templates** ✅ — 6 fases DD, dual-run engine, instantiation + phase advancement, negotiation actions.
 5. **S5**: Observabilidad ✅ — panel SLO, metricas Gateway, telemetry batching.
 6. **S4**: VDR v2 ✅ — pgvector, semantic search, Evidence Pack v2, Vault sync.
-7. **S6**: War Room ✅ — dashboard, decisions, red-flags, severity notifications, export.
-8. Tests E2E: 25+ suites, 180+ tests covering all slices.
+7. **S6**: War Room ✅ — dashboard, decisions, red-flags, severity notifications, export, **negotiation_actions API**.
+8. Tests E2E: 26 suites, 200+ tests covering all slices.
+9. DB: 64 tablas, 32 migrations, Postgres 17.6 Pro.
 
-### P1 — Expansion (refinamiento + nuevos skills)
-1. Evidence Pack v2 automatizado con trazabilidad completa a chunk/pagina/version.
-2. Skills operativos Phase C: Fiscal + Inmobiliario (activar FMC seeded).
-3. Skills operativos Phase D: Litigios + Regulatorio.
-4. Audit logs ingest incremental de Harvey.
-5. Usage vs Query History separados con politica de retencion.
-6. Fichas modelo Garrigues (17 campos societaria, cuadro socios).
+### P1 — Expansion Areas + Golden Path (Horizonte 2)
+1. Publicar 6 workflows planned (WF-07 a WF-12) con skills INM, LIT, REG, ENV, DATA, COMP.
+2. Golden path E2E: WF-04 Contratos (DoR→IA→HITL→War Room→Informe).
+3. AP-level Kanban task generation (1 tarea por Analysis Point).
+4. DoR enforcement via VDR semantic retrieval.
+5. Evidence linking automatico findings→chunks.
+6. Gateway rate limit por familia (completion 5 / vault 3 / audit 15).
+7. Observability: Vercel Cron audit sync + metricas por fase + alertas SLO.
+8. RLS hardening: CI lint service_role_key + matriz rol×endpoint E2E.
+9. Retrieval hibrido BM25 + pgvector + chunking adaptativo.
 
-### P2 — Enterprise (Slice S6 + extensiones)
-1. **S6**: War Room completo (red flags sheet, decisions log, notificaciones, export).
-2. Scoring cross-area avanzado.
-3. Reporting para comite de inversion.
-4. Tools UI dedicados para Contratos y Laboral.
-5. Skills Phase E-F: Medioambiental + Datos + General.
-6. Fichas modelo Garrigues (17 campos societaria, cuadro socios).
-7. Integracion con Registro de la Propiedad y CCAA.
-8. Review Tables (Tabular Review Harvey nativo).
+### P2 — Scoring + Reporting Comite (Horizonte 3)
+1. Scoring consolidado cross-area (Deal Risk Score via WF-13).
+2. Reporting comite de inversion (WF-16 Informe Final → PDF Garrigues).
+3. War Room completo: timeline negociacion + dashboard negotiation actions.
+4. Tools UI dedicados para Contratos, Laboral, Fiscal.
+5. Fichas modelo Garrigues (17 campos societaria, cuadro socios).
+6. Integracion Registro de la Propiedad y CCAA.
+7. Review Tables (Tabular Review Harvey nativo).
 
 ## 11. Metricas de exito
 
@@ -724,7 +800,8 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 | Agent pipeline pass rate | >= 90% |
 | PII redaction rate | 100% |
 | Data room gap coverage | >= 80% por proyecto |
-| Workflows MVP activos | 6/6 |
+| Workflows MVP activos | ~~6/6~~ **10/16 published** |
+| Workflow templates total | 16/16 seedeados |
 | Kanban adoption | 100% proyectos nuevos |
 
 ### SLOs operativos (nuevos)
