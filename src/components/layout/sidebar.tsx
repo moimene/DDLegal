@@ -8,6 +8,7 @@ import {
     Scale, Bot, Wrench, Building2, Shield, BookOpen, Settings,
     FileBarChart, Database, MessageCircle, FileText, Eye, Gauge,
     Handshake, UserCheck, Activity, ListChecks, ShieldCheck,
+    Swords, Workflow, Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -76,11 +77,14 @@ function buildProjectSection(projectId: string): NavSection {
         badge: 'Proyecto activo',
         items: [
             { label: 'Vista General', icon: Eye, path: base },
+            { label: 'Kanban', icon: FolderKanban, path: `${base}/kanban` },
+            { label: 'Workflows', icon: Workflow, path: `${base}/workflows` },
+            { label: 'War Room', icon: Swords, path: `${base}/war-room` },
+            { label: 'Scoring', icon: Target, path: `${base}/scoring` },
             { label: 'Data Room', icon: Database, path: `${base}/vdr` },
             { label: 'Q&A', icon: MessageCircle, path: `${base}/qa` },
             { label: 'Deal Cockpit', icon: Gauge, path: `${base}/cockpit` },
             { label: 'Negociacion', icon: Handshake, path: `${base}/negotiation` },
-            { label: 'Kanban', icon: FolderKanban, path: `${base}/kanban` },
             { label: 'HITL Review', icon: UserCheck, path: `${base}/hitl` },
             { label: 'Actividad', icon: Activity, path: `${base}/activity` },
         ],
