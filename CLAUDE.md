@@ -1,21 +1,21 @@
 # DD Legal PMO
 
-Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room y Observabilidad. 110+ endpoints, 28 suites, 37 migrations.
+Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room y Observabilidad. 108 API routes, 29 E2E suites, 39 migrations. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
 
 ## Stack
 
 - **Frontend**: Next.js 14 (App Router), React 18, Zustand, TanStack Table, Lucide icons, Montserrat (Garrigues)
-- **Backend**: Next.js API routes (100+ endpoints), Supabase (Postgres + RLS + pgvector + BM25)
+- **Backend**: Next.js API routes (108 endpoints), Supabase (Postgres + RLS + pgvector + BM25)
 - **AI**: Harvey AI gateway, OpenAI embeddings (text-embedding-3-small, 1536d)
-- **Infra**: Vercel (produccion), Supabase hosted, n8n workflows
-- **Tests**: Playwright E2E (28 suites, 230+ tests), Vitest unit tests
+- **Infra**: Vercel (produccion: `dd-legal-pmo.vercel.app`), Supabase hosted, n8n workflows
+- **Tests**: Playwright E2E (29 suites, 257+ tests), Vitest unit tests
 
 ## Commands
 
 - `npm run dev` — Dev server (localhost:3000)
 - `npm run build` — Production build
 - `npm run lint` — ESLint
-- `npm run test` / `npx playwright test` — E2E tests (all 25 suites)
+- `npm run test` / `npx playwright test` — E2E tests (all 29 suites)
 - `npm run test:api` — API specs societario
 - `npm run test:page` — Page specs societario
 - `npm run test:ui` — Playwright UI mode
@@ -25,7 +25,7 @@ Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n
 ```
 src/
   app/
-    api/                    # 100+ API routes across 30+ groups
+    api/                    # 108 API routes across 30+ groups
       ai/                   # classify, suggest
       alerts/               # SLA alerts
       auth/                 # login, me, roles, setup-test-users
@@ -40,6 +40,7 @@ src/
         search/semantic/    # S4: pgvector semantic search
         rag/query/          # S0: Vault RAG query endpoint
         vault/sync/         # S4→S0: VDR to Harvey Vault sync
+      reports/              # Report generation: final, red-flags, workflow
       scoring/              # H3: Deal Risk Score (POST/GET per project)
       war-room/             # S6: dashboard, decisions, red-flags, export, negotiation-actions, spa-mapping, timeline, negotiation-dashboard, decision-resolution
       workflows/            # templates, instantiate, instances, phase, list, execute
@@ -74,8 +75,11 @@ src/
     tokens.css              # Garrigues design tokens (--g-* CSS variables)
   middleware.ts             # Auth + feature flag middleware
 supabase/
-  migrations/               # 37 SQL migrations (RLS, pgvector, seeds, kanban, workflows, observability, security hardening, BM25, H3 scoring)
-e2e/                        # 26 Playwright test suites
+  migrations/               # 39 SQL migrations (RLS, pgvector, seeds, kanban, workflows, observability, security hardening, BM25, H3 scoring)
+e2e/                        # 29 Playwright test suites (257 passed, 0 failed)
+vercel.json                 # Vercel config: cron job (audit-sync every 15 min)
+scripts/
+  lint-service-role.sh      # CI lint: detect service_role_key in client code
 ```
 
 ## Strangler Slices (v3.0) — All deployed
@@ -129,6 +133,8 @@ Seed migration: `supabase/migrations/202602270001_seed_demo_users.sql`.
 | Day 3 | Severity notifications, Evidence Pack v2, VDR→Vault sync | `f19ec01` | +843 |
 | Day 4 | 28 E2E tests covering all sprint features | `b69c81a` | +588 |
 | Day 5 | Hardening + Documentation (tsc fixes, CLAUDE.md, PRD.md) | `a4b9b06` | +72 |
+| Day 6 | E2E fixes: 52→257 passed, 0 failed | `8f66744` | +340 |
+| Day 7 | S4-S6 features (scoring, reporting, VDR, war-room, cron) + deploy | `a94a836` | +1,200 |
 
 ### Workflow Spec v1 Evolution (12 commits)
 
@@ -151,7 +157,7 @@ Seed migration: `supabase/migrations/202602270001_seed_demo_users.sql`.
 - HITL is **mandatory** for CONT, LAB, FISC, LIT area outputs.
 - Path alias: `@/*` maps to `./src/*`.
 - Design system: Garrigues tokens in `src/styles/tokens.css` — use `--g-*` CSS variables, never hardcode colors. Brand: `--g-brand-3308: #004438`. Font: Montserrat.
-- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602270001_seed_demo_users.sql`). Next available: `202602270011`.
+- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602270001_seed_demo_users.sql`). Next available: `202602270013`.
 - Next.js dynamic params use `{ params }: { params: Promise<{ id: string }> }` pattern.
 - pgvector embeddings are 1536 dimensions (OpenAI text-embedding-3-small). HNSW index with cosine distance.
 - Supabase RPC: `match_vdr_chunks` for semantic search, `bm25_search_vdr_chunks` for full-text. Never call pgvector directly from client.
@@ -172,13 +178,27 @@ Required in `.env.local` (never commit):
 - `WORKFLOW_TEMPLATES_V1` — `true` | `false` (enables template-based workflow engine)
 - `OPENAI_API_KEY` — OpenAI API key (for embeddings in S4)
 - `CRON_SECRET` — Vercel Cron auth secret (protects `/api/cron/*` routes)
+- `HARVEY_API_KEY` — Harvey API key (legacy, used by some routes)
 
 ## Deployment
 
-- **Production**: `dd-legal-pmo.vercel.app` (auto-deploy from `main`)
+- **Production**: `dd-legal-pmo.vercel.app` (auto-deploy from `main`) — ✅ LIVE
 - **Preview**: auto-deploy from PR branches
-- **Supabase**: project `mxanelzxyaklvuypuafa`
+- **Supabase**: project `mxanelzxyaklvuypuafa` (NexusDD)
+- **Vercel project**: `prj_c6BXNArsGxvSeM1k3bKqthgHQpYP` / org `team_W5FPu7F9THwPNfGfTAyIwhYX`
 - **Repo**: `github.com/moimene/DDLegal` (private)
+
+### Vercel Env Vars (Production)
+
+10 configured: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `N8N_WEBHOOK_BASE_URL`, `HARVEY_ENDPOINT_V1`, `HARVEY_ENDPOINT_HISTORY`, `HARVEY_TOKEN`, `HARVEY_FEATURE_FLAG`, `CRON_SECRET`, `HARVEY_API_KEY`.
+
+**Pending**: `OPENAI_API_KEY` (needed for VDR embedding/vectorization).
+
+### Deployment Notes
+
+- **NEVER use `echo` to pipe env vars to `vercel env add`** — it adds trailing `\n`. Always use `printf '%s' "value" | npx vercel env add NAME production`.
+- TypeScript build: `[...new Set()]` fails without `downlevelIteration` — use `Array.from(new Set())` instead.
+- Vercel validates CRON_SECRET has no whitespace (used in HTTP headers).
 
 ## Architecture & Guidelines
 

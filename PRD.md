@@ -1,5 +1,5 @@
 # PRD - DD Legal PMO v3.0
-**Ultima actualizacion: 22 febrero 2026 (Workflow Spec v1 + 16 templates)**
+**Ultima actualizacion: 22 febrero 2026 — Desplegado en produccion: `dd-legal-pmo.vercel.app`**
 
 ## 1. Contexto y problema
 
@@ -456,20 +456,20 @@ POST /api/war-room/[project_id]/export    -> { file_url } (PDF/Excel)
 ### 4.C Pendiente (Horizonte 2/3)
 
 **Horizonte 2 — Expansion Areas + Golden Path (60 dias):**
-- Publicar 6 workflows planned (WF-07 a WF-12: INM, LIT, REG, ENV, DATA, COMP) con skills completos.
+- ~~Publicar 6 workflows planned (WF-07 a WF-12)~~ ✅ Published con migration `202602270007`.
 - Golden path E2E: validar WF-04 Contratos Materiales (DoR→IA→HITL→War Room→Informe).
 - AP-level Kanban: 1 tarea por Analysis Point (no 1 por fase).
 - DoR enforcement via VDR semantic search.
 - Evidence linking automatico (findings→vdr_chunks).
 - Gateway rate limit por familia (completion/vault/audit).
-- Observability: Vercel Cron para audit sync, metricas por fase, alertas SLO→War Room.
-- RLS hardening: CI lint + matriz rol×endpoint E2E.
-- Retrieval hibrido: BM25 + pgvector + chunking adaptativo.
+- ~~Observability: Vercel Cron para audit sync~~ ✅ Implementado (`vercel.json` cron cada 15 min).
+- RLS hardening: ~~CI lint~~ ✅ `scripts/lint-service-role.sh` + ~~security migrations~~ ✅ `202602270006/011/012`. Pendiente: matriz rol×endpoint E2E.
+- ~~Retrieval hibrido: BM25 + pgvector + chunking adaptativo~~ ✅ Implementado (`hybridSearch()` RRF k=60, `bm25_search_vdr_chunks` RPC, adaptive chunking).
 
 **Horizonte 3 — Scoring + Reporting Comite (90 dias):**
-- Scoring consolidado cross-area (Deal Risk Score).
-- Reporting para comite de inversion (WF-16 Informe Final → PDF Garrigues).
-- War Room completo: timeline negociacion + dashboard negotiation actions.
+- ~~Scoring consolidado cross-area (Deal Risk Score)~~ ✅ Implementado (`dd_deal_risk_scores`, scoring engine con severity×probability×timing×area weighting).
+- ~~Reporting para comite de inversion~~ ✅ Parcial: final report compiler, red flag report generator, workflow report engine implementados. Pendiente: PDF Garrigues format.
+- ~~War Room completo: timeline negociacion + dashboard negotiation actions~~ ✅ Implementado (timeline, negotiation-dashboard, decision-resolution, SPA mapping).
 - Review Tables y Tabular Review (herramientas Harvey nativas).
 - Fichas modelo Garrigues (17 campos societaria, cuadro socios).
 
@@ -478,12 +478,12 @@ POST /api/war-room/[project_id]/export    -> { file_url } (PDF/Excel)
 ### Stack
 - **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Garrigues Design System.
 - **State**: Zustand 5.0 (client), UserContext (auth/roles).
-- **Backend**: Next.js API Routes (97 endpoints server-side).
+- **Backend**: Next.js API Routes (108 endpoints server-side).
 - **Base de datos**: Supabase (PostgreSQL + RLS + pgvector).
 - **IA**: Harvey AI via Harvey Gateway (con fallback a n8n).
 - **Orquestacion**: n8n Cloud (9 workflows, migracion progresiva a gateway).
-- **Deploy**: Vercel (production + preview, auto-deploy desde main).
-- **Tests**: Playwright E2E (26 suites, 200+ tests).
+- **Deploy**: Vercel (production: `dd-legal-pmo.vercel.app`, auto-deploy desde main).
+- **Tests**: Playwright E2E (29 suites, 257+ tests, 0 failures).
 
 ### Diagrama E2E
 
@@ -549,7 +549,7 @@ VDR interno (docs + versiones + permisos)
 | `dd_workflow_task_groups` | S3 | Grupo de tareas por fase de instancia |
 | `dd_negotiation_actions` | S3/S6 | Acciones de negociacion (fase propuesta_transaccional) |
 
-### Migraciones existentes (32)
+### Migraciones existentes (39)
 
 ```
 supabase/migrations/
@@ -564,6 +564,13 @@ supabase/migrations/
   202602270003_seed_workflow_templates.sql  # S3: 6 MVP seeds (v1)
   202602270004_expand_workflow_phases.sql   # S3: enum +2 (informe, propuesta_transaccional)
   202602270005_expanded_workflow_catalog.sql # S3: 16 templates YAML v1
+  202602270006_security_hardening.sql       # RLS on 6 tables, SECURITY INVOKER views
+  202602270007_area_skills_publish_wf07_12.sql # Publish WF-07 to WF-12
+  202602270008_hitl_workflow_columns.sql    # Expand dd_hitl_decisions for workflow-level HITL
+  202602270009_bm25_search_rpc.sql          # BM25 full-text search function + GIN index
+  202602270010_h3_scoring_columns.sql       # Deal Risk Score table (dd_deal_risk_scores)
+  202602270011_security_search_path.sql     # Idempotent search_path fixes
+  202602270012_rls_tighten_policies.sql     # Project-scoped RLS on 10 tables
   ... + 14 more (skills, seeds, vdr, war room)
 ```
 
@@ -755,32 +762,35 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 - Role-based dashboards (Lawyer, Leader, PMO, Client)
 - Deploy Vercel + env vars + Supabase migrations (10)
 
-### P0 — Marco operativo (Slices S0-S6) — ✅ Sprint Feb 2026
+### P0 — Marco operativo (Slices S0-S6) — ✅ Sprint Feb 2026 — DESPLEGADO
 1. **S0**: Harvey Gateway v1 ✅ — backoff, feature flag, metricas, Vault RAG, SLO p95, **circuit breaker**, **Retry-After**.
 2. **S1**: Supabase Auth + RLS ✅ — roles por proyecto, middleware, requirePermission (82 routes).
 3. **S2**: Kanban operativo ✅ — 10 estados, WIP, aging, DoR/DoD, alerts, **workflow_instance_id**.
 4. **S3**: **16 workflow templates** ✅ — 6 fases DD, dual-run engine, instantiation + phase advancement, negotiation actions.
 5. **S5**: Observabilidad ✅ — panel SLO, metricas Gateway, telemetry batching.
-6. **S4**: VDR v2 ✅ — pgvector, semantic search, Evidence Pack v2, Vault sync.
-7. **S6**: War Room ✅ — dashboard, decisions, red-flags, severity notifications, export, **negotiation_actions API**.
-8. Tests E2E: 26 suites, 200+ tests covering all slices.
-9. DB: 64 tablas, 32 migrations, Postgres 17.6 Pro.
+6. **S4**: VDR v2 ✅ — pgvector, semantic search, Evidence Pack v2, Vault sync, **BM25 hybrid search**, **adaptive chunking**.
+7. **S6**: War Room ✅ — dashboard, decisions, red-flags, severity notifications, export, **negotiation_actions API**, **SPA mapping**, **timeline**, **decision resolution**.
+8. **H3 Scoring** ✅ — Deal Risk Score engine (severity×probability×timing×area weighting), per-project scoring API.
+9. **Reporting** ✅ — Final report compiler, red flag report generator, workflow report engine.
+10. Tests E2E: 29 suites, 257+ tests (0 failures) covering all slices.
+11. DB: 64+ tablas, 39 migrations, Postgres 17.6 Pro.
+12. **Deploy**: Vercel `dd-legal-pmo.vercel.app` ✅, 10 env vars, Supabase connected, n8n reachable, Cron audit-sync active.
 
 ### P1 — Expansion Areas + Golden Path (Horizonte 2)
-1. Publicar 6 workflows planned (WF-07 a WF-12) con skills INM, LIT, REG, ENV, DATA, COMP.
+1. ~~Publicar 6 workflows planned (WF-07 a WF-12)~~ ✅ Done.
 2. Golden path E2E: WF-04 Contratos (DoR→IA→HITL→War Room→Informe).
 3. AP-level Kanban task generation (1 tarea por Analysis Point).
 4. DoR enforcement via VDR semantic retrieval.
 5. Evidence linking automatico findings→chunks.
 6. Gateway rate limit por familia (completion 5 / vault 3 / audit 15).
-7. Observability: Vercel Cron audit sync + metricas por fase + alertas SLO.
-8. RLS hardening: CI lint service_role_key + matriz rol×endpoint E2E.
-9. Retrieval hibrido BM25 + pgvector + chunking adaptativo.
+7. ~~Observability: Vercel Cron audit sync~~ ✅ Done. Pendiente: metricas por fase + alertas SLO→War Room.
+8. ~~RLS hardening: CI lint service_role_key~~ ✅ Done (`scripts/lint-service-role.sh` + migrations 6/11/12). Pendiente: matriz rol×endpoint E2E.
+9. ~~Retrieval hibrido BM25 + pgvector + chunking adaptativo~~ ✅ Done.
 
 ### P2 — Scoring + Reporting Comite (Horizonte 3)
-1. Scoring consolidado cross-area (Deal Risk Score via WF-13).
-2. Reporting comite de inversion (WF-16 Informe Final → PDF Garrigues).
-3. War Room completo: timeline negociacion + dashboard negotiation actions.
+1. ~~Scoring consolidado cross-area (Deal Risk Score)~~ ✅ Done (H3 scoring engine + API).
+2. ~~Reporting comite~~ ✅ Parcial (final report compiler, red flag report, workflow report). Pendiente: PDF Garrigues format.
+3. ~~War Room completo: timeline + dashboard negotiation actions~~ ✅ Done.
 4. Tools UI dedicados para Contratos, Laboral, Fiscal.
 5. Fichas modelo Garrigues (17 campos societaria, cuadro socios).
 6. Integracion Registro de la Propiedad y CCAA.
@@ -800,7 +810,7 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 | Agent pipeline pass rate | >= 90% |
 | PII redaction rate | 100% |
 | Data room gap coverage | >= 80% por proyecto |
-| Workflows MVP activos | ~~6/6~~ **10/16 published** |
+| Workflows MVP activos | **16/16 published** |
 | Workflow templates total | 16/16 seedeados |
 | Kanban adoption | 100% proyectos nuevos |
 
@@ -863,8 +873,8 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 
 | Servicio | Instancia | Uso |
 |----------|-----------|-----|
-| Vercel | dd-legal-pmo | Frontend + API Routes (55+ endpoints) |
-| Supabase | mxanelzxyaklvuypuafa | Base de datos + RLS + pgvector + Auth |
+| Vercel | dd-legal-pmo (`prj_c6BXNArsGxvSeM1k3bKqthgHQpYP`) | Frontend + API Routes (108 endpoints) ✅ LIVE |
+| Supabase | mxanelzxyaklvuypuafa (NexusDD) | Base de datos + RLS + pgvector + Auth |
 | n8n Cloud | mmenendeza.app.n8n.cloud | Orquestacion IA + Agent Pipeline (migracion progresiva) |
 | Harvey AI | eu.api.harvey.ai | LLM legal especializado (via Gateway) |
 | GitHub | moimene/DDLegal | Repositorio codigo fuente |
@@ -877,5 +887,27 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Client + Server | Anon key (client-side, RLS enforced) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Secret | Server ONLY | Service role key (RLS bypass, API routes) |
 | `N8N_WEBHOOK_BASE_URL` | Secret | Server ONLY | Base URL de webhooks n8n Cloud |
-| `HARVEY_API_KEY` | Secret | Server ONLY | API key de Harvey AI (bearer token) |
+| `HARVEY_API_KEY` | Secret | Server ONLY | API key de Harvey AI (legacy, some routes) |
+| `HARVEY_TOKEN` | Secret | Server ONLY | Harvey bearer token (gateway) |
+| `HARVEY_ENDPOINT_V1` | Secret | Server ONLY | Harvey completion endpoint (EU region) |
+| `HARVEY_ENDPOINT_HISTORY` | Secret | Server ONLY | Harvey history/audit endpoint |
+| `HARVEY_FEATURE_FLAG` | Config | Server ONLY | `gateway` / `n8n` / `shadow` (controls routing) |
+| `CRON_SECRET` | Secret | Server ONLY | Vercel Cron auth secret (protects `/api/cron/*`) |
+| `OPENAI_API_KEY` | Secret | Server ONLY | OpenAI API key (VDR embeddings, text-embedding-3-small) |
 | `HARVEY_GATEWAY_FALLBACK` | Config | Server ONLY | `true` para usar n8n como fallback (feature flag) |
+
+### Estado Vercel Env Vars (Produccion)
+
+| Variable | Configurada |
+|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ |
+| `N8N_WEBHOOK_BASE_URL` | ✅ |
+| `HARVEY_ENDPOINT_V1` | ✅ |
+| `HARVEY_ENDPOINT_HISTORY` | ✅ |
+| `HARVEY_TOKEN` | ✅ |
+| `HARVEY_FEATURE_FLAG` | ✅ (`gateway`) |
+| `CRON_SECRET` | ✅ |
+| `HARVEY_API_KEY` | ✅ |
+| `OPENAI_API_KEY` | ❌ Pendiente |
