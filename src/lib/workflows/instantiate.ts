@@ -16,10 +16,7 @@ import type {
   PhaseDefinition,
   WorkflowTemplateWithVersion,
 } from './template-types';
-import {
-  WORKFLOW_TEMPLATES_FEATURE_FLAG,
-  WORKFLOW_PHASES,
-} from './template-types';
+import { WORKFLOW_TEMPLATES_FEATURE_FLAG } from './template-types';
 
 // ---------------------------------------------------------------------------
 // Feature flag check
@@ -31,15 +28,17 @@ function isFeatureFlagEnabled(): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Build initial phase_status map — all 5 phases start as 'pending'
+// Build initial phase_status map — driven by the template's phase list
 // ---------------------------------------------------------------------------
 
-function buildInitialPhaseStatus(): Record<WorkflowPhase, PhaseStatus> {
-  const status: Partial<Record<WorkflowPhase, PhaseStatus>> = {};
-  for (const phase of WORKFLOW_PHASES) {
-    status[phase] = 'pending';
+function buildInitialPhaseStatus(
+  phases: PhaseDefinition[]
+): Record<string, PhaseStatus> {
+  const status: Record<string, PhaseStatus> = {};
+  for (const p of phases) {
+    status[p.phase] = 'pending';
   }
-  return status as Record<WorkflowPhase, PhaseStatus>;
+  return status;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,7 +92,7 @@ export async function instantiateWorkflow(
     template_version_id: version.id,
     status: 'created' as const,
     current_phase: 'obtencion' as const,
-    phase_status: buildInitialPhaseStatus(),
+    phase_status: buildInitialPhaseStatus(phases),
     project_overrides: request.overrides ?? {},
     initiated_by: request.initiated_by ?? null,
     phase_started_at: {},

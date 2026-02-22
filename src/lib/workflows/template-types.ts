@@ -5,13 +5,15 @@
 
 // --- Enums / Unions ---
 
-/** 5 DD phases matching dd_workflow_phase enum */
+/** 6 DD phases matching dd_workflow_phase enum (+ legacy 'tratamiento') */
 export type WorkflowPhase =
   | 'obtencion'
   | 'gestion'
   | 'analisis'
   | 'valoracion'
-  | 'tratamiento';
+  | 'informe'
+  | 'propuesta_transaccional'
+  | 'tratamiento'; // legacy — kept for backward compat with existing seed
 
 /** Workflow template categories */
 export type TemplateCategory = 'transactional' | 'compliance' | 'operational';
@@ -241,8 +243,18 @@ export interface WorkflowInstantiateResult {
 
 export const WORKFLOW_TEMPLATES_FEATURE_FLAG = 'WORKFLOW_TEMPLATES_V1';
 
-/** All 5 DD phases in order */
+/** All 6 DD phases in order */
 export const WORKFLOW_PHASES: readonly WorkflowPhase[] = [
+  'obtencion',
+  'gestion',
+  'analisis',
+  'valoracion',
+  'informe',
+  'propuesta_transaccional',
+] as const;
+
+/** Legacy phases (for backward compat with 5-phase templates) */
+export const WORKFLOW_PHASES_LEGACY: readonly WorkflowPhase[] = [
   'obtencion',
   'gestion',
   'analisis',
