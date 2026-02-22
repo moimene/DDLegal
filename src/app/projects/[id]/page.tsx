@@ -772,7 +772,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                 {[
                                     { href: `/projects/${id}/vdr`, label: 'Data Room', icon: FolderOpen },
                                     { href: `/projects/${id}/qa`, label: 'Q&A', icon: MessageSquare },
-                                    { href: `/projects/${id}/cockpit`, label: 'Deal Cockpit', icon: Zap },
                                     { href: `/projects/${id}/negotiation`, label: 'Negociación', icon: FileText },
                                     { href: `/projects/${id}/hitl`, label: 'HITL Review', icon: ShieldCheck },
                                     { href: `/projects/${id}/activity`, label: 'Actividad', icon: Activity },
