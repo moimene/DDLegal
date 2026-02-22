@@ -6,4 +6,7 @@ export type {
   HarveyGatewayConfig,
   GatewayHealth,
   GatewayTelemetry,
+  HarveyHistoryRequest,
+  HarveyHistoryEntry,
+  HarveyHistoryResponse,
 } from './types';

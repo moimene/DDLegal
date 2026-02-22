@@ -4,6 +4,8 @@ import type {
   HarveyGatewayConfig,
   GatewayTelemetry,
   GatewayHealth,
+  HarveyHistoryRequest,
+  HarveyHistoryResponse,
 } from './types';
 
 export class HarveyGateway {
@@ -118,6 +120,34 @@ export class HarveyGateway {
 
   getTelemetry(): GatewayTelemetry[] {
     return [...this.telemetryLog];
+  }
+
+  async queryHistory(req: HarveyHistoryRequest): Promise<HarveyHistoryResponse> {
+    const historyEndpoint = process.env.HARVEY_ENDPOINT_HISTORY;
+    if (!historyEndpoint) {
+      throw new HarveyGatewayError('HARVEY_ENDPOINT_HISTORY not configured', 503, 'no-history-endpoint');
+    }
+
+    const params = new URLSearchParams();
+    if (req.start_date) params.append('start_date', req.start_date);
+    if (req.end_date) params.append('end_date', req.end_date);
+    if (req.limit) params.append('limit', String(req.limit));
+    if (req.offset) params.append('offset', String(req.offset));
+
+    const response = await fetch(`${historyEndpoint}?${params.toString()}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.config.token}` },
+    });
+
+    if (!response.ok) {
+      throw new HarveyGatewayError(
+        `History API error: ${response.status}`,
+        response.status,
+        crypto.randomUUID()
+      );
+    }
+
+    return await response.json() as HarveyHistoryResponse;
   }
 
   private logTelemetry(entry: GatewayTelemetry): void {

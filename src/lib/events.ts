@@ -11,6 +11,7 @@
  */
 
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { emitWarRoomNotification } from '@/lib/war-room/notifications';
 
 // ────────────────────────────────────────────────────────────
 // Event Type Definitions
@@ -150,6 +151,77 @@ export function getEventIcon(eventType: string): string {
 }
 
 // ────────────────────────────────────────────────────────────
+// War Room notification bridge
+// ────────────────────────────────────────────────────────────
+
+/**
+ * Map specific bus events to War Room notifications.
+ * Only events that have a project_id and a valid notification_type mapping
+ * will produce a row in `dd_war_room_notifications`.
+ *
+ * Mapping (event_type -> notification_type):
+ *   contingency_updated   -> severity_change
+ *   tool_execution_failed -> red_flag_new   (always treated as critical)
+ *   hitl_decision_made    -> decision_required
+ *   project_milestone     -> (skipped — no matching DB CHECK value yet)
+ */
+async function maybeEmitWarRoomNotification(
+  event: DDEvent,
+  projectId: string | null,
+): Promise<void> {
+  // War Room notifications require a project_id (NOT NULL in the DB).
+  if (!projectId) return;
+
+  const p = event.payload as Record<string, unknown>;
+
+  switch (event.type) {
+    case 'contingency_updated':
+      await emitWarRoomNotification({
+        project_id: projectId,
+        notification_type: 'severity_change',
+        title: `Contingencia actualizada (${p.field ?? 'campo desconocido'})`,
+        description: `Se ha modificado el campo "${p.field}" de la contingencia.`,
+        severity: 'medium',
+        source_type: 'contingency',
+        source_id: typeof p.contingency_id === 'string' ? p.contingency_id : undefined,
+      });
+      break;
+
+    case 'tool_execution_failed':
+      await emitWarRoomNotification({
+        project_id: projectId,
+        notification_type: 'red_flag_new',
+        title: `Fallo critico en herramienta "${p.tool_slug}"`,
+        description: typeof p.error === 'string' ? p.error : 'Error desconocido',
+        severity: 'critical',
+        source_type: 'tool_execution',
+        source_id: typeof p.execution_id === 'string' ? p.execution_id : undefined,
+      });
+      break;
+
+    case 'hitl_decision_made':
+      await emitWarRoomNotification({
+        project_id: projectId,
+        notification_type: 'decision_required',
+        title: `Decision HITL registrada: ${p.decision ?? ''}`,
+        description: `Decidido por ${p.decided_by ?? 'desconocido'}`,
+        severity: 'medium',
+        source_type: 'hitl_task',
+        source_id: typeof p.task_id === 'string' ? p.task_id : undefined,
+      });
+      break;
+
+    // project_milestone is intentionally not mapped because the DB CHECK
+    // constraint on notification_type does not include 'milestone_reached'.
+    // To enable this, add 'milestone_reached' to the CHECK in a future migration.
+
+    default:
+      // No War Room notification for this event type.
+      break;
+  }
+}
+
+// ────────────────────────────────────────────────────────────
 // Emit (write to DB + broadcast realtime)
 // ────────────────────────────────────────────────────────────
 
@@ -198,6 +270,14 @@ export async function emitEvent(event: DDEvent): Promise<void> {
     });
 
     supabaseAdmin.removeChannel(channel);
+
+    // 3. War Room notifications — fire-and-forget for relevant events.
+    //    Wrapped in its own try/catch so it never breaks event emission.
+    try {
+      await maybeEmitWarRoomNotification(event, projectId);
+    } catch (wrErr) {
+      console.error('[EventBus] War Room notification error (non-fatal):', wrErr);
+    }
   } catch (err) {
     console.error('[EventBus] Unexpected error emitting event:', err);
   }

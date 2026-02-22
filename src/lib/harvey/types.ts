@@ -46,3 +46,32 @@ export interface GatewayTelemetry {
   client_matter_id?: string;
   timestamp: string;
 }
+
+// ────────────────────────────────────────────────────────────
+// Harvey History / Audit Log Types
+// ────────────────────────────────────────────────────────────
+
+export interface HarveyHistoryRequest {
+  start_date?: string; // ISO
+  end_date?: string;   // ISO
+  limit?: number;
+  offset?: number;
+}
+
+export interface HarveyHistoryEntry {
+  id: string;
+  prompt_preview: string; // first 100 chars, never full
+  model: string;
+  status: string;
+  created_at: string;
+  duration_ms: number;
+  tokens_used: number;
+  client_matter_id?: string;
+  type: 'completion' | 'query' | 'rag';
+}
+
+export interface HarveyHistoryResponse {
+  entries: HarveyHistoryEntry[];
+  total: number;
+  has_more: boolean;
+}
