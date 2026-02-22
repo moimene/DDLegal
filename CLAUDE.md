@@ -109,7 +109,7 @@ Seed migration: `supabase/migrations/202602270001_seed_demo_users.sql`.
 | Day 2 | Vault RAG, p95 SLO, Arranque DD backlog, kanban alerts, DoR UX | `770c724` | +704 |
 | Day 3 | Severity notifications, Evidence Pack v2, VDR→Vault sync | `f19ec01` | +843 |
 | Day 4 | 28 E2E tests covering all sprint features | `b69c81a` | +588 |
-| Day 5 | Hardening + Documentation | pending | — |
+| Day 5 | Hardening + Documentation (tsc fixes, CLAUDE.md, PRD.md) | `a4b9b06` | +72 |
 
 ## Critical Rules
 
