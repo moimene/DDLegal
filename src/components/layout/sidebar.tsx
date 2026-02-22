@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectNavBadges } from '@/hooks/use-project-nav-badges';
+import { useProjectAreas } from '@/hooks/use-project-areas';
 import ProjectSelector from './project-selector';
 
 /* ------------------------------------------------------------------ */
@@ -234,6 +235,21 @@ export default function Sidebar() {
     const { sections, projectGroups, projectId } = useResolvedNav(pathname);
     const { collapsedGroups, toggle } = useGroupCollapse(projectId, projectGroups, pathname);
     const badges = useProjectNavBadges(projectId);
+    const activeAreas = useProjectAreas(projectId);
+
+    // Merge dynamic area items into the Analisis group
+    const enrichedGroups = useMemo(() => {
+        if (!projectGroups || activeAreas.length === 0) return projectGroups;
+        return projectGroups.map((group) => {
+            if (group.id !== 'analisis') return group;
+            const areaItems: NavItem[] = activeAreas.map((area) => ({
+                label: area.name,
+                icon: FileText,
+                path: `/projects/${projectId}/areas/${area.code}`,
+            }));
+            return { ...group, items: [...group.items, ...areaItems] };
+        });
+    }, [projectGroups, activeAreas, projectId]);
 
     /* Shared renderer for a single nav item */
     const renderNavItem = (item: NavItem) => {
@@ -510,7 +526,7 @@ export default function Sidebar() {
                 {renderSection(sections[0], 0)}
 
                 {/* Project groups (between Navegacion and Herramientas) */}
-                {projectGroups && (
+                {enrichedGroups && (
                     <div style={{ marginTop: '20px' }}>
                         {!collapsed && (
                             <div
@@ -560,14 +576,14 @@ export default function Sidebar() {
                                 style={{ borderColor: 'var(--g-sidebar-border)' }}
                             />
                         )}
-                        {projectGroups.map(renderGroup)}
+                        {enrichedGroups.map(renderGroup)}
                     </div>
                 )}
 
                 {/* Herramientas and Configuracion (indices 1 and 2, but offset for margin) */}
                 {sections.slice(1).map((section, idx) => {
                     /* sIdx offset: Navegacion=0, project groups take a slot, so these start visually after */
-                    const sIdx = projectGroups ? idx + 2 : idx + 1;
+                    const sIdx = enrichedGroups ? idx + 2 : idx + 1;
                     return renderSection(section, sIdx);
                 })}
             </nav>
