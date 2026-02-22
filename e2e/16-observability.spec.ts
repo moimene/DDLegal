@@ -5,7 +5,7 @@ test.describe('Observability API @observability', () => {
   let token: string;
 
   test.beforeAll(async ({ request }) => {
-    token = await loginAs(request, TEST_USERS.pm.email);
+    token = await loginAs(request, TEST_USERS.pm);
   });
 
   test('GET /api/observability/slo returns metrics', async ({ request }) => {

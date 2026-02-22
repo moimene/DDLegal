@@ -6,7 +6,7 @@ test.describe('Kanban API @kanban', () => {
   let projectId: string;
 
   test.beforeAll(async ({ request }) => {
-    token = await loginAs(request, TEST_USERS.pm.email);
+    token = await loginAs(request, TEST_USERS.pm);
     const projects = await authGet(request, '/api/projects', token);
     const body = await projects.json();
     projectId = body.data?.[0]?.id;

@@ -1,5 +1,5 @@
 # PRD - DD Legal PMO v3.0
-**Ultima actualizacion: 21 febrero 2026**
+**Ultima actualizacion: 22 febrero 2026**
 
 ## 1. Contexto y problema
 
@@ -151,6 +151,8 @@ Autenticacion y autorizacion end-to-end:
 4. Tests de acceso por rol.
 5. Auditoria de cambios de rol.
 
+**Estado actual:** ✅ Implementado (middleware, requirePermission, RLS policies en todas las tablas core + kanban + observability). E2E tests de auth enforcement.
+
 #### 4.B.2 Harvey Gateway v1 (Slice S0)
 
 Gateway unico para todas las llamadas a Harvey AI:
@@ -187,6 +189,8 @@ GET  /api/gateway/health      -> { status, rate_limits, p95, error_rate }
 3. Logging estructurado sin exponer tokens.
 4. Feature flag para fallback a n8n.
 5. p95 latencia y %429 visibles en `/gateway/health`.
+
+**Estado actual:** ✅ Implementado (gateway lib con retry/concurrency/telemetry, singleton factory, feature flags, completion/health/whoami routes, SLO p95 metrics, Vault RAG query endpoint). E2E tests.
 
 #### 4.B.3 Kanban + Motor de Tareas (Slice S2)
 
@@ -260,6 +264,8 @@ Paginas nuevas:
 4. Separacion IA propuesta vs HITL revision en tarjeta.
 5. Export basico (CSV/JSON).
 
+**Estado actual:** ✅ Implementado (10-state enum, WIP limits, DoR/DoD criteria, aging metrics, task CRUD + move, board endpoint, Kanban UI page, aging alerts endpoint). E2E tests.
+
 #### 4.B.4 Workflows MVP (Slice S3)
 
 6 workflows que cubren deal breakers tipicos y control de proyecto:
@@ -293,6 +299,8 @@ Skills a activar para workflows nuevos:
 3. HITL obligatorio donde aplique (CONT, LAB, FISC).
 4. Trazabilidad a evidencia (evidence_refs).
 5. Rollback posible a workflow n8n equivalente via feature flag.
+
+**Estado actual:** ✅ Implementado (6 workflow definitions, execution engine with gateway/n8n routing, HITL auto-creation for critical findings, workflow list/execute API, skills activation for CONT + LAB + FISC). E2E tests.
 
 #### 4.B.5 VDR v2 + Vectorizacion (Slice S4)
 
@@ -333,6 +341,8 @@ GET  /api/vdr/ingest/[id]      -> { job, status, chunks_created }
 4. Evidencia refiere version/pagina/chunk.
 5. Control de sensibilidad y permisos via RLS.
 
+**Estado actual:** ✅ Implementado (pgvector, vdr_chunks, ingestion pipeline, semantic search, HNSW index, Evidence Pack v2 with finding→chunk linking, VDR→Harvey Vault sync). E2E tests.
+
 #### 4.B.6 Observabilidad (Slice S5)
 
 Metricas y telemetria para operacion fiable:
@@ -367,6 +377,8 @@ GET /api/observability/pipeline -> { pass_rate, correction_rate, latency_by_skil
 4. Panel SLO visible y actualizado.
 5. Minimizacion de datos sensibles enforced.
 
+**Estado actual:** ✅ Implementado (gateway telemetry table, batched telemetry writer, SLO dashboard API with p50/p95/p99, telemetry list endpoint, health route with SLO thresholds). E2E tests.
+
 #### 4.B.7 War Room (Slice S6)
 
 Centro de negociacion con evidencia:
@@ -395,6 +407,8 @@ POST /api/war-room/[project_id]/export    -> { file_url } (PDF/Excel)
 4. Permisos por rol enforced (cliente no ve query history).
 5. Export de red flags sheet (Excel/PDF).
 
+**Estado actual:** ✅ Implementado (dashboard, decisions, red-flags, export endpoints, severity change notifications via event bus bridge, contingency PATCH with change detection). E2E tests.
+
 ### 4.C Pendiente (P1/P2)
 
 - Skills operativos Phase C-F: Fiscal, Inmobiliario, Litigios, Regulatorio, Medioambiental, Datos.
@@ -410,12 +424,12 @@ POST /api/war-room/[project_id]/export    -> { file_url } (PDF/Excel)
 ### Stack
 - **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Garrigues Design System.
 - **State**: Zustand 5.0 (client), UserContext (auth/roles).
-- **Backend**: Next.js API Routes (55+ endpoints server-side).
+- **Backend**: Next.js API Routes (94+ endpoints server-side).
 - **Base de datos**: Supabase (PostgreSQL + RLS + pgvector).
 - **IA**: Harvey AI via Harvey Gateway (con fallback a n8n).
 - **Orquestacion**: n8n Cloud (9 workflows, migracion progresiva a gateway).
 - **Deploy**: Vercel (production + preview, auto-deploy desde main).
-- **Tests**: Playwright E2E (12+ suites).
+- **Tests**: Playwright E2E (25+ suites).
 
 ### Diagrama E2E
 
@@ -477,20 +491,17 @@ VDR interno (docs + versiones + permisos)
 | `dd_war_room_decisions` | S6 | Registro de decisiones con evidence refs |
 | `dd_slo_snapshots` | S5 | Snapshots periodicos de metricas SLO |
 
-### Migraciones existentes (10)
+### Migraciones existentes (31)
 
 ```
 supabase/migrations/
   20260103175640_remote_baseline.sql
   202602200001_hitl_client_visibility.sql
-  202602200002_tools_evidence_skills.sql
-  202602200003_seed_tools_skills.sql
-  202602210001_societario_schema.sql
-  202602210002_seed_societario_config.sql
-  202602210003_seed_fmc_skills.sql
-  202602210004_data_room.sql
-  202602210005_skill_quality_gates.sql
-  202602210006_activate_pending_skills.sql
+  ... (10 baseline migrations)
+  202602260001_rls_core_tables.sql          # S1: RLS policies
+  202602260002_kanban_tasks.sql             # S2: Kanban engine
+  202602260003_observability.sql            # S5: Telemetry + SLO
+  ... + 18 more (skills, seeds, vdr, war room)
 ```
 
 ### Flujo IA end-to-end (v3.0)
@@ -671,22 +682,23 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 - Role-based dashboards (Lawyer, Leader, PMO, Client)
 - Deploy Vercel + env vars + Supabase migrations (10)
 
-### P0 — Marco operativo (Slices S0-S3 en paralelo)
-1. **S0**: Harvey Gateway v1 con backoff, feature flag, metricas.
-2. **S1**: Supabase Auth + RLS + roles por proyecto + middleware.
-3. **S2**: Kanban operativo con 10 estados, WIP, aging, DoR/DoD.
-4. **S3**: 4 workflows nuevos (arranque, gap list, contractual, laboral/fiscal) + activar skills CONT + LAB + FISC.
-5. **S5**: Observabilidad basica (panel SLO, metricas Gateway).
-6. Activar 9 workflows n8n con credenciales Harvey.
-7. Tests E2E para Kanban, Gateway, Auth, workflows nuevos.
+### P0 — Marco operativo (Slices S0-S3 en paralelo) — ✅ Sprint Feb 2026
+1. **S0**: Harvey Gateway v1 ✅ — backoff, feature flag, metricas, Vault RAG, SLO p95.
+2. **S1**: Supabase Auth + RLS ✅ — roles por proyecto, middleware, requirePermission.
+3. **S2**: Kanban operativo ✅ — 10 estados, WIP, aging, DoR/DoD, alerts.
+4. **S3**: 6 workflows MVP ✅ — arranque, gap list, contractual, laboral/fiscal + skills CONT + LAB + FISC.
+5. **S5**: Observabilidad ✅ — panel SLO, metricas Gateway, telemetry batching.
+6. **S4**: VDR v2 ✅ — pgvector, semantic search, Evidence Pack v2, Vault sync.
+7. **S6**: War Room ✅ — dashboard, decisions, red-flags, severity notifications, export.
+8. Tests E2E: 25+ suites, 180+ tests covering all slices.
 
-### P1 — Expansion (Slices S4-S5)
-1. **S4**: VDR v2 + pgvector + chunking legal + busqueda semantica.
-2. **S5**: Observabilidad completa (audit logs, history, alertas, dashboards SLO).
-3. Evidence Pack v2 automatizado con trazabilidad a chunk/pagina.
-4. Sync selectivo a Harvey Vault.
-5. Skills operativos Phase C: Fiscal + Inmobiliario.
-6. Skills operativos Phase D: Litigios + Regulatorio.
+### P1 — Expansion (refinamiento + nuevos skills)
+1. Evidence Pack v2 automatizado con trazabilidad completa a chunk/pagina/version.
+2. Skills operativos Phase C: Fiscal + Inmobiliario (activar FMC seeded).
+3. Skills operativos Phase D: Litigios + Regulatorio.
+4. Audit logs ingest incremental de Harvey.
+5. Usage vs Query History separados con politica de retencion.
+6. Fichas modelo Garrigues (17 campos societaria, cuadro socios).
 
 ### P2 — Enterprise (Slice S6 + extensiones)
 1. **S6**: War Room completo (red flags sheet, decisions log, notificaciones, export).

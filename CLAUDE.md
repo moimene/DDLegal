@@ -1,21 +1,21 @@
 # DD Legal PMO
 
-Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 63 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room y Observabilidad.
+Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 63 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room y Observabilidad. 94+ endpoints, 25 suites.
 
 ## Stack
 
 - **Frontend**: Next.js 14 (App Router), React 18, Zustand, TanStack Table, Lucide icons, Montserrat (Garrigues)
-- **Backend**: Next.js API routes (82 endpoints), Supabase (Postgres + RLS + pgvector)
+- **Backend**: Next.js API routes (94+ endpoints), Supabase (Postgres + RLS + pgvector)
 - **AI**: Harvey AI gateway, OpenAI embeddings (text-embedding-3-small, 1536d)
 - **Infra**: Vercel (produccion), Supabase hosted, n8n workflows
-- **Tests**: Playwright E2E (21 suites, 150+ tests)
+- **Tests**: Playwright E2E (25 suites, 180+ tests)
 
 ## Commands
 
 - `npm run dev` — Dev server (localhost:3000)
 - `npm run build` — Production build
 - `npm run lint` — ESLint
-- `npm run test` / `npx playwright test` — E2E tests (all 21 suites)
+- `npm run test` / `npx playwright test` — E2E tests (all 25 suites)
 - `npm run test:api` — API specs societario
 - `npm run test:page` — Page specs societario
 - `npm run test:ui` — Playwright UI mode
@@ -25,16 +25,20 @@ Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n
 ```
 src/
   app/
-    api/                    # 82 API routes across 26 groups
+    api/                    # 94+ API routes across 30+ groups
       ai/                   # classify, suggest
       alerts/               # SLA alerts
       auth/                 # login, me, roles, setup-test-users
+      contingencies/        # PATCH severity, GET single
+      evidence/             # link-chunks, pack builder (Evidence Pack v2)
       gateway/              # Harvey AI proxy (whoami, health, completion)
-      kanban/               # board, metrics, tasks CRUD + move
+      kanban/               # board, metrics, tasks CRUD + move + alerts
       observability/        # SLO dashboard, telemetry ingestion
       vdr/                  # documents, folders, bulk, search, audit
         ingest/             # S4: async vectorization pipeline
         search/semantic/    # S4: pgvector semantic search
+        rag/query/          # S0: Vault RAG query endpoint
+        vault/sync/         # S4→S0: VDR to Harvey Vault sync
       war-room/             # S6: dashboard, decisions, red-flags, export
       workflows/            # list, execute (Strangler workflow engine)
       # + 16 more: client, configuracion, documents, events, evidence,
@@ -51,6 +55,8 @@ src/
     harvey/                 # Harvey AI gateway + factory
     observability/          # Telemetry writer
     vdr/                    # Chunker, ingest pipeline, semantic search
+    war-room/               # Notifications, severity bridge
+    reporting/              # Report engine, evidence pack builder
     workflows/              # Strangler workflow engine + constants
     supabase.ts             # Types + client (service_role + anon)
     supabase-auth.ts        # ProjectRole type, ROLE_PERMISSIONS matrix
@@ -59,8 +65,8 @@ src/
     tokens.css              # Garrigues design tokens (--g-* CSS variables)
   middleware.ts             # Auth + feature flag middleware
 supabase/
-  migrations/               # 28 SQL migrations (RLS, pgvector, seeds)
-e2e/                        # 21 Playwright test suites
+  migrations/               # 31 SQL migrations (RLS, pgvector, seeds, kanban, observability)
+e2e/                        # 25 Playwright test suites
 ```
 
 ## Strangler Slices (v3.0) — All deployed
@@ -95,6 +101,16 @@ Seed migration: `supabase/migrations/202602270001_seed_demo_users.sql`.
 
 **GoTrue gotcha**: `email_change` column in `auth.users` MUST be `''` (empty string), not NULL. GoTrue's Go code scans it as `string` type which cannot handle NULL.
 
+## Sprint Progress (Feb 2026)
+
+| Day | Scope | Commit | Lines |
+|-----|-------|--------|-------|
+| Day 1 | Skills, workflows 4+6, audit ingest, SLO, kanban, war room | `16394b9` | +2,319 |
+| Day 2 | Vault RAG, p95 SLO, Arranque DD backlog, kanban alerts, DoR UX | `770c724` | +704 |
+| Day 3 | Severity notifications, Evidence Pack v2, VDR→Vault sync | `f19ec01` | +843 |
+| Day 4 | 28 E2E tests covering all sprint features | `b69c81a` | +588 |
+| Day 5 | Hardening + Documentation | pending | — |
+
 ## Critical Rules
 
 - **NEVER** expose `SUPABASE_SERVICE_ROLE_KEY` in client-side code. Only in `src/app/api/` routes.
@@ -120,6 +136,9 @@ Required in `.env.local` (never commit):
 - `HARVEY_HISTORY_ENDPOINT` — Harvey history endpoint
 - `HARVEY_FEATURE_FLAG` — `gateway` | `n8n` | `shadow` (controls Harvey routing)
 - `OPENAI_API_KEY` — OpenAI API key (for embeddings in S4)
+- `HARVEY_ENDPOINT_V1` — Harvey completion endpoint (EU region)
+- `HARVEY_ENDPOINT_HISTORY` — Harvey history/audit endpoint
+- `HARVEY_TOKEN` — Harvey bearer token (server only)
 
 ## Deployment
 

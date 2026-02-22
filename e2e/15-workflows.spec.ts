@@ -5,7 +5,7 @@ test.describe('Workflows MVP API @workflows', () => {
   let token: string;
 
   test.beforeAll(async ({ request }) => {
-    token = await loginAs(request, TEST_USERS.pm.email);
+    token = await loginAs(request, TEST_USERS.pm);
   });
 
   test('GET /api/workflows/list returns 6 workflows', async ({ request }) => {
