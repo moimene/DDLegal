@@ -4,8 +4,8 @@ Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n
 
 ## Stack
 
-- **Frontend**: Next.js 14 (App Router), React 18, Zustand, TanStack Table, Lucide icons
-- **Backend**: Next.js API routes (79 endpoints), Supabase (Postgres + RLS + pgvector)
+- **Frontend**: Next.js 14 (App Router), React 18, Zustand, TanStack Table, Lucide icons, Montserrat (Garrigues)
+- **Backend**: Next.js API routes (82 endpoints), Supabase (Postgres + RLS + pgvector)
 - **AI**: Harvey AI gateway, OpenAI embeddings (text-embedding-3-small, 1536d)
 - **Infra**: Vercel (produccion), Supabase hosted, n8n workflows
 - **Tests**: Playwright E2E (21 suites, 150+ tests)
@@ -25,10 +25,10 @@ Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n
 ```
 src/
   app/
-    api/                    # 79 API routes across 26 groups
+    api/                    # 82 API routes across 26 groups
       ai/                   # classify, suggest
       alerts/               # SLA alerts
-      auth/                 # login, me, roles
+      auth/                 # login, me, roles, setup-test-users
       gateway/              # Harvey AI proxy (whoami, health, completion)
       kanban/               # board, metrics, tasks CRUD + move
       observability/        # SLO dashboard, telemetry ingestion
@@ -40,8 +40,11 @@ src/
       # + 16 more: client, configuracion, documents, events, evidence,
       #   harvey, hitl, ip, negotiation, notifications, projects, qa,
       #   reports, skills, societario, system, tools
+    login/                  # Login page with demo user selection + auto-fill
     (pages)/                # Next.js pages with App Router
   components/               # 13 component groups (dashboards, vdr, reports...)
+  contexts/
+    UserContext.tsx          # Auth state, login/logout, role management
   lib/
     auth/                   # require-permission middleware
     embeddings/             # OpenAI embedding client (batch, retry)
@@ -50,10 +53,13 @@ src/
     vdr/                    # Chunker, ingest pipeline, semantic search
     workflows/              # Strangler workflow engine + constants
     supabase.ts             # Types + client (service_role + anon)
+    supabase-auth.ts        # ProjectRole type, ROLE_PERMISSIONS matrix
     utils.ts                # Helpers, configs, constants
+  styles/
+    tokens.css              # Garrigues design tokens (--g-* CSS variables)
   middleware.ts             # Auth + feature flag middleware
 supabase/
-  migrations/               # 27 SQL migrations (RLS, pgvector, seeds)
+  migrations/               # 28 SQL migrations (RLS, pgvector, seeds)
 e2e/                        # 21 Playwright test suites
 ```
 
@@ -69,6 +75,26 @@ e2e/                        # 21 Playwright test suites
 | S5 | Observabilidad (SLOs + telemetria) | ✅ Produccion |
 | S6 | War Room (decisiones + red flags) | ✅ Produccion |
 
+## Demo Users
+
+8 usuarios demo en Supabase Auth. Login page (`/login`) permite seleccion directa con auto-fill de credenciales.
+
+| Email | Password | Rol | UUID |
+|-------|----------|-----|------|
+| admin@ddlegal.com | admin123456 | Superusuario (admin) | `aaaa0001-0000-4000-8000-000000000000` |
+| clo@test.ddlegal.com | test123456 | CLO / Director Legal | `aaaa0001-0001-4000-8000-000000000001` |
+| pm@test.ddlegal.com | test123456 | PM Transaccion | `aaaa0001-0002-4000-8000-000000000002` |
+| abogado.merc@test.ddlegal.com | test123456 | Abogado Mercantil | `aaaa0001-0003-4000-8000-000000000003` |
+| sponsor@test.ddlegal.com | test123456 | Deal Sponsor | `aaaa0001-0004-4000-8000-000000000004` |
+| target@test.ddlegal.com | test123456 | Contacto Target | `aaaa0001-0005-4000-8000-000000000005` |
+| stakeholder@test.ddlegal.com | test123456 | Stakeholder Negocio | `aaaa0001-0006-4000-8000-000000000006` |
+| cliente@test.ddlegal.com | test123456 | Cliente Externo | `aaaa0001-0007-4000-8000-000000000007` |
+
+Demo project: `a1b2c3d4-0001-4000-8000-000000000001` (FMC Due Diligence - Prototipo).
+Seed migration: `supabase/migrations/202602270001_seed_demo_users.sql`.
+
+**GoTrue gotcha**: `email_change` column in `auth.users` MUST be `''` (empty string), not NULL. GoTrue's Go code scans it as `string` type which cannot handle NULL.
+
 ## Critical Rules
 
 - **NEVER** expose `SUPABASE_SERVICE_ROLE_KEY` in client-side code. Only in `src/app/api/` routes.
@@ -76,11 +102,12 @@ e2e/                        # 21 Playwright test suites
 - All new DB tables **MUST** have RLS enabled + policies.
 - HITL is **mandatory** for CONT, LAB, FISC, LIT area outputs.
 - Path alias: `@/*` maps to `./src/*`.
-- Design system: Garrigues tokens in `src/styles/tokens.css` — use `--g-*` CSS variables, never hardcode colors.
-- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602210006_new_feature.sql`). Next available: `202602270001`.
+- Design system: Garrigues tokens in `src/styles/tokens.css` — use `--g-*` CSS variables, never hardcode colors. Brand: `--g-brand-3308: #004438`. Font: Montserrat.
+- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602270001_seed_demo_users.sql`). Next available: `202602270002`.
 - Next.js dynamic params use `{ params }: { params: Promise<{ id: string }> }` pattern.
 - pgvector embeddings are 1536 dimensions (OpenAI text-embedding-3-small). HNSW index with cosine distance.
 - Supabase RPC: `match_vdr_chunks` for semantic search. Never call pgvector directly from client.
+- Auth login via `POST /api/auth/login` → returns `{ session: { access_token } }`. Token stored in `localStorage` as `dd_session_token`. All API calls use `Authorization: Bearer <token>`.
 
 ## Environment Variables
 
@@ -91,6 +118,7 @@ Required in `.env.local` (never commit):
 - `HARVEY_API_KEY` — Harvey AI API key
 - `HARVEY_ENDPOINT` — Harvey API endpoint
 - `HARVEY_HISTORY_ENDPOINT` — Harvey history endpoint
+- `HARVEY_FEATURE_FLAG` — `gateway` | `n8n` | `shadow` (controls Harvey routing)
 - `OPENAI_API_KEY` — OpenAI API key (for embeddings in S4)
 
 ## Deployment
