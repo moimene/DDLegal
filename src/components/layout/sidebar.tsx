@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-    LayoutDashboard, FolderKanban, ChevronLeft, ChevronRight,
+    LayoutDashboard, FolderKanban, ChevronLeft, ChevronRight, ChevronDown,
     Scale, Bot, Wrench, Building2, Shield, BookOpen, Settings,
-    FileBarChart, Database, MessageCircle, FileText, Eye, Gauge,
+    FileBarChart, Database, MessageCircle, FileText, Eye,
     Handshake, UserCheck, Activity, ListChecks, ShieldCheck,
     Swords, Workflow, Target,
 } from 'lucide-react';
@@ -27,6 +27,14 @@ interface NavSection {
     header: string;
     badge?: string;
     items: NavItem[];
+}
+
+interface NavGroup {
+    id: string;
+    header: string;
+    icon: typeof LayoutDashboard;
+    items: NavItem[];
+    separator?: { label: string; afterIndex: number };
 }
 
 /* ------------------------------------------------------------------ */
@@ -71,47 +79,148 @@ const NAV_SECTION_CONFIGURACION: NavSection = {
 
 const PROJECT_ID_RE = /^\/projects\/([^/]+)/;
 
-function buildProjectSection(projectId: string): NavSection {
+function buildProjectGroups(projectId: string): NavGroup[] {
     const base = `/projects/${projectId}`;
-    return {
-        header: 'Proyecto',
-        badge: 'Proyecto activo',
-        items: [
-            { label: 'Vista General', icon: Eye, path: base },
-            { label: 'Kanban', icon: FolderKanban, path: `${base}/kanban` },
-            { label: 'Workflows', icon: Workflow, path: `${base}/workflows` },
-            { label: 'War Room', icon: Swords, path: `${base}/war-room` },
-            { label: 'Scoring', icon: Target, path: `${base}/scoring` },
-            { label: 'Data Room', icon: Database, path: `${base}/vdr` },
-            { label: 'Q&A', icon: MessageCircle, path: `${base}/qa` },
-            { label: 'Deal Cockpit', icon: Gauge, path: `${base}/cockpit` },
-            { label: 'Negociacion', icon: Handshake, path: `${base}/negotiation` },
-            { label: 'HITL Review', icon: UserCheck, path: `${base}/hitl` },
-            { label: 'Actividad', icon: Activity, path: `${base}/activity` },
-        ],
-    };
+    return [
+        {
+            id: 'informacion',
+            header: 'Informacion',
+            icon: Database,
+            items: [
+                { label: 'Vista General', icon: Eye, path: base },
+                { label: 'Data Room', icon: Database, path: `${base}/vdr` },
+                { label: 'Q&A', icon: MessageCircle, path: `${base}/qa` },
+            ],
+        },
+        {
+            id: 'analisis',
+            header: 'Analisis',
+            icon: Target,
+            items: [
+                { label: 'Kanban', icon: FolderKanban, path: `${base}/kanban` },
+                { label: 'Workflows', icon: Workflow, path: `${base}/workflows` },
+                { label: 'HITL Review', icon: UserCheck, path: `${base}/hitl` },
+                { label: 'Scoring', icon: Target, path: `${base}/scoring` },
+            ],
+            separator: { label: 'Areas activas', afterIndex: 3 },
+        },
+        {
+            id: 'decision',
+            header: 'Decision',
+            icon: Swords,
+            items: [
+                { label: 'War Room', icon: Swords, path: `${base}/war-room` },
+                { label: 'Negociacion', icon: Handshake, path: `${base}/negotiation` },
+                { label: 'Actividad', icon: Activity, path: `${base}/activity` },
+            ],
+        },
+    ];
 }
 
 /* ------------------------------------------------------------------ */
-/*  Hook: build final sections array based on current pathname         */
+/*  Hook: build resolved nav (sections + project groups)               */
 /* ------------------------------------------------------------------ */
 
-function useNavSections(pathname: string): NavSection[] {
+interface ResolvedNav {
+    sections: NavSection[];
+    projectGroups: NavGroup[] | null;
+    projectId: string | null;
+}
+
+function useResolvedNav(pathname: string): ResolvedNav {
     return useMemo(() => {
         const match = PROJECT_ID_RE.exec(pathname);
         const projectId = match ? match[1] : null;
-
         const sections: NavSection[] = [NAV_SECTION_NAVEGACION];
-
-        if (projectId) {
-            sections.push(buildProjectSection(projectId));
-        }
-
         sections.push(NAV_SECTION_HERRAMIENTAS);
         sections.push(NAV_SECTION_CONFIGURACION);
-
-        return sections;
+        const projectGroups = projectId ? buildProjectGroups(projectId) : null;
+        return { sections, projectGroups, projectId };
     }, [pathname]);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Hook: collapsible group state with localStorage persistence        */
+/* ------------------------------------------------------------------ */
+
+function useGroupCollapse(
+    projectId: string | null,
+    projectGroups: NavGroup[] | null,
+    pathname: string,
+) {
+    const storageKey = projectId ? `dd-nav-collapsed-${projectId}` : null;
+
+    const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+    // Load from localStorage on mount / when projectId changes
+    useEffect(() => {
+        if (!storageKey) return;
+        try {
+            const stored = localStorage.getItem(storageKey);
+            if (stored) {
+                setCollapsedGroups(JSON.parse(stored));
+            } else {
+                setCollapsedGroups({});
+            }
+        } catch {
+            setCollapsedGroups({});
+        }
+    }, [storageKey]);
+
+    // Auto-expand the group containing the active route
+    useEffect(() => {
+        if (!projectGroups) return;
+        for (const group of projectGroups) {
+            const hasActive = group.items.some((item) => {
+                if (item.path === '/') return pathname === '/';
+                const isProjectOverview =
+                    PROJECT_ID_RE.test(item.path) &&
+                    item.path.replace(PROJECT_ID_RE, '').replace(/^\//, '') === '';
+                if (isProjectOverview) return pathname === item.path;
+                return pathname === item.path || pathname.startsWith(item.path + '/');
+            });
+            if (hasActive && collapsedGroups[group.id]) {
+                setCollapsedGroups((prev) => {
+                    const next = { ...prev, [group.id]: false };
+                    if (storageKey) {
+                        try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* noop */ }
+                    }
+                    return next;
+                });
+                break;
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pathname, projectGroups, storageKey]);
+
+    const toggle = (groupId: string) => {
+        setCollapsedGroups((prev) => {
+            const next = { ...prev, [groupId]: !prev[groupId] };
+            if (storageKey) {
+                try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* noop */ }
+            }
+            return next;
+        });
+    };
+
+    return { collapsedGroups, toggle };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function isItemActive(itemPath: string, pathname: string): boolean {
+    if (itemPath === '/') return pathname === '/';
+    const isProjectOverview =
+        PROJECT_ID_RE.test(itemPath) &&
+        itemPath.replace(PROJECT_ID_RE, '').replace(/^\//, '') === '';
+    if (isProjectOverview) return pathname === itemPath;
+    return pathname === itemPath || pathname.startsWith(itemPath + '/');
+}
+
+function groupHasActiveItem(group: NavGroup, pathname: string): boolean {
+    return group.items.some((item) => isItemActive(item.path, pathname));
 }
 
 /* ------------------------------------------------------------------ */
@@ -121,7 +230,214 @@ function useNavSections(pathname: string): NavSection[] {
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const pathname = usePathname();
-    const sections = useNavSections(pathname);
+    const { sections, projectGroups, projectId } = useResolvedNav(pathname);
+    const { collapsedGroups, toggle } = useGroupCollapse(projectId, projectGroups, pathname);
+
+    /* Shared renderer for a single nav item */
+    const renderNavItem = (item: NavItem) => {
+        const isActive = isItemActive(item.path, pathname);
+        return (
+            <Link
+                key={item.path}
+                href={item.path}
+                className={cn(
+                    'flex items-center gap-3 transition-all',
+                    isActive ? 'font-medium' : 'hover:opacity-100',
+                )}
+                style={{
+                    borderRadius: 'var(--g-radius-md)',
+                    color: 'var(--g-text-inverse)',
+                    backgroundColor: isActive ? 'var(--g-sidebar-active)' : 'transparent',
+                    opacity: isActive ? 1 : 0.75,
+                    fontSize: 'var(--g-text-body)',
+                    fontWeight: isActive ? 600 : 500,
+                    padding: '8px 12px',
+                    letterSpacing: '0.01em',
+                }}
+                title={collapsed ? item.label : undefined}
+                aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
+            >
+                <item.icon className="h-[18px] w-[18px] shrink-0" />
+                {!collapsed && <span>{item.label}</span>}
+            </Link>
+        );
+    };
+
+    /* Shared renderer for a flat section */
+    const renderSection = (section: NavSection, sIdx: number) => (
+        <div key={section.header} style={{ marginTop: sIdx > 0 ? '24px' : undefined }}>
+            {!collapsed ? (
+                <div
+                    className="animate-fade-in"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '0 12px',
+                        marginBottom: '8px',
+                    }}
+                >
+                    <p
+                        style={{
+                            fontSize: '0.6875rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
+                            color: 'rgba(255,255,255,0.5)',
+                            lineHeight: '1',
+                            margin: 0,
+                        }}
+                    >
+                        {section.header}
+                    </p>
+                    {section.badge && (
+                        <span
+                            style={{
+                                fontSize: '0.5625rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em',
+                                color: 'var(--g-brand-3308)',
+                                backgroundColor: 'var(--g-brand-bright)',
+                                borderRadius: 'var(--g-radius-full)',
+                                padding: '2px 8px',
+                                lineHeight: '1.4',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            {section.badge}
+                        </span>
+                    )}
+                </div>
+            ) : sIdx > 0 ? (
+                <hr
+                    className="mx-3 mb-3"
+                    style={{ borderColor: 'var(--g-sidebar-border)' }}
+                />
+            ) : null}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {section.items.map(renderNavItem)}
+            </div>
+        </div>
+    );
+
+    /* Render a collapsible project group */
+    const renderGroup = (group: NavGroup) => {
+        const isGroupCollapsed = !!collapsedGroups[group.id];
+        const hasActive = groupHasActiveItem(group, pathname);
+        const GroupIcon = group.icon;
+
+        return (
+            <div key={group.id} style={{ marginTop: '4px' }}>
+                {/* Group header button */}
+                <button
+                    onClick={() => toggle(group.id)}
+                    className="w-full flex items-center gap-2 transition-all"
+                    style={{
+                        padding: '6px 12px',
+                        borderRadius: 'var(--g-radius-md)',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        borderLeft: hasActive ? '2px solid var(--g-brand-bright)' : '2px solid transparent',
+                    }}
+                    aria-expanded={!isGroupCollapsed}
+                    aria-label={`${group.header} grupo`}
+                >
+                    <GroupIcon
+                        className="h-[16px] w-[16px] shrink-0"
+                        style={{ color: hasActive ? 'var(--g-brand-bright)' : 'rgba(255,255,255,0.5)' }}
+                    />
+                    {!collapsed && (
+                        <>
+                            <span
+                                style={{
+                                    fontSize: '0.6875rem',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.08em',
+                                    color: hasActive ? 'var(--g-brand-bright)' : 'rgba(255,255,255,0.5)',
+                                    lineHeight: '1',
+                                    flex: 1,
+                                    textAlign: 'left',
+                                }}
+                            >
+                                {group.header}
+                            </span>
+                            <ChevronDown
+                                className="h-3.5 w-3.5 shrink-0 transition-transform"
+                                style={{
+                                    color: 'rgba(255,255,255,0.4)',
+                                    transform: isGroupCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                                }}
+                            />
+                        </>
+                    )}
+                </button>
+
+                {/* Group items */}
+                {!isGroupCollapsed && !collapsed && (
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px',
+                            marginTop: '2px',
+                            paddingLeft: '4px',
+                        }}
+                    >
+                        {group.items.map((item, itemIdx) => (
+                            <div key={item.path}>
+                                {renderNavItem(item)}
+                                {/* Separator after specified index */}
+                                {group.separator && itemIdx === group.separator.afterIndex && (
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            padding: '6px 12px 2px',
+                                        }}
+                                    >
+                                        <hr
+                                            style={{
+                                                flex: 1,
+                                                border: 'none',
+                                                borderTop: '1px solid rgba(255,255,255,0.1)',
+                                            }}
+                                        />
+                                        <span
+                                            style={{
+                                                fontSize: '0.5625rem',
+                                                fontWeight: 600,
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.06em',
+                                                color: 'rgba(255,255,255,0.3)',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                        >
+                                            {group.separator.label}
+                                        </span>
+                                        <hr
+                                            style={{
+                                                flex: 1,
+                                                border: 'none',
+                                                borderTop: '1px solid rgba(255,255,255,0.1)',
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Collapsed sidebar: show only group icon (already rendered in button) */}
+            </div>
+        );
+    };
 
     return (
         <aside
@@ -171,10 +487,13 @@ export default function Sidebar() {
 
             {/* Navigation */}
             <nav className="flex-1 py-5 px-3 overflow-y-auto">
-                {sections.map((section, sIdx) => (
-                    <div key={section.header} style={{ marginTop: sIdx > 0 ? '24px' : undefined }}>
-                        {/* Section header */}
-                        {!collapsed ? (
+                {/* Navegacion section (always first, index 0) */}
+                {renderSection(sections[0], 0)}
+
+                {/* Project groups (between Navegacion and Herramientas) */}
+                {projectGroups && (
+                    <div style={{ marginTop: '20px' }}>
+                        {!collapsed && (
                             <div
                                 className="animate-fade-in"
                                 style={{
@@ -182,7 +501,7 @@ export default function Sidebar() {
                                     alignItems: 'center',
                                     gap: '8px',
                                     padding: '0 12px',
-                                    marginBottom: '8px',
+                                    marginBottom: '6px',
                                 }}
                             >
                                 <p
@@ -196,86 +515,42 @@ export default function Sidebar() {
                                         margin: 0,
                                     }}
                                 >
-                                    {section.header}
+                                    Proyecto
                                 </p>
-                                {section.badge && (
-                                    <span
-                                        style={{
-                                            fontSize: '0.5625rem',
-                                            fontWeight: 600,
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.04em',
-                                            color: 'var(--g-brand-3308)',
-                                            backgroundColor: 'var(--g-brand-bright)',
-                                            borderRadius: 'var(--g-radius-full)',
-                                            padding: '2px 8px',
-                                            lineHeight: '1.4',
-                                            whiteSpace: 'nowrap',
-                                        }}
-                                    >
-                                        {section.badge}
-                                    </span>
-                                )}
+                                <span
+                                    style={{
+                                        fontSize: '0.5625rem',
+                                        fontWeight: 600,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.04em',
+                                        color: 'var(--g-brand-3308)',
+                                        backgroundColor: 'var(--g-brand-bright)',
+                                        borderRadius: 'var(--g-radius-full)',
+                                        padding: '2px 8px',
+                                        lineHeight: '1.4',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    Proyecto activo
+                                </span>
                             </div>
-                        ) : sIdx > 0 ? (
+                        )}
+                        {collapsed && (
                             <hr
                                 className="mx-3 mb-3"
                                 style={{ borderColor: 'var(--g-sidebar-border)' }}
                             />
-                        ) : null}
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            {section.items.map((item) => {
-                                /* Active detection:
-                                   - "/" matches only exactly
-                                   - "/projects/[id]" (project overview) matches only exactly
-                                   - All other paths use startsWith for sub-routes */
-                                const isProjectOverview =
-                                    PROJECT_ID_RE.test(item.path) &&
-                                    item.path.replace(PROJECT_ID_RE, '').replace(/^\//, '') === '';
-
-                                let isActive: boolean;
-                                if (item.path === '/') {
-                                    isActive = pathname === '/';
-                                } else if (isProjectOverview) {
-                                    isActive = pathname === item.path;
-                                } else {
-                                    isActive = pathname === item.path ||
-                                        pathname.startsWith(item.path + '/');
-                                }
-
-                                return (
-                                    <Link
-                                        key={item.path}
-                                        href={item.path}
-                                        className={cn(
-                                            'flex items-center gap-3 transition-all',
-                                            isActive
-                                                ? 'font-medium'
-                                                : 'hover:opacity-100'
-                                        )}
-                                        style={{
-                                            borderRadius: 'var(--g-radius-md)',
-                                            color: 'var(--g-text-inverse)',
-                                            backgroundColor: isActive ? 'var(--g-sidebar-active)' : 'transparent',
-                                            opacity: isActive ? 1 : 0.75,
-                                            fontSize: 'var(--g-text-body)',
-                                            fontWeight: isActive ? 600 : 500,
-                                            padding: '8px 12px',
-                                            letterSpacing: '0.01em',
-                                        }}
-                                        title={collapsed ? item.label : undefined}
-                                        aria-label={item.label}
-                                        aria-current={isActive ? 'page' : undefined}
-                                    >
-                                        <item.icon className="h-[18px] w-[18px] shrink-0" />
-                                        {!collapsed && <span>{item.label}</span>}
-                                    </Link>
-                                );
-                            })}
-                        </div>
+                        )}
+                        {projectGroups.map(renderGroup)}
                     </div>
-                ))}
+                )}
+
+                {/* Herramientas and Configuracion (indices 1 and 2, but offset for margin) */}
+                {sections.slice(1).map((section, idx) => {
+                    /* sIdx offset: Navegacion=0, project groups take a slot, so these start visually after */
+                    const sIdx = projectGroups ? idx + 2 : idx + 1;
+                    return renderSection(section, sIdx);
+                })}
             </nav>
 
             {/* AI Assist */}
