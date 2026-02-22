@@ -1,73 +1,104 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Scale, LogIn, Loader2, AlertCircle, User } from 'lucide-react';
+import {
+    Scale, LogIn, Loader2, AlertCircle, User,
+    Shield, Briefcase, Gavel, Target, Users, Eye, UserCheck
+} from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
-import { getRoleLabel } from '@/lib/supabase-auth';
 import type { ProjectRole } from '@/lib/supabase-auth';
+import type { LucideIcon } from 'lucide-react';
 
-interface TestUserButton {
+/* ─── User definitions ─── */
+
+interface DemoUser {
     email: string;
+    password: string;
     role: ProjectRole;
     label: string;
     description: string;
+    icon: LucideIcon;
+    accent: string;  // CSS color for the role badge
 }
 
-const ADMIN_USER: TestUserButton = {
+const ADMIN_USER: DemoUser = {
     email: 'admin@ddlegal.com',
+    password: 'admin123456',
     role: 'clo',
     label: 'Superusuario',
-    description: 'Admin — Acceso total a todo el sistema',
+    description: 'Acceso total al sistema',
+    icon: Shield,
+    accent: '#004438',
 };
 
-const TEST_USERS: TestUserButton[] = [
+const DEMO_USERS: DemoUser[] = [
     {
         email: 'clo@test.ddlegal.com',
+        password: 'test123456',
         role: 'clo',
         label: 'CLO',
-        description: 'Director Legal — Acceso total al proyecto',
+        description: 'Director Legal',
+        icon: Scale,
+        accent: '#004438',
     },
     {
         email: 'pm@test.ddlegal.com',
+        password: 'test123456',
         role: 'pm_transaccion',
-        label: 'PM Transaccion',
-        description: 'Project Manager — Gestiona tareas y equipo',
+        label: 'PM',
+        description: 'Project Manager',
+        icon: Briefcase,
+        accent: '#007362',
     },
     {
         email: 'abogado.merc@test.ddlegal.com',
+        password: 'test123456',
         role: 'abogado_area',
-        label: 'Abogado Area',
-        description: 'Abogado Mercantil — Trabaja en su area',
+        label: 'Abogado',
+        description: 'Mercantil',
+        icon: Gavel,
+        accent: 'hsl(262, 83%, 58%)',
     },
     {
         email: 'sponsor@test.ddlegal.com',
+        password: 'test123456',
         role: 'deal_sponsor',
-        label: 'Deal Sponsor',
-        description: 'Sponsor — Vista estrategica del deal',
+        label: 'Sponsor',
+        description: 'Deal Sponsor',
+        icon: Target,
+        accent: 'hsl(217, 91%, 60%)',
     },
     {
         email: 'target@test.ddlegal.com',
+        password: 'test123456',
         role: 'target_liaison',
-        label: 'Contacto Target',
-        description: 'Contacto del target — Responde Q&A',
+        label: 'Target',
+        description: 'Contacto Target',
+        icon: UserCheck,
+        accent: 'hsl(25, 95%, 53%)',
     },
     {
         email: 'stakeholder@test.ddlegal.com',
+        password: 'test123456',
         role: 'stakeholder_negocio',
         label: 'Stakeholder',
-        description: 'Stakeholder Negocio — Ve informes y war room',
+        description: 'Negocio',
+        icon: Users,
+        accent: 'hsl(38, 92%, 50%)',
     },
     {
         email: 'cliente@test.ddlegal.com',
+        password: 'test123456',
         role: 'cliente_externo',
         label: 'Cliente',
-        description: 'Cliente Externo — Solo lectura de progreso',
+        description: 'Solo lectura',
+        icon: Eye,
+        accent: '#8c9196',
     },
 ];
 
-const TEST_PASSWORD = 'test123456';
-const ADMIN_PASSWORD = 'admin123456';
+/* ─── Component ─── */
 
 export default function LoginPage() {
     const router = useRouter();
@@ -77,440 +108,552 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [loadingUser, setLoadingUser] = useState<string | null>(null);
+    const [selectedUser, setSelectedUser] = useState<string | null>(null);
+    const [phase, setPhase] = useState<'idle' | 'filling' | 'logging-in'>('idle');
 
-    async function handleLogin(e?: React.FormEvent) {
+    const loginTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const isDisabled = loading || phase !== 'idle';
+
+    /* ─── Manual login ─── */
+    async function handleManualLogin(e?: React.FormEvent) {
         e?.preventDefault();
+        if (!email || !password) return;
         setError(null);
         setLoading(true);
+        setPhase('logging-in');
 
         const success = await login(email, password);
-
         if (success) {
             router.push('/');
         } else {
-            setError('Credenciales invalidas. Verifica tu email y contrasena.');
+            setError('Credenciales invalidas.');
+            setPhase('idle');
         }
-
         setLoading(false);
     }
 
-    async function handleTestUserLogin(testUser: TestUserButton, password?: string) {
-        setError(null);
-        setLoadingUser(testUser.email);
-        const pwd = password || TEST_PASSWORD;
-        setEmail(testUser.email);
-        setPassword(pwd);
+    /* ─── Select user → fill → auto-login ─── */
+    const handleSelectUser = useCallback((user: DemoUser) => {
+        if (isDisabled) return;
 
-        const success = await login(testUser.email, pwd);
-
-        if (success) {
-            router.push('/');
-        } else {
-            setError(`No se pudo iniciar sesion como ${getRoleLabel(testUser.role)}. Ejecuta primero POST /api/auth/setup-test-users para crear los usuarios de prueba.`);
+        // Clear any pending auto-login
+        if (loginTimeoutRef.current) {
+            clearTimeout(loginTimeoutRef.current);
         }
 
-        setLoadingUser(null);
+        setError(null);
+        setSelectedUser(user.email);
+        setPhase('filling');
+
+        // Step 1: Fill email (instant)
+        setEmail(user.email);
+        setPassword('');
+
+        // Step 2: Fill password after brief delay
+        setTimeout(() => {
+            setPassword(user.password);
+        }, 200);
+
+        // Step 3: Auto-login after credentials are visible
+        loginTimeoutRef.current = setTimeout(async () => {
+            setPhase('logging-in');
+            setLoading(true);
+
+            const success = await login(user.email, user.password);
+            if (success) {
+                router.push('/');
+            } else {
+                setError(`Error al iniciar sesion como ${user.label}.`);
+                setPhase('idle');
+                setSelectedUser(null);
+                setLoading(false);
+            }
+        }, 600);
+    }, [isDisabled, login, router]);
+
+    /* ─── Deselect ─── */
+    function handleDeselect() {
+        if (phase === 'logging-in') return;
+        if (loginTimeoutRef.current) {
+            clearTimeout(loginTimeoutRef.current);
+        }
+        setSelectedUser(null);
+        setEmail('');
+        setPassword('');
+        setPhase('idle');
     }
 
-    const isFormDisabled = loading || !!loadingUser;
-
     return (
-        <div
-            style={{
-                minHeight: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'var(--g-surface-subtle, #f8f9fa)',
-                padding: 'var(--g-space-6)',
-            }}
-        >
-            <div
-                style={{
-                    width: '100%',
-                    maxWidth: '480px',
-                    backgroundColor: 'var(--g-surface-primary, #ffffff)',
-                    borderRadius: 'var(--g-radius-lg, 12px)',
-                    boxShadow: 'var(--g-shadow-lg, 0 8px 30px rgba(0,0,0,0.12))',
-                    overflow: 'hidden',
-                }}
-            >
-                {/* Header */}
-                <div
-                    style={{
-                        padding: 'var(--g-space-8) var(--g-space-8) var(--g-space-6)',
-                        textAlign: 'center',
-                        borderBottom: '1px solid var(--g-border-subtle, #e5e7eb)',
-                        background: 'linear-gradient(135deg, var(--g-brand-3308, #1a1a2e) 0%, var(--g-sec-700, #2d2d44) 100%)',
-                    }}
-                >
-                    <div
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '56px',
-                            height: '56px',
-                            borderRadius: 'var(--g-radius-lg, 12px)',
-                            backgroundColor: 'rgba(255,255,255,0.15)',
-                            marginBottom: 'var(--g-space-4)',
-                        }}
-                    >
-                        <Scale style={{ width: '28px', height: '28px', color: 'var(--g-brand-bright, #60a5fa)' }} />
+        <div style={styles.page}>
+            {/* Subtle background pattern */}
+            <div style={styles.bgPattern} />
+
+            <div style={styles.container}>
+                {/* ─── Left: Branding ─── */}
+                <div style={styles.brandPanel}>
+                    <div style={styles.brandContent}>
+                        <div style={styles.logoMark}>
+                            <Scale style={{ width: 28, height: 28, color: '#fff' }} />
+                        </div>
+                        <h1 style={styles.brandTitle}>DD Legal PMO</h1>
+                        <p style={styles.brandSubtitle}>
+                            Plataforma de Due Diligence
+                        </p>
+                        <div style={styles.brandDivider} />
+                        <p style={styles.brandCaption}>
+                            Selecciona un perfil o introduce tus credenciales para acceder al sistema.
+                        </p>
                     </div>
-                    <h1
-                        style={{
-                            fontSize: 'var(--g-text-h2, 1.5rem)',
-                            fontWeight: 700,
-                            color: 'var(--g-text-inverse, #ffffff)',
-                            margin: 0,
-                        }}
-                    >
-                        DD Legal PMO
-                    </h1>
-                    <p
-                        style={{
-                            fontSize: 'var(--g-text-body, 0.875rem)',
-                            color: 'rgba(255,255,255,0.7)',
-                            marginTop: 'var(--g-space-1)',
-                        }}
-                    >
-                        Acceso al sistema
+                    <p style={styles.brandFooter}>
+                        Garrigues &middot; Entorno de demo
                     </p>
                 </div>
 
-                {/* Form */}
-                <form
-                    onSubmit={handleLogin}
-                    style={{
-                        padding: 'var(--g-space-6) var(--g-space-8)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 'var(--g-space-4)',
-                    }}
-                >
-                    {/* Error message */}
+                {/* ─── Right: Login panel ─── */}
+                <div style={styles.loginPanel}>
+                    {/* Error */}
                     {error && (
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: 'var(--g-space-3)',
-                                padding: 'var(--g-space-3) var(--g-space-4)',
-                                borderRadius: 'var(--g-radius-md, 8px)',
-                                backgroundColor: '#fef2f2',
-                                border: '1px solid #fecaca',
-                                color: '#b91c1c',
-                                fontSize: 'var(--g-text-small, 0.8125rem)',
-                            }}
-                        >
-                            <AlertCircle style={{ width: '16px', height: '16px', flexShrink: 0, marginTop: '1px' }} />
+                        <div style={styles.errorBanner}>
+                            <AlertCircle style={{ width: 14, height: 14, flexShrink: 0, marginTop: 1 }} />
                             <span>{error}</span>
                         </div>
                     )}
 
-                    {/* Email */}
-                    <div>
-                        <label
-                            htmlFor="email"
-                            style={{
-                                display: 'block',
-                                fontSize: 'var(--g-text-small, 0.8125rem)',
-                                fontWeight: 600,
-                                color: 'var(--g-text-primary, #1a1a2e)',
-                                marginBottom: 'var(--g-space-1)',
-                            }}
-                        >
-                            Email
-                        </label>
-                        <input
-                            id="email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="tu@email.com"
-                            disabled={isFormDisabled}
-                            required
-                            style={{
-                                width: '100%',
-                                padding: 'var(--g-space-2) var(--g-space-3)',
-                                borderRadius: 'var(--g-radius-md, 8px)',
-                                border: '1px solid var(--g-border-default, #d1d5db)',
-                                fontSize: 'var(--g-text-body, 0.875rem)',
-                                color: 'var(--g-text-primary, #1a1a2e)',
-                                backgroundColor: 'var(--g-surface-primary, #ffffff)',
-                                outline: 'none',
-                                transition: 'border-color 0.15s',
-                                boxSizing: 'border-box',
-                            }}
-                            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--g-brand-3308, #1a1a2e)'; }}
-                            onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--g-border-default, #d1d5db)'; }}
-                        />
-                    </div>
+                    {/* ─── User grid ─── */}
+                    <div style={styles.sectionLabel}>Acceso rapido</div>
 
-                    {/* Password */}
-                    <div>
-                        <label
-                            htmlFor="password"
-                            style={{
-                                display: 'block',
-                                fontSize: 'var(--g-text-small, 0.8125rem)',
-                                fontWeight: 600,
-                                color: 'var(--g-text-primary, #1a1a2e)',
-                                marginBottom: 'var(--g-space-1)',
-                            }}
-                        >
-                            Contrasena
-                        </label>
-                        <input
-                            id="password"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Tu contrasena"
-                            disabled={isFormDisabled}
-                            required
-                            style={{
-                                width: '100%',
-                                padding: 'var(--g-space-2) var(--g-space-3)',
-                                borderRadius: 'var(--g-radius-md, 8px)',
-                                border: '1px solid var(--g-border-default, #d1d5db)',
-                                fontSize: 'var(--g-text-body, 0.875rem)',
-                                color: 'var(--g-text-primary, #1a1a2e)',
-                                backgroundColor: 'var(--g-surface-primary, #ffffff)',
-                                outline: 'none',
-                                transition: 'border-color 0.15s',
-                                boxSizing: 'border-box',
-                            }}
-                            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--g-brand-3308, #1a1a2e)'; }}
-                            onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--g-border-default, #d1d5db)'; }}
-                        />
-                    </div>
-
-                    {/* Login button */}
+                    {/* Admin card */}
                     <button
-                        type="submit"
-                        disabled={isFormDisabled}
+                        onClick={() => handleSelectUser(ADMIN_USER)}
+                        disabled={isDisabled && selectedUser !== ADMIN_USER.email}
                         style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 'var(--g-space-2)',
-                            width: '100%',
-                            padding: 'var(--g-space-3)',
-                            borderRadius: 'var(--g-radius-md, 8px)',
-                            border: 'none',
-                            backgroundColor: 'var(--g-brand-3308, #1a1a2e)',
-                            color: 'var(--g-text-inverse, #ffffff)',
-                            fontSize: 'var(--g-text-body, 0.875rem)',
-                            fontWeight: 600,
-                            cursor: isFormDisabled ? 'not-allowed' : 'pointer',
-                            opacity: isFormDisabled ? 0.6 : 1,
-                            transition: 'opacity 0.15s',
+                            ...styles.adminCard,
+                            ...(selectedUser === ADMIN_USER.email ? styles.adminCardSelected : {}),
+                            opacity: isDisabled && selectedUser !== ADMIN_USER.email ? 0.4 : 1,
+                            cursor: isDisabled ? 'default' : 'pointer',
                         }}
                     >
-                        {loading ? (
-                            <Loader2 style={{ width: '18px', height: '18px', animation: 'spin 1s linear infinite' }} />
-                        ) : (
-                            <LogIn style={{ width: '18px', height: '18px' }} />
-                        )}
-                        Iniciar sesion
-                    </button>
-                </form>
-
-                {/* Admin superuser button */}
-                <div style={{ padding: 'var(--g-space-2) var(--g-space-8) 0' }}>
-                    <button
-                        onClick={() => handleTestUserLogin(ADMIN_USER, ADMIN_PASSWORD)}
-                        disabled={isFormDisabled}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 'var(--g-space-3)',
-                            width: '100%',
-                            padding: 'var(--g-space-3) var(--g-space-4)',
-                            borderRadius: 'var(--g-radius-md, 8px)',
-                            border: '2px solid var(--g-brand-3308, #1a1a2e)',
-                            backgroundColor: 'var(--g-brand-3308, #1a1a2e)',
-                            cursor: isFormDisabled ? 'not-allowed' : 'pointer',
-                            opacity: isFormDisabled ? 0.5 : 1,
-                            transition: 'all 0.15s',
-                            textAlign: 'left',
-                        }}
-                        onMouseEnter={(e) => {
-                            if (!isFormDisabled) {
-                                e.currentTarget.style.opacity = '0.9';
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.opacity = isFormDisabled ? '0.5' : '1';
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: 'var(--g-radius-full, 50%)',
-                                backgroundColor: 'rgba(255,255,255,0.15)',
-                                flexShrink: 0,
-                            }}
-                        >
-                            {loadingUser === ADMIN_USER.email ? (
-                                <Loader2 style={{ width: '16px', height: '16px', color: '#fff', animation: 'spin 1s linear infinite' }} />
+                        <div style={styles.adminIconWrap}>
+                            {selectedUser === ADMIN_USER.email && phase !== 'idle' ? (
+                                <Loader2 style={{ width: 18, height: 18, color: '#fff', animation: 'spin 1s linear infinite' }} />
                             ) : (
-                                <Scale style={{ width: '16px', height: '16px', color: 'var(--g-brand-bright, #60a5fa)' }} />
+                                <Shield style={{ width: 18, height: 18, color: '#fff' }} />
                             )}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontSize: 'var(--g-text-body, 0.875rem)', fontWeight: 700, color: '#fff', margin: 0, lineHeight: '1.2' }}>
-                                {ADMIN_USER.label}
-                            </p>
-                            <p style={{ fontSize: 'var(--g-text-caption, 0.75rem)', color: 'rgba(255,255,255,0.7)', margin: 0, marginTop: '2px', lineHeight: '1.3' }}>
-                                {ADMIN_USER.description}
-                            </p>
+                            <div style={styles.adminLabel}>Superusuario</div>
+                            <div style={styles.adminDesc}>admin@ddlegal.com</div>
                         </div>
+                        {selectedUser === ADMIN_USER.email && (
+                            <div style={styles.selectedBadge}>
+                                <div style={styles.selectedDot} />
+                            </div>
+                        )}
                     </button>
-                </div>
 
-                {/* Divider */}
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 'var(--g-space-3)',
-                        padding: 'var(--g-space-4) var(--g-space-8) 0',
-                    }}
-                >
-                    <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--g-border-subtle, #e5e7eb)' }} />
-                    <span
-                        style={{
-                            fontSize: 'var(--g-text-caption, 0.75rem)',
-                            color: 'var(--g-text-muted, #9ca3af)',
-                            whiteSpace: 'nowrap',
-                        }}
-                    >
-                        O accede como usuario de prueba
-                    </span>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--g-border-subtle, #e5e7eb)' }} />
-                </div>
-
-                {/* Test user buttons */}
-                <div
-                    style={{
-                        padding: 'var(--g-space-4) var(--g-space-8) var(--g-space-8)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 'var(--g-space-2)',
-                    }}
-                >
-                    {TEST_USERS.map((testUser) => {
-                        const isLoading = loadingUser === testUser.email;
-                        return (
-                            <button
-                                key={testUser.email}
-                                onClick={() => handleTestUserLogin(testUser)}
-                                disabled={isFormDisabled}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 'var(--g-space-3)',
-                                    width: '100%',
-                                    padding: 'var(--g-space-3) var(--g-space-4)',
-                                    borderRadius: 'var(--g-radius-md, 8px)',
-                                    border: '1px solid var(--g-border-subtle, #e5e7eb)',
-                                    backgroundColor: isLoading
-                                        ? 'var(--g-surface-subtle, #f8f9fa)'
-                                        : 'var(--g-surface-primary, #ffffff)',
-                                    cursor: isFormDisabled ? 'not-allowed' : 'pointer',
-                                    opacity: isFormDisabled && !isLoading ? 0.5 : 1,
-                                    transition: 'all 0.15s',
-                                    textAlign: 'left',
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (!isFormDisabled) {
-                                        e.currentTarget.style.backgroundColor = 'var(--g-surface-hover, #f3f4f6)';
-                                        e.currentTarget.style.borderColor = 'var(--g-brand-3308, #1a1a2e)';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = isLoading
-                                        ? 'var(--g-surface-subtle, #f8f9fa)'
-                                        : 'var(--g-surface-primary, #ffffff)';
-                                    e.currentTarget.style.borderColor = 'var(--g-border-subtle, #e5e7eb)';
-                                }}
-                            >
-                                <div
+                    {/* Demo user grid */}
+                    <div style={styles.userGrid}>
+                        {DEMO_USERS.map((user) => {
+                            const isSelected = selectedUser === user.email;
+                            const Icon = user.icon;
+                            return (
+                                <button
+                                    key={user.email}
+                                    onClick={() => isSelected ? handleDeselect() : handleSelectUser(user)}
+                                    disabled={isDisabled && !isSelected}
                                     style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '32px',
-                                        height: '32px',
-                                        borderRadius: 'var(--g-radius-full, 50%)',
-                                        backgroundColor: 'var(--g-surface-subtle, #f8f9fa)',
-                                        flexShrink: 0,
+                                        ...styles.userCard,
+                                        ...(isSelected ? {
+                                            borderColor: user.accent,
+                                            boxShadow: `0 0 0 1px ${user.accent}, 0 2px 8px ${user.accent}22`,
+                                            backgroundColor: `${user.accent}08`,
+                                        } : {}),
+                                        opacity: isDisabled && !isSelected ? 0.35 : 1,
+                                        cursor: isDisabled && !isSelected ? 'default' : 'pointer',
                                     }}
                                 >
-                                    {isLoading ? (
-                                        <Loader2
-                                            style={{
-                                                width: '16px',
-                                                height: '16px',
-                                                color: 'var(--g-brand-3308, #1a1a2e)',
-                                                animation: 'spin 1s linear infinite',
-                                            }}
-                                        />
-                                    ) : (
-                                        <User
-                                            style={{
-                                                width: '16px',
-                                                height: '16px',
-                                                color: 'var(--g-text-secondary, #6b7280)',
-                                            }}
-                                        />
-                                    )}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <p
+                                    <div
                                         style={{
-                                            fontSize: 'var(--g-text-body, 0.875rem)',
-                                            fontWeight: 600,
-                                            color: 'var(--g-text-primary, #1a1a2e)',
-                                            margin: 0,
-                                            lineHeight: '1.2',
+                                            ...styles.userIconWrap,
+                                            backgroundColor: isSelected ? user.accent : 'var(--g-surface-muted, #f0f1f1)',
+                                            color: isSelected ? '#fff' : 'var(--g-text-secondary, #5c6360)',
+                                            transition: 'all 0.2s ease',
                                         }}
                                     >
-                                        {testUser.label}
-                                    </p>
-                                    <p
-                                        style={{
-                                            fontSize: 'var(--g-text-caption, 0.75rem)',
-                                            color: 'var(--g-text-muted, #9ca3af)',
-                                            margin: 0,
-                                            marginTop: '2px',
-                                            lineHeight: '1.3',
-                                        }}
-                                    >
-                                        {testUser.description}
-                                    </p>
-                                </div>
-                            </button>
-                        );
-                    })}
+                                        {isSelected && phase !== 'idle' ? (
+                                            <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} />
+                                        ) : (
+                                            <Icon style={{ width: 14, height: 14 }} />
+                                        )}
+                                    </div>
+                                    <div style={styles.userLabel}>{user.label}</div>
+                                    <div style={styles.userDesc}>{user.description}</div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* ─── Divider ─── */}
+                    <div style={styles.divider}>
+                        <div style={styles.dividerLine} />
+                        <span style={styles.dividerText}>o con credenciales</span>
+                        <div style={styles.dividerLine} />
+                    </div>
+
+                    {/* ─── Form ─── */}
+                    <form onSubmit={handleManualLogin} style={styles.form}>
+                        <div style={styles.inputGroup}>
+                            <label htmlFor="email" style={styles.inputLabel}>Email</label>
+                            <input
+                                id="email"
+                                type="email"
+                                value={email}
+                                onChange={(e) => { setEmail(e.target.value); if (selectedUser) handleDeselect(); }}
+                                placeholder="tu@email.com"
+                                disabled={phase === 'logging-in'}
+                                required
+                                style={{
+                                    ...styles.input,
+                                    ...(selectedUser ? styles.inputFilled : {}),
+                                }}
+                            />
+                        </div>
+
+                        <div style={styles.inputGroup}>
+                            <label htmlFor="password" style={styles.inputLabel}>Contrasena</label>
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => { setPassword(e.target.value); if (selectedUser) handleDeselect(); }}
+                                placeholder="••••••••"
+                                disabled={phase === 'logging-in'}
+                                required
+                                style={{
+                                    ...styles.input,
+                                    ...(selectedUser && password ? styles.inputFilled : {}),
+                                }}
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={isDisabled || !email || !password}
+                            style={{
+                                ...styles.loginButton,
+                                opacity: (isDisabled || !email || !password) ? 0.5 : 1,
+                                cursor: (isDisabled || !email || !password) ? 'not-allowed' : 'pointer',
+                            }}
+                        >
+                            {loading ? (
+                                <Loader2 style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} />
+                            ) : (
+                                <LogIn style={{ width: 16, height: 16 }} />
+                            )}
+                            {phase === 'logging-in' ? 'Iniciando sesion...' : 'Iniciar sesion'}
+                        </button>
+                    </form>
                 </div>
             </div>
 
-            {/* Spin keyframes */}
+            {/* Keyframes */}
             <style>{`
                 @keyframes spin {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
                 }
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(8px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+
+                /* Hover states — not possible with inline styles alone */
+                .dd-user-card:hover:not(:disabled) {
+                    border-color: var(--g-border-default, #d4d8d6) !important;
+                    background-color: var(--g-surface-hover, #f8faf9) !important;
+                }
+                .dd-admin-card:hover:not(:disabled) {
+                    opacity: 0.92 !important;
+                }
             `}</style>
         </div>
     );
 }
+
+/* ─── Styles ─── */
+
+const styles: Record<string, React.CSSProperties> = {
+    page: {
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'var(--g-surface-page, #f4f5f5)',
+        padding: 24,
+        position: 'relative',
+        fontFamily: 'var(--g-font-family)',
+    },
+    bgPattern: {
+        position: 'fixed',
+        inset: 0,
+        backgroundImage: `radial-gradient(circle at 1px 1px, rgba(0,68,56,0.04) 1px, transparent 0)`,
+        backgroundSize: '32px 32px',
+        pointerEvents: 'none',
+    },
+    container: {
+        display: 'flex',
+        width: '100%',
+        maxWidth: 880,
+        minHeight: 540,
+        backgroundColor: 'var(--g-surface-card, #ffffff)',
+        borderRadius: 'var(--g-radius-xl, 16px)',
+        boxShadow: 'var(--g-shadow-modal)',
+        overflow: 'hidden',
+        position: 'relative',
+        zIndex: 1,
+    },
+    /* ── Brand panel ── */
+    brandPanel: {
+        width: 280,
+        flexShrink: 0,
+        background: 'linear-gradient(165deg, #004438 0%, #00332a 60%, #001f1a 100%)',
+        padding: '40px 32px 28px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+    },
+    brandContent: {},
+    logoMark: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 24,
+    },
+    brandTitle: {
+        fontSize: '1.375rem',
+        fontWeight: 700,
+        color: '#ffffff',
+        margin: 0,
+        letterSpacing: '-0.02em',
+        lineHeight: 1.2,
+    },
+    brandSubtitle: {
+        fontSize: '0.8125rem',
+        color: 'rgba(255,255,255,0.6)',
+        margin: '6px 0 0',
+        fontWeight: 400,
+    },
+    brandDivider: {
+        width: 32,
+        height: 2,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        margin: '24px 0',
+        borderRadius: 1,
+    },
+    brandCaption: {
+        fontSize: '0.75rem',
+        color: 'rgba(255,255,255,0.45)',
+        margin: 0,
+        lineHeight: 1.6,
+    },
+    brandFooter: {
+        fontSize: '0.6875rem',
+        color: 'rgba(255,255,255,0.3)',
+        margin: 0,
+        letterSpacing: '0.04em',
+        textTransform: 'uppercase' as const,
+    },
+    /* ── Login panel ── */
+    loginPanel: {
+        flex: 1,
+        padding: '32px 36px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        overflowY: 'auto',
+    },
+    errorBanner: {
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 8,
+        padding: '10px 14px',
+        borderRadius: 'var(--g-radius-md, 8px)',
+        backgroundColor: 'hsl(0, 72%, 97%)',
+        border: '1px solid hsl(0, 72%, 90%)',
+        color: 'hsl(0, 72%, 40%)',
+        fontSize: '0.8125rem',
+        animation: 'fadeInUp 0.25s ease',
+    },
+    sectionLabel: {
+        fontSize: '0.6875rem',
+        fontWeight: 600,
+        color: 'var(--g-text-muted, #8c9196)',
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.06em',
+        margin: 0,
+    },
+    /* ── Admin card ── */
+    adminCard: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        width: '100%',
+        padding: '12px 16px',
+        borderRadius: 'var(--g-radius-md, 8px)',
+        border: '2px solid var(--g-brand-3308, #004438)',
+        backgroundColor: 'var(--g-brand-3308, #004438)',
+        textAlign: 'left' as const,
+        transition: 'all 0.2s ease',
+        fontFamily: 'inherit',
+    },
+    adminCardSelected: {
+        boxShadow: '0 0 0 2px #004438, 0 4px 12px rgba(0,68,56,0.25)',
+    },
+    adminIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: '50%',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+    },
+    adminLabel: {
+        fontSize: '0.875rem',
+        fontWeight: 700,
+        color: '#fff',
+        lineHeight: 1.2,
+    },
+    adminDesc: {
+        fontSize: '0.6875rem',
+        color: 'rgba(255,255,255,0.6)',
+        marginTop: 1,
+    },
+    selectedBadge: {
+        width: 20,
+        height: 20,
+        borderRadius: '50%',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+    },
+    selectedDot: {
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        backgroundColor: '#fff',
+    },
+    /* ── User grid ── */
+    userGrid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: 8,
+    },
+    userCard: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 6,
+        padding: '14px 8px 12px',
+        borderRadius: 'var(--g-radius-md, 8px)',
+        border: '1px solid var(--g-border-subtle, #e5e8e6)',
+        backgroundColor: 'var(--g-surface-card, #ffffff)',
+        textAlign: 'center' as const,
+        transition: 'all 0.2s ease',
+        fontFamily: 'inherit',
+    },
+    userIconWrap: {
+        width: 32,
+        height: 32,
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+    },
+    userLabel: {
+        fontSize: '0.75rem',
+        fontWeight: 700,
+        color: 'var(--g-text-primary, #1a1a1a)',
+        lineHeight: 1.2,
+    },
+    userDesc: {
+        fontSize: '0.625rem',
+        color: 'var(--g-text-muted, #8c9196)',
+        lineHeight: 1.3,
+    },
+    /* ── Divider ── */
+    divider: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        margin: '4px 0',
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: 'var(--g-border-subtle, #e5e8e6)',
+    },
+    dividerText: {
+        fontSize: '0.6875rem',
+        color: 'var(--g-text-muted, #8c9196)',
+        whiteSpace: 'nowrap' as const,
+    },
+    /* ── Form ── */
+    form: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+    },
+    inputGroup: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+    },
+    inputLabel: {
+        fontSize: '0.75rem',
+        fontWeight: 600,
+        color: 'var(--g-text-secondary, #5c6360)',
+    },
+    input: {
+        width: '100%',
+        padding: '8px 12px',
+        borderRadius: 'var(--g-radius-md, 8px)',
+        border: '1px solid var(--g-border-default, #d4d8d6)',
+        fontSize: '0.8125rem',
+        color: 'var(--g-text-primary, #1a1a1a)',
+        backgroundColor: 'var(--g-surface-card, #ffffff)',
+        outline: 'none',
+        transition: 'all 0.2s ease',
+        boxSizing: 'border-box' as const,
+        fontFamily: 'inherit',
+    },
+    inputFilled: {
+        borderColor: 'var(--g-brand-bright, #009a77)',
+        backgroundColor: 'var(--g-surface-subtle, #e8f4f0)',
+    },
+    loginButton: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        width: '100%',
+        padding: '10px 16px',
+        borderRadius: 'var(--g-radius-md, 8px)',
+        border: 'none',
+        backgroundColor: 'var(--g-brand-3308, #004438)',
+        color: '#ffffff',
+        fontSize: '0.8125rem',
+        fontWeight: 600,
+        transition: 'opacity 0.15s',
+        fontFamily: 'inherit',
+    },
+};
