@@ -14,6 +14,13 @@ interface TestUserButton {
     description: string;
 }
 
+const ADMIN_USER: TestUserButton = {
+    email: 'admin@ddlegal.com',
+    role: 'clo',
+    label: 'Superusuario',
+    description: 'Admin — Acceso total a todo el sistema',
+};
+
 const TEST_USERS: TestUserButton[] = [
     {
         email: 'clo@test.ddlegal.com',
@@ -60,6 +67,7 @@ const TEST_USERS: TestUserButton[] = [
 ];
 
 const TEST_PASSWORD = 'test123456';
+const ADMIN_PASSWORD = 'admin123456';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -87,13 +95,14 @@ export default function LoginPage() {
         setLoading(false);
     }
 
-    async function handleTestUserLogin(testUser: TestUserButton) {
+    async function handleTestUserLogin(testUser: TestUserButton, password?: string) {
         setError(null);
         setLoadingUser(testUser.email);
+        const pwd = password || TEST_PASSWORD;
         setEmail(testUser.email);
-        setPassword(TEST_PASSWORD);
+        setPassword(pwd);
 
-        const success = await login(testUser.email, TEST_PASSWORD);
+        const success = await login(testUser.email, pwd);
 
         if (success) {
             router.push('/');
@@ -310,13 +319,70 @@ export default function LoginPage() {
                     </button>
                 </form>
 
+                {/* Admin superuser button */}
+                <div style={{ padding: 'var(--g-space-2) var(--g-space-8) 0' }}>
+                    <button
+                        onClick={() => handleTestUserLogin(ADMIN_USER, ADMIN_PASSWORD)}
+                        disabled={isFormDisabled}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 'var(--g-space-3)',
+                            width: '100%',
+                            padding: 'var(--g-space-3) var(--g-space-4)',
+                            borderRadius: 'var(--g-radius-md, 8px)',
+                            border: '2px solid var(--g-brand-3308, #1a1a2e)',
+                            backgroundColor: 'var(--g-brand-3308, #1a1a2e)',
+                            cursor: isFormDisabled ? 'not-allowed' : 'pointer',
+                            opacity: isFormDisabled ? 0.5 : 1,
+                            transition: 'all 0.15s',
+                            textAlign: 'left',
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!isFormDisabled) {
+                                e.currentTarget.style.opacity = '0.9';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = isFormDisabled ? '0.5' : '1';
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: 'var(--g-radius-full, 50%)',
+                                backgroundColor: 'rgba(255,255,255,0.15)',
+                                flexShrink: 0,
+                            }}
+                        >
+                            {loadingUser === ADMIN_USER.email ? (
+                                <Loader2 style={{ width: '16px', height: '16px', color: '#fff', animation: 'spin 1s linear infinite' }} />
+                            ) : (
+                                <Scale style={{ width: '16px', height: '16px', color: 'var(--g-brand-bright, #60a5fa)' }} />
+                            )}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: 'var(--g-text-body, 0.875rem)', fontWeight: 700, color: '#fff', margin: 0, lineHeight: '1.2' }}>
+                                {ADMIN_USER.label}
+                            </p>
+                            <p style={{ fontSize: 'var(--g-text-caption, 0.75rem)', color: 'rgba(255,255,255,0.7)', margin: 0, marginTop: '2px', lineHeight: '1.3' }}>
+                                {ADMIN_USER.description}
+                            </p>
+                        </div>
+                    </button>
+                </div>
+
                 {/* Divider */}
                 <div
                     style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: 'var(--g-space-3)',
-                        padding: '0 var(--g-space-8)',
+                        padding: 'var(--g-space-4) var(--g-space-8) 0',
                     }}
                 >
                     <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--g-border-subtle, #e5e7eb)' }} />
