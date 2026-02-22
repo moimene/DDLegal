@@ -30,43 +30,44 @@ BEGIN
   v_admin_password := crypt('admin123456', gen_salt('bf'));
 
   -- Superusuario Admin
-  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, is_super_admin)
-  VALUES (v_instance_id, 'aaaa0001-0000-4000-8000-000000000000', 'authenticated', 'authenticated', 'admin@ddlegal.com', v_admin_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Superusuario Admin","role":"admin","is_test_user":false}'::jsonb, now(), now(), '', '', '', true)
+  -- NOTE: email_change MUST be '' not NULL — GoTrue scans it as string
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, is_super_admin)
+  VALUES (v_instance_id, 'aaaa0001-0000-4000-8000-000000000000', 'authenticated', 'authenticated', 'admin@ddlegal.com', v_admin_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Superusuario Admin","role":"admin","is_test_user":false}'::jsonb, now(), now(), '', '', '', '', true)
   ON CONFLICT (id) DO NOTHING;
 
   -- CLO / Director Legal
-  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, is_super_admin)
-  VALUES (v_instance_id, 'aaaa0001-0001-4000-8000-000000000001', 'authenticated', 'authenticated', 'clo@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Director Legal (CLO)","role":"clo","is_test_user":true}'::jsonb, now(), now(), '', '', '', false)
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, is_super_admin)
+  VALUES (v_instance_id, 'aaaa0001-0001-4000-8000-000000000001', 'authenticated', 'authenticated', 'clo@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Director Legal (CLO)","role":"clo","is_test_user":true}'::jsonb, now(), now(), '', '', '', '', false)
   ON CONFLICT (id) DO NOTHING;
 
   -- PM Transaccion
-  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, is_super_admin)
-  VALUES (v_instance_id, 'aaaa0001-0002-4000-8000-000000000002', 'authenticated', 'authenticated', 'pm@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"PM Transaccion","role":"pm_transaccion","is_test_user":true}'::jsonb, now(), now(), '', '', '', false)
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, is_super_admin)
+  VALUES (v_instance_id, 'aaaa0001-0002-4000-8000-000000000002', 'authenticated', 'authenticated', 'pm@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"PM Transaccion","role":"pm_transaccion","is_test_user":true}'::jsonb, now(), now(), '', '', '', '', false)
   ON CONFLICT (id) DO NOTHING;
 
   -- Abogado Mercantil
-  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, is_super_admin)
-  VALUES (v_instance_id, 'aaaa0001-0003-4000-8000-000000000003', 'authenticated', 'authenticated', 'abogado.merc@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Abogado Mercantil","role":"abogado_area","is_test_user":true}'::jsonb, now(), now(), '', '', '', false)
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, is_super_admin)
+  VALUES (v_instance_id, 'aaaa0001-0003-4000-8000-000000000003', 'authenticated', 'authenticated', 'abogado.merc@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Abogado Mercantil","role":"abogado_area","is_test_user":true}'::jsonb, now(), now(), '', '', '', '', false)
   ON CONFLICT (id) DO NOTHING;
 
   -- Deal Sponsor
-  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, is_super_admin)
-  VALUES (v_instance_id, 'aaaa0001-0004-4000-8000-000000000004', 'authenticated', 'authenticated', 'sponsor@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Deal Sponsor","role":"deal_sponsor","is_test_user":true}'::jsonb, now(), now(), '', '', '', false)
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, is_super_admin)
+  VALUES (v_instance_id, 'aaaa0001-0004-4000-8000-000000000004', 'authenticated', 'authenticated', 'sponsor@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Deal Sponsor","role":"deal_sponsor","is_test_user":true}'::jsonb, now(), now(), '', '', '', '', false)
   ON CONFLICT (id) DO NOTHING;
 
   -- Contacto Target
-  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, is_super_admin)
-  VALUES (v_instance_id, 'aaaa0001-0005-4000-8000-000000000005', 'authenticated', 'authenticated', 'target@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Contacto Target","role":"target_liaison","is_test_user":true}'::jsonb, now(), now(), '', '', '', false)
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, is_super_admin)
+  VALUES (v_instance_id, 'aaaa0001-0005-4000-8000-000000000005', 'authenticated', 'authenticated', 'target@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Contacto Target","role":"target_liaison","is_test_user":true}'::jsonb, now(), now(), '', '', '', '', false)
   ON CONFLICT (id) DO NOTHING;
 
   -- Stakeholder Negocio
-  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, is_super_admin)
-  VALUES (v_instance_id, 'aaaa0001-0006-4000-8000-000000000006', 'authenticated', 'authenticated', 'stakeholder@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Stakeholder Negocio","role":"stakeholder_negocio","is_test_user":true}'::jsonb, now(), now(), '', '', '', false)
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, is_super_admin)
+  VALUES (v_instance_id, 'aaaa0001-0006-4000-8000-000000000006', 'authenticated', 'authenticated', 'stakeholder@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Stakeholder Negocio","role":"stakeholder_negocio","is_test_user":true}'::jsonb, now(), now(), '', '', '', '', false)
   ON CONFLICT (id) DO NOTHING;
 
   -- Cliente Externo
-  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, is_super_admin)
-  VALUES (v_instance_id, 'aaaa0001-0007-4000-8000-000000000007', 'authenticated', 'authenticated', 'cliente@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Cliente Externo","role":"cliente_externo","is_test_user":true}'::jsonb, now(), now(), '', '', '', false)
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, is_super_admin)
+  VALUES (v_instance_id, 'aaaa0001-0007-4000-8000-000000000007', 'authenticated', 'authenticated', 'cliente@test.ddlegal.com', v_demo_password, now(), '{"provider":"email","providers":["email"]}'::jsonb, '{"full_name":"Cliente Externo","role":"cliente_externo","is_test_user":true}'::jsonb, now(), now(), '', '', '', '', false)
   ON CONFLICT (id) DO NOTHING;
 END $$;
 
