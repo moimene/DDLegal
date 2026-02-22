@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       result,
+      backlog_generated: result.backlog_generated ?? 0,
       telemetry: { duration_ms: duration },
     });
   } catch (err) {

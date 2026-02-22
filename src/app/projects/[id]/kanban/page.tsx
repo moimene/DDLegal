@@ -288,6 +288,23 @@ export default function KanbanPage({ params }: { params: Promise<{ id: string }>
                 return;
             }
 
+            if (res.status === 422) {
+                const data = await res.json();
+                const criteriaLabels: Record<string, string> = {
+                    has_description: 'Descripcion requerida',
+                    has_evidence: 'Evidencia adjunta requerida',
+                    has_assignment: 'Asignacion requerida',
+                    has_due_date: 'Fecha limite requerida',
+                    has_reviewer: 'Revisor asignado requerido',
+                    ai_completed: 'Analisis IA debe completarse',
+                    hitl_decided: 'Decision HITL pendiente',
+                };
+                const unmet = (data.unmet_criteria || []).map((c: string) => criteriaLabels[c] || c);
+                toast.error(`Criterios no cumplidos:\n${unmet.join('\n')}`, { duration: 5000 });
+                fetchAll(); // Revert optimistic update
+                return;
+            }
+
             if (!res.ok) {
                 const data = await res.json();
                 toast.error(data.error || 'Error al mover tarea');
@@ -358,6 +375,19 @@ export default function KanbanPage({ params }: { params: Promise<{ id: string }>
                         }}
                     >
                         <RefreshCw className="h-3.5 w-3.5" /> Actualizar
+                    </button>
+                    <button
+                        onClick={() => window.open(`/api/kanban/export?project_id=${projectId}`, '_blank')}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium border"
+                        style={{
+                            borderRadius: 'var(--g-radius-md)',
+                            borderColor: 'var(--g-border-default)',
+                            color: 'var(--g-text-secondary)',
+                            backgroundColor: 'var(--g-surface-card)',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <Download className="h-3.5 w-3.5" /> Exportar CSV
                     </button>
                     <button
                         onClick={() => setShowNewTask(true)}
@@ -798,7 +828,6 @@ function TaskCard({
     onDragEnd: () => void;
 }) {
     const days = daysInState(task.entered_state_at);
-    const isStale = days > 3;
     const priority = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
     const areaHsl = AREA_COLORS[task.area_code] || AREA_COLORS.GENERAL;
 
@@ -932,11 +961,40 @@ function TaskCard({
                         alignItems: 'center',
                         gap: '3px',
                         fontSize: 'var(--g-text-caption)',
-                        color: isStale ? 'var(--status-warning)' : 'var(--g-text-muted)',
-                        fontWeight: isStale ? 600 : 400,
+                        color: days > 7
+                            ? 'hsl(0, 72%, 51%)'
+                            : days > 3
+                                ? 'var(--status-warning)'
+                                : 'var(--g-text-muted)',
+                        fontWeight: days > 3 ? 600 : 400,
                     }}
+                    title={days > 7 ? `Critica: ${days} dias en este estado` : days > 5 ? 'Estancada' : undefined}
                 >
-                    {isStale && (
+                    {days > 7 && (
+                        <span
+                            style={{
+                                width: '6px',
+                                height: '6px',
+                                borderRadius: '50%',
+                                backgroundColor: 'hsl(0, 72%, 51%)',
+                                display: 'inline-block',
+                                animation: 'pulse 1.5s ease-in-out infinite',
+                            }}
+                        />
+                    )}
+                    {days > 5 && days <= 7 && (
+                        <span
+                            style={{
+                                width: '6px',
+                                height: '6px',
+                                borderRadius: '50%',
+                                backgroundColor: 'var(--status-warning)',
+                                display: 'inline-block',
+                                animation: 'pulse 1.5s ease-in-out infinite',
+                            }}
+                        />
+                    )}
+                    {days > 3 && days <= 5 && (
                         <span
                             style={{
                                 width: '6px',
@@ -947,7 +1005,11 @@ function TaskCard({
                             }}
                         />
                     )}
-                    {days}d
+                    {days > 7
+                        ? `Critica: ${days}d`
+                        : days > 5
+                            ? `Estancada ${days}d`
+                            : `${days}d`}
                 </span>
             </div>
         </div>

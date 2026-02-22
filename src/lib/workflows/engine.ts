@@ -4,7 +4,111 @@ import { WORKFLOW_DEFINITIONS } from './constants';
 import type {
   WorkflowExecutionRequest,
   WorkflowExecutionResult,
+  WorkflowFinding,
 } from './types';
+
+// ---------------------------------------------------------------------------
+// DD area definitions for backlog generation
+// ---------------------------------------------------------------------------
+
+const DD_AREAS: { code: string; label: string }[] = [
+  { code: 'MERC', label: 'Societario/Mercantil' },
+  { code: 'CONT', label: 'Contratos' },
+  { code: 'LAB', label: 'Laboral' },
+  { code: 'FISC', label: 'Fiscal' },
+  { code: 'PI', label: 'Propiedad Intelectual' },
+  { code: 'GENERAL', label: 'General' },
+];
+
+const STARTER_TASK_TEMPLATES = [
+  'Revisar documentación',
+  'Analizar contingencias',
+  'Verificar cumplimiento',
+];
+
+// Map finding area hints to canonical area codes
+const AREA_HINT_MAP: Record<string, string> = {
+  societario: 'MERC',
+  mercantil: 'MERC',
+  corporate: 'MERC',
+  contratos: 'CONT',
+  contracts: 'CONT',
+  laboral: 'LAB',
+  labor: 'LAB',
+  employment: 'LAB',
+  fiscal: 'FISC',
+  tax: 'FISC',
+  'propiedad intelectual': 'PI',
+  ip: 'PI',
+  intellectual: 'PI',
+  general: 'GENERAL',
+};
+
+/**
+ * Infer the DD area code from a finding's title or content.
+ * Falls back to 'GENERAL' when no clear match is found.
+ */
+function inferAreaCode(finding: WorkflowFinding): string {
+  const text = finding.title.toLowerCase();
+  for (const [hint, code] of Object.entries(AREA_HINT_MAP)) {
+    if (text.includes(hint)) return code;
+  }
+  return 'GENERAL';
+}
+
+/**
+ * After an `arranque_dd` workflow completes, generates the initial Kanban
+ * backlog: standard starter tasks per DD area plus additional tasks derived
+ * from Harvey findings.
+ *
+ * Returns the total number of backlog items inserted.
+ */
+async function generateDDBacklog(
+  projectId: string,
+  findings: WorkflowFinding[],
+): Promise<number> {
+  // 1. Standard starter tasks for every DD area
+  const starterTasks = DD_AREAS.flatMap(area =>
+    STARTER_TASK_TEMPLATES.map(template => ({
+      project_id: projectId,
+      area_code: area.code,
+      title: `${template} ${area.label}`,
+      description: `Tarea estándar de arranque DD: ${template.toLowerCase()} del área ${area.label}.`,
+      state: 'backlog' as const,
+      priority: 'medium' as const,
+      hitl_required: false,
+      workflow_key: 'arranque_dd',
+      ai_status: 'pending' as const,
+    })),
+  );
+
+  // 2. Additional tasks from Harvey findings
+  const findingTasks = findings.map(f => ({
+    project_id: projectId,
+    area_code: inferAreaCode(f),
+    title: f.title,
+    description: f.mitigation || `Hallazgo detectado: ${f.title}`,
+    state: 'backlog' as const,
+    priority: (f.severity === 'critical' || f.severity === 'high'
+      ? f.severity
+      : 'medium') as 'critical' | 'high' | 'medium' | 'low',
+    hitl_required: f.severity === 'critical' || f.severity === 'high',
+    workflow_key: 'arranque_dd',
+    ai_status: 'done' as const,
+  }));
+
+  const allTasks = [...starterTasks, ...findingTasks];
+
+  if (allTasks.length > 0) {
+    await supabaseAdmin.from('dd_kanban_tasks').insert(allTasks);
+  }
+
+  return allTasks.length;
+}
+
+// ---------------------------------------------------------------------------
+// Main workflow executor
+// ---------------------------------------------------------------------------
 
 export async function executeWorkflow(
   req: WorkflowExecutionRequest
@@ -41,14 +145,24 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
       body: JSON.stringify({ ...req.input, project_id: req.project_id }),
     });
     const data = await res.json();
+
+    const n8nFindings = (data.findings || []) as WorkflowFinding[];
+
+    // Post-execution: generate DD backlog for arranque_dd
+    let backlogGenerated: number | undefined;
+    if (req.workflow_key === 'arranque_dd') {
+      backlogGenerated = await generateDDBacklog(req.project_id, n8nFindings);
+    }
+
     return {
       success: true,
       workflow_key: req.workflow_key,
       report_section: data.report_section || '',
-      findings: data.findings || [],
+      findings: n8nFindings,
       evidence_refs: data.evidence_refs || [],
       hitl_required: definition.hitl_required,
       source: 'n8n',
+      backlog_generated: backlogGenerated,
     };
   }
 
@@ -68,13 +182,22 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
     parsed = { report_section: result.text, findings: [], evidence_refs: [] };
   }
 
+  const gatewayFindings = (parsed.findings || []) as WorkflowExecutionResult['findings'];
+
+  // Post-execution: generate DD backlog for arranque_dd
+  let backlogGenerated: number | undefined;
+  if (req.workflow_key === 'arranque_dd') {
+    backlogGenerated = await generateDDBacklog(req.project_id, gatewayFindings);
+  }
+
   return {
     success: true,
     workflow_key: req.workflow_key,
     report_section: parsed.report_section || result.text,
-    findings: (parsed.findings || []) as WorkflowExecutionResult['findings'],
+    findings: gatewayFindings,
     evidence_refs: (parsed.evidence_refs || []) as WorkflowExecutionResult['evidence_refs'],
     hitl_required: definition.hitl_required,
     source: 'gateway',
+    backlog_generated: backlogGenerated,
   };
 }

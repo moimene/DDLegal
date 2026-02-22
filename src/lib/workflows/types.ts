@@ -31,6 +31,8 @@ export interface WorkflowExecutionResult {
   evidence_refs: Array<{ source_id: string; snippet?: string }>;
   hitl_required: boolean;
   source: 'gateway' | 'n8n';
+  /** Number of kanban backlog items generated (arranque_dd only) */
+  backlog_generated?: number;
 }
 
 export interface WorkflowFinding {
