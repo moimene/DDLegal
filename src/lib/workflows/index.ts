@@ -1,3 +1,6 @@
 export { executeWorkflow } from './engine';
 export { WORKFLOW_DEFINITIONS } from './constants';
+export { instantiateWorkflow } from './instantiate';
+export { loadWorkflowTemplate, loadAllTemplates, invalidateTemplateCache } from './template-loader';
 export type * from './types';
+export type * from './template-types';
