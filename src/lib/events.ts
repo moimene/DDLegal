@@ -11,7 +11,7 @@
  */
 
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { emitWarRoomNotification } from '@/lib/war-room/notifications';
+import { emitWarRoomNotification, type WarRoomSeverity } from '@/lib/war-room/notifications';
 
 // ────────────────────────────────────────────────────────────
 // Event Type Definitions
@@ -29,7 +29,7 @@ export type DDEvent =
   | { type: 'qa_sla_breached'; payload: { thread_id: string; sla_type: string } }
   | { type: 'hitl_decision_required'; payload: { task_id: string; project_id: string; confidence_score: number } }
   | { type: 'hitl_decision_made'; payload: { task_id: string; decision: string; decided_by: string } }
-  | { type: 'contingency_updated'; payload: { contingency_id: string; project_id: string; field: string } }
+  | { type: 'contingency_updated'; payload: { contingency_id: string; project_id: string; field: string; old_value?: string; new_value?: string } }
   | { type: 'project_milestone'; payload: { project_id: string; milestone: string; coverage_pct: number } };
 
 /** Serialized form stored in the DB and sent over SSE. */
@@ -175,17 +175,29 @@ async function maybeEmitWarRoomNotification(
   const p = event.payload as Record<string, unknown>;
 
   switch (event.type) {
-    case 'contingency_updated':
+    case 'contingency_updated': {
+      const isSeverityChange = p.field === 'severity';
+      const notifSeverity: WarRoomSeverity = isSeverityChange && typeof p.new_value === 'string'
+        ? (p.new_value as WarRoomSeverity)
+        : 'medium';
+      const notifTitle = isSeverityChange
+        ? `Contingencia — Severidad: ${p.old_value ?? '?'} \u2192 ${p.new_value ?? '?'}`
+        : `Contingencia actualizada (${p.field ?? 'campo desconocido'})`;
+      const notifDescription = isSeverityChange
+        ? `Severidad cambiada de "${p.old_value ?? '?'}" a "${p.new_value ?? '?'}".`
+        : `Campo "${p.field}" actualizado${p.old_value != null || p.new_value != null ? `: ${p.old_value ?? ''} \u2192 ${p.new_value ?? ''}` : ''}.`;
+
       await emitWarRoomNotification({
         project_id: projectId,
         notification_type: 'severity_change',
-        title: `Contingencia actualizada (${p.field ?? 'campo desconocido'})`,
-        description: `Se ha modificado el campo "${p.field}" de la contingencia.`,
-        severity: 'medium',
+        title: notifTitle,
+        description: notifDescription,
+        severity: notifSeverity,
         source_type: 'contingency',
         source_id: typeof p.contingency_id === 'string' ? p.contingency_id : undefined,
       });
       break;
+    }
 
     case 'tool_execution_failed':
       await emitWarRoomNotification({
