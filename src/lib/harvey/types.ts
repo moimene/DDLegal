@@ -35,6 +35,12 @@ export interface GatewayHealth {
   requests_last_hour: number;
   active_requests: number;
   feature_flag: 'gateway' | 'n8n' | 'shadow';
+  circuit_breaker: {
+    state: 'closed' | 'open' | 'half_open';
+    window_requests: number;
+    window_429_pct: number;
+    opened_at: string | null;
+  };
 }
 
 export interface GatewayTelemetry {
