@@ -33,6 +33,8 @@ export interface WorkflowExecutionResult {
   source: 'gateway' | 'n8n';
   /** Number of kanban backlog items generated (arranque_dd only) */
   backlog_generated?: number;
+  /** Number of VDR evidence refs auto-linked to kanban tasks */
+  evidence_linked?: number;
 }
 
 export interface WorkflowFinding {

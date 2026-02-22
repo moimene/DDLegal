@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { loginAsRole, authGet, authPost, authPatch } from './helpers/api-helpers';
 
 const FAKE_ID = '00000000-0000-0000-0000-000000000000';
+const DEMO_PROJECT_ID = 'a1b2c3d4-0001-4000-8000-000000000001';
 
 // ---------------------------------------------------------------------------
 // Unauthenticated & validation tests — always runnable
@@ -78,10 +79,8 @@ test.describe.serial('Contingency lifecycle @contingencies', () => {
 
   test('login and discover project', async ({ request }) => {
     token = await loginAsRole(request, 'pm');
-    const res = await authGet(request, '/api/projects', token);
-    expect(res.ok()).toBeTruthy();
-    const body = await res.json();
-    projectId = body.data?.[0]?.id;
+    // Use the known demo project ID directly since there is no GET /api/projects endpoint.
+    projectId = DEMO_PROJECT_ID;
   });
 
   test('discover existing contingency from project', async ({ request }) => {

@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
     ArrowLeft, Loader2, ShieldAlert, FileSearch,
     MessageSquare, Scale, CalendarClock, AlertTriangle,
     CheckCircle2, Clock, TrendingUp
 } from 'lucide-react';
-import { formatDate, formatCurrency, AREA_COLORS, SEVERITY_CONFIG, NEGOTIATION_STATUS_CONFIG } from '@/lib/utils';
+import { formatDate, formatCurrency, AREA_COLORS, SEVERITY_CONFIG, NEGOTIATION_STATUS_CONFIG, useResolvedParams } from '@/lib/utils';
 
 // ── Types from the cockpit API response ──────────────────────
 
@@ -134,7 +134,7 @@ function formatPct(value: number): string {
 // ── Component ────────────────────────────────────────────────
 
 export default function DealCockpitPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id } = useResolvedParams(params);
     const [data, setData] = useState<CockpitData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

@@ -40,6 +40,18 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // CRON_SECRET protection: if set, require Bearer token
+        const cronSecret = process.env.CRON_SECRET;
+        if (cronSecret) {
+            const authHeader = req.headers.get('authorization');
+            if (authHeader !== `Bearer ${cronSecret}`) {
+                return NextResponse.json(
+                    { success: false, error: 'Unauthorized' },
+                    { status: 401 }
+                );
+            }
+        }
+
         const body = await req.json().catch(() => ({}));
         const { project_id } = body as { project_id?: string };
 
@@ -53,10 +65,10 @@ export async function POST(req: NextRequest) {
 
         for (const testUser of TEST_USERS) {
             try {
-                // Check if user already exists by listing users with this email
+                // Check if user already exists by listing users
                 const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers({
                     page: 1,
-                    perPage: 1,
+                    perPage: 1000,
                 });
 
                 const existingUser = existingUsers?.users?.find(

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, use } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
     ArrowLeft, CheckCircle2, RotateCcw, CircleX, Loader2, Bot,
@@ -9,7 +9,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import type { DDProject, DDArea, DDProcess, DDTask, DDEvidence } from '@/lib/supabase';
-import { formatDate } from '@/lib/utils';
+import { formatDate, useResolvedParams } from '@/lib/utils';
 
 type HitlDecision = 'approve' | 'correct' | 'reject';
 type QuickDecision = 'approved' | 'rejected' | 'needs_evidence';
@@ -88,7 +88,7 @@ function extractAiSummary(output: Record<string, unknown> | null): string {
 }
 
 export default function ProjectHitlPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id } = useResolvedParams(params);
     const [project, setProject] = useState<DDProject | null>(null);
     const [areas, setAreas] = useState<DDArea[]>([]);
     const [processes, setProcesses] = useState<DDProcess[]>([]);

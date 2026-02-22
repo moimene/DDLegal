@@ -19,6 +19,19 @@ export interface HarveyCompletionResponse {
   };
 }
 
+// ────────────────────────────────────────────────────────────
+// Per-family rate limiting (Workstream I)
+// ────────────────────────────────────────────────────────────
+
+export type RequestFamily = 'completion' | 'history' | 'rag';
+
+export interface FamilyLimitConfig {
+  maxConcurrency: number;
+}
+
+/** Per-family concurrency limits. Omitted families fall back to global maxConcurrency. */
+export type FamilyLimits = Partial<Record<RequestFamily, FamilyLimitConfig>>;
+
 export interface HarveyGatewayConfig {
   endpoint: string;
   token: string;
@@ -26,6 +39,8 @@ export interface HarveyGatewayConfig {
   baseDelayMs: number;
   maxConcurrency: number;
   timeoutMs: number;
+  /** Per-family concurrency pools. When set, each family gets its own queue. */
+  familyLimits?: FamilyLimits;
 }
 
 export interface GatewayHealth {
@@ -41,6 +56,8 @@ export interface GatewayHealth {
     window_429_pct: number;
     opened_at: string | null;
   };
+  /** Per-family active request counts (only present when familyLimits is configured) */
+  family_active_requests?: Record<RequestFamily, number>;
 }
 
 export interface GatewayTelemetry {
@@ -51,6 +68,7 @@ export interface GatewayTelemetry {
   retries: number;
   client_matter_id?: string;
   timestamp: string;
+  family?: RequestFamily;
 }
 
 // ────────────────────────────────────────────────────────────

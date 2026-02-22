@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
         prompt,
         system_prompt: SYSTEM_PROMPT,
         client_matter_id: project_id,
-      });
+      }, { family: 'rag' });
 
       answer = completion.text;
       modelUsed = completion.model;

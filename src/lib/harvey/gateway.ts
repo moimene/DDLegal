@@ -6,7 +6,17 @@ import type {
   GatewayHealth,
   HarveyHistoryRequest,
   HarveyHistoryResponse,
+  RequestFamily,
 } from './types';
+
+// ────────────────────────────────────────────────────────────
+// Per-family concurrency pool (Workstream I)
+// ────────────────────────────────────────────────────────────
+interface FamilyPool {
+  activeRequests: number;
+  maxConcurrency: number;
+  queue: Array<() => void>;
+}
 
 export class HarveyGateway {
   private config: HarveyGatewayConfig;
@@ -14,6 +24,9 @@ export class HarveyGateway {
   private activeRequests = 0;
   private queue: Array<() => void> = [];
   private stats = { total: 0, errors_429: 0, errors_other: 0, latencies: [] as number[] };
+
+  // Per-family concurrency pools (Workstream I)
+  private familyPools: Map<RequestFamily, FamilyPool> = new Map();
 
   // Circuit breaker state
   private circuitState: 'closed' | 'open' | 'half_open' = 'closed';
@@ -26,13 +39,28 @@ export class HarveyGateway {
 
   constructor(config: HarveyGatewayConfig) {
     this.config = config;
+
+    // Initialize per-family pools when familyLimits is configured
+    if (config.familyLimits) {
+      for (const [family, limits] of Object.entries(config.familyLimits)) {
+        if (limits) {
+          this.familyPools.set(family as RequestFamily, {
+            activeRequests: 0,
+            maxConcurrency: limits.maxConcurrency,
+            queue: [],
+          });
+        }
+      }
+    }
   }
 
-  async completion(req: HarveyCompletionRequest): Promise<HarveyCompletionResponse> {
+  async completion(req: HarveyCompletionRequest, opts?: { family?: RequestFamily }): Promise<HarveyCompletionResponse> {
+    const family: RequestFamily = opts?.family ?? 'completion';
+
     // Circuit breaker check — fail fast if open
     this.checkCircuitBreaker(crypto.randomUUID());
 
-    await this.acquireConcurrencySlot();
+    await this.acquireConcurrencySlot(family);
     const requestId = crypto.randomUUID();
     const startTime = Date.now();
     let lastStatusCode = 0;
@@ -124,8 +152,9 @@ export class HarveyGateway {
         retries,
         client_matter_id: req.client_matter_id,
         timestamp: new Date().toISOString(),
+        family,
       });
-      this.releaseConcurrencySlot();
+      this.releaseConcurrencySlot(family);
     }
   }
 
@@ -148,7 +177,7 @@ export class HarveyGateway {
     const baseStatus = rate429 > 50 ? 'down' : rate429 > 20 ? 'degraded' : 'healthy';
     const status = this.circuitState === 'open' ? 'down' : baseStatus;
 
-    return {
+    const health: GatewayHealth = {
       status,
       p95_latency_ms: p95,
       rate_limit_429_pct: Math.round(rate429 * 100) / 100,
@@ -162,6 +191,17 @@ export class HarveyGateway {
         opened_at: this.circuitOpenedAt > 0 ? new Date(this.circuitOpenedAt).toISOString() : null,
       },
     };
+
+    // Include per-family active request counts when family pools are configured
+    if (this.familyPools.size > 0) {
+      const familyCounts = {} as Record<RequestFamily, number>;
+      this.familyPools.forEach((pool, family) => {
+        familyCounts[family] = pool.activeRequests;
+      });
+      health.family_active_requests = familyCounts;
+    }
+
+    return health;
   }
 
   getTelemetry(): GatewayTelemetry[] {
@@ -169,31 +209,55 @@ export class HarveyGateway {
   }
 
   async queryHistory(req: HarveyHistoryRequest): Promise<HarveyHistoryResponse> {
+    const family: RequestFamily = 'history';
     const historyEndpoint = process.env.HARVEY_ENDPOINT_HISTORY;
     if (!historyEndpoint) {
       throw new HarveyGatewayError('HARVEY_ENDPOINT_HISTORY not configured', 503, 'no-history-endpoint');
     }
 
-    const params = new URLSearchParams();
-    if (req.start_date) params.append('start_date', req.start_date);
-    if (req.end_date) params.append('end_date', req.end_date);
-    if (req.limit) params.append('limit', String(req.limit));
-    if (req.offset) params.append('offset', String(req.offset));
+    await this.acquireConcurrencySlot(family);
+    const requestId = crypto.randomUUID();
+    const startTime = Date.now();
+    let lastStatusCode = 0;
 
-    const response = await fetch(`${historyEndpoint}?${params.toString()}`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${this.config.token}` },
-    });
+    try {
+      const params = new URLSearchParams();
+      if (req.start_date) params.append('start_date', req.start_date);
+      if (req.end_date) params.append('end_date', req.end_date);
+      if (req.limit) params.append('limit', String(req.limit));
+      if (req.offset) params.append('offset', String(req.offset));
 
-    if (!response.ok) {
-      throw new HarveyGatewayError(
-        `History API error: ${response.status}`,
-        response.status,
-        crypto.randomUUID()
-      );
+      const response = await fetch(`${historyEndpoint}?${params.toString()}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${this.config.token}` },
+      });
+
+      lastStatusCode = response.status;
+
+      if (!response.ok) {
+        throw new HarveyGatewayError(
+          `History API error: ${response.status}`,
+          response.status,
+          requestId
+        );
+      }
+
+      return await response.json() as HarveyHistoryResponse;
+    } finally {
+      const duration = Date.now() - startTime;
+      this.stats.total++;
+      this.stats.latencies.push(duration);
+      this.logTelemetry({
+        request_id: requestId,
+        endpoint: historyEndpoint,
+        duration_ms: duration,
+        status_code: lastStatusCode,
+        retries: 0,
+        timestamp: new Date().toISOString(),
+        family,
+      });
+      this.releaseConcurrencySlot(family);
     }
-
-    return await response.json() as HarveyHistoryResponse;
   }
 
   /**
@@ -273,7 +337,31 @@ export class HarveyGateway {
     }
   }
 
-  private async acquireConcurrencySlot(): Promise<void> {
+  /**
+   * Acquire a concurrency slot. When familyLimits is configured and the
+   * requested family has a pool, the request is gated by the family-specific
+   * limit. Otherwise, it falls back to the global maxConcurrency pool.
+   */
+  private async acquireConcurrencySlot(family?: RequestFamily): Promise<void> {
+    const pool = family ? this.familyPools.get(family) : undefined;
+
+    if (pool) {
+      // Family-specific concurrency gate
+      if (pool.activeRequests < pool.maxConcurrency) {
+        pool.activeRequests++;
+        this.activeRequests++; // keep global counter accurate for health reporting
+        return;
+      }
+      return new Promise<void>(resolve => {
+        pool.queue.push(() => {
+          pool.activeRequests++;
+          this.activeRequests++;
+          resolve();
+        });
+      });
+    }
+
+    // Global fallback (no family pools configured, or unknown family)
     if (this.activeRequests < this.config.maxConcurrency) {
       this.activeRequests++;
       return;
@@ -286,7 +374,21 @@ export class HarveyGateway {
     });
   }
 
-  private releaseConcurrencySlot(): void {
+  /**
+   * Release a concurrency slot back to the appropriate pool.
+   */
+  private releaseConcurrencySlot(family?: RequestFamily): void {
+    const pool = family ? this.familyPools.get(family) : undefined;
+
+    if (pool) {
+      pool.activeRequests--;
+      this.activeRequests--;
+      const next = pool.queue.shift();
+      if (next) next();
+      return;
+    }
+
+    // Global fallback
     this.activeRequests--;
     const next = this.queue.shift();
     if (next) next();

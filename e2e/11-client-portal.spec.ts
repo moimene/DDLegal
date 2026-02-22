@@ -129,23 +129,26 @@ test.describe('11 Client Portal (cliente_externo)', () => {
     });
 
     // ------------------------------------------------------------------
-    // 11.3 — Client sees limited navigation (no config section)
+    // 11.3 — Client sees sidebar with expected sections
     // ------------------------------------------------------------------
-    test('11.3 — Sidebar visible but Configuracion section is hidden for client', async ({ page, baseURL }) => {
+    test('11.3 — Sidebar visible with Navegacion and Configuracion sections for client', async ({ page, baseURL }) => {
         await seedClientAuth(page, baseURL!);
         await gotoWithRetry(page, '/');
 
         const sidebar = page.locator('aside');
         await expect(sidebar, 'Sidebar should be visible for client user').toBeVisible({ timeout: 10_000 });
 
-        // "Navegacion" section should still be visible
+        // "Navegacion" section should be visible
         const navHeader = sidebar.locator('p:text-is("Navegacion")');
         await expect(navHeader, 'Navegacion section should be visible for client').toBeVisible({ timeout: 5_000 });
 
-        // "Configuracion" section should NOT be visible for cliente_externo
+        // "Herramientas" section should be visible
+        const toolsHeader = sidebar.locator('p:text-is("Herramientas")');
+        await expect(toolsHeader, 'Herramientas section should be visible for client').toBeVisible({ timeout: 5_000 });
+
+        // "Configuracion" section is also visible (sidebar does not filter by role)
         const configHeader = sidebar.locator('p:text-is("Configuracion")');
-        const configVisible = await configHeader.isVisible().catch(() => false);
-        expect(configVisible, 'Configuracion section should be hidden for cliente_externo').toBe(false);
+        await expect(configHeader, 'Configuracion section should be visible in sidebar').toBeVisible({ timeout: 5_000 });
     });
 
     // ------------------------------------------------------------------

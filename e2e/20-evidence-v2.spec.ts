@@ -17,15 +17,16 @@ test.describe('Evidence Pack v2 API @evidence-v2', () => {
   // ── link-chunks validation ──────────────────────────────────
 
   test('POST /api/evidence/link-chunks requires project_id and task_id', async ({ request }) => {
-    const res = await request.post('/api/evidence/link-chunks', { data: {} });
+    const res = await authPost(request, '/api/evidence/link-chunks', token, {});
     expect(res.status()).toBe(400);
     const body = await res.json();
     expect(body.success).toBe(false);
   });
 
   test('POST /api/evidence/link-chunks requires finding_title', async ({ request }) => {
-    const res = await request.post('/api/evidence/link-chunks', {
-      data: { project_id: 'x', task_id: 'y' },
+    const res = await authPost(request, '/api/evidence/link-chunks', token, {
+      project_id: 'x',
+      task_id: 'y',
     });
     expect(res.status()).toBe(400);
     const body = await res.json();
@@ -36,7 +37,7 @@ test.describe('Evidence Pack v2 API @evidence-v2', () => {
   // ── pack validation ─────────────────────────────────────────
 
   test('POST /api/evidence/pack requires project_id and task_id', async ({ request }) => {
-    const res = await request.post('/api/evidence/pack', { data: {} });
+    const res = await authPost(request, '/api/evidence/pack', token, {});
     expect(res.status()).toBe(400);
     const body = await res.json();
     expect(body.success).toBe(false);

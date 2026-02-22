@@ -60,16 +60,47 @@ function validateDoD(
   const criteria = phaseDef.dod_criteria ?? [];
   const requiredCriteria = criteria.filter((c) => c.required);
 
-  // If no required criteria, nothing to validate
   if (requiredCriteria.length === 0) return [];
-
-  // If checks not provided at all but required criteria exist, all fail
   if (!dodChecks) return requiredCriteria;
 
-  // Check each required criterion
   const failures: DoRDoDCriteria[] = [];
   for (const criterion of requiredCriteria) {
     if (!dodChecks[criterion.check]) {
+      failures.push(criterion);
+    }
+  }
+  return failures;
+}
+
+// ---------------------------------------------------------------------------
+// DoR Validation (Definition of Ready for next phase)
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate Definition-of-Ready criteria for the next phase.
+ * DoR checks are evaluated against the completed phase's DoD checks +
+ * any additional context from instance metadata.
+ * Returns the list of unmet *required* criteria, or an empty array if all pass.
+ */
+function validateDoR(
+  nextPhaseDef: PhaseDefinition,
+  dodChecks: Record<string, boolean> | undefined,
+  instanceMetadata: Record<string, unknown>
+): DoRDoDCriteria[] {
+  const criteria = nextPhaseDef.dor_criteria ?? [];
+  const requiredCriteria = criteria.filter((c) => c.required);
+
+  if (requiredCriteria.length === 0) return [];
+
+  // Merge DoD checks with any accumulated checks from previous phases
+  const allChecks: Record<string, boolean> = {
+    ...(instanceMetadata._accumulated_checks as Record<string, boolean> || {}),
+    ...(dodChecks || {}),
+  };
+
+  const failures: DoRDoDCriteria[] = [];
+  for (const criterion of requiredCriteria) {
+    if (!allChecks[criterion.check]) {
       failures.push(criterion);
     }
   }
@@ -101,44 +132,66 @@ function buildKanbanTasksForPhase(params: BuildKanbanParams) {
     areaCode,
   } = params;
 
+  const skills = phaseDef.skills ?? [];
   const artifacts = phaseDef.artifacts ?? [];
-  const skillKey = phaseDef.skills?.[0] ?? null;
 
-  // If no artifacts, create a single task for the phase itself
-  if (artifacts.length === 0) {
-    return [
-      {
-        project_id: projectId,
-        area_code: areaCode,
-        title: phaseDef.name,
-        description: phaseDef.description || `Fase: ${phaseDef.name}`,
-        state: phaseDef.kanban_start_state ?? 'backlog',
-        priority: 'medium' as const,
-        workflow_instance_id: instanceId,
-        workflow_phase: phaseDef.phase,
-        task_group_id: taskGroupId,
-        template_version_id: templateVersionId,
-        workflow_key: templateKey,
-        skill_key: skillKey,
-      },
-    ];
+  // Strategy: AP-level task generation
+  // 1. If phase has skills → one task per skill (AI execution units)
+  // 2. Else if phase has artifacts → one task per artifact (deliverable tracking)
+  // 3. Else → single task for the phase
+
+  if (skills.length > 0) {
+    return skills.map((skill) => ({
+      project_id: projectId,
+      area_code: areaCode,
+      title: `${phaseDef.name}: ${skill}`,
+      description: `Skill "${skill}" de la fase ${phaseDef.name}. ${phaseDef.description || ''}`.trim(),
+      state: phaseDef.kanban_start_state ?? 'backlog',
+      priority: 'medium' as const,
+      workflow_instance_id: instanceId,
+      workflow_phase: phaseDef.phase,
+      task_group_id: taskGroupId,
+      template_version_id: templateVersionId,
+      workflow_key: templateKey,
+      skill_key: skill,
+      ai_status: 'pending' as const,
+      hitl_required: phaseDef.hitl_required,
+    }));
   }
 
-  // One task per artifact
-  return artifacts.map((artifact) => ({
-    project_id: projectId,
-    area_code: areaCode,
-    title: `${phaseDef.name}: ${artifact}`,
-    description: `Artefacto "${artifact}" de la fase ${phaseDef.name}.`,
-    state: phaseDef.kanban_start_state ?? 'backlog',
-    priority: 'medium' as const,
-    workflow_instance_id: instanceId,
-    workflow_phase: phaseDef.phase,
-    task_group_id: taskGroupId,
-    template_version_id: templateVersionId,
-    workflow_key: templateKey,
-    skill_key: skillKey,
-  }));
+  if (artifacts.length > 0) {
+    return artifacts.map((artifact) => ({
+      project_id: projectId,
+      area_code: areaCode,
+      title: `${phaseDef.name}: ${artifact}`,
+      description: `Artefacto "${artifact}" de la fase ${phaseDef.name}.`,
+      state: phaseDef.kanban_start_state ?? 'backlog',
+      priority: 'medium' as const,
+      workflow_instance_id: instanceId,
+      workflow_phase: phaseDef.phase,
+      task_group_id: taskGroupId,
+      template_version_id: templateVersionId,
+      workflow_key: templateKey,
+      skill_key: null,
+    }));
+  }
+
+  return [
+    {
+      project_id: projectId,
+      area_code: areaCode,
+      title: phaseDef.name,
+      description: phaseDef.description || `Fase: ${phaseDef.name}`,
+      state: phaseDef.kanban_start_state ?? 'backlog',
+      priority: 'medium' as const,
+      workflow_instance_id: instanceId,
+      workflow_phase: phaseDef.phase,
+      task_group_id: taskGroupId,
+      template_version_id: templateVersionId,
+      workflow_key: templateKey,
+      skill_key: null,
+    },
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -247,7 +300,30 @@ export async function advancePhase(
     };
   }
 
-  // --- 5. Complete current phase ---
+  // --- 5. Validate DoR for next phase (if exists) ---
+  const nextPhaseCandidate = getNextPhase(request.phase, phases);
+  if (nextPhaseCandidate) {
+    const nextPhaseDef = findPhaseDefinition(phases, nextPhaseCandidate);
+    if (nextPhaseDef) {
+      const dorFailures = validateDoR(
+        nextPhaseDef,
+        request.dod_checks,
+        (instance.metadata ?? {}) as Record<string, unknown>
+      );
+      if (dorFailures.length > 0) {
+        return {
+          success: false,
+          instance,
+          next_phase: nextPhaseCandidate,
+          tasks_created: 0,
+          hitl_required: false,
+          dor_failures: dorFailures,
+        };
+      }
+    }
+  }
+
+  // --- 6. Complete current phase ---
   const phaseStatus: Record<string, PhaseStatus> = {
     ...(instance.phase_status as Record<string, PhaseStatus>),
   };
@@ -261,8 +337,14 @@ export async function advancePhase(
   phaseStatus[request.phase] = 'completed';
   phaseCompletedAt[request.phase] = now;
 
-  // --- 6. Determine next phase ---
-  const nextPhase = getNextPhase(request.phase, phases);
+  // Accumulate checks in metadata for future DoR validation
+  const accumulatedChecks: Record<string, boolean> = {
+    ...((instance.metadata as Record<string, unknown>)?._accumulated_checks as Record<string, boolean> || {}),
+    ...(request.dod_checks || {}),
+  };
+
+  // --- 7. Determine next phase ---
+  const nextPhase = nextPhaseCandidate;
 
   // Build the instance update payload
   const updatePayload: Record<string, unknown> = {
@@ -274,6 +356,7 @@ export async function advancePhase(
 
   let tasksCreated = 0;
   let hitlRequired = false;
+  let hitlDecisionsCreated = 0;
 
   if (nextPhase) {
     // --- 7a. Advance to next phase ---
@@ -314,18 +397,19 @@ export async function advancePhase(
 
   const updatedInstance = updatedRow as unknown as WorkflowInstance;
 
-  // --- Store phase results in metadata if provided ---
+  // --- Store phase results and accumulated checks in metadata ---
+  const metadataUpdate: Record<string, unknown> = {
+    ...(updatedInstance.metadata ?? {}),
+    _accumulated_checks: accumulatedChecks,
+  };
   if (request.results && Object.keys(request.results).length > 0) {
-    const metadata = {
-      ...(updatedInstance.metadata ?? {}),
-      [`phase_results_${request.phase}`]: request.results,
-    };
-
-    await supabaseAdmin
-      .from('dd_workflow_instances')
-      .update({ metadata })
-      .eq('id', instance.id);
+    metadataUpdate[`phase_results_${request.phase}`] = request.results;
   }
+
+  await supabaseAdmin
+    .from('dd_workflow_instances')
+    .update({ metadata: metadataUpdate })
+    .eq('id', instance.id);
 
   // --- 8. Create Kanban tasks for next phase ---
   if (nextPhase) {
@@ -383,6 +467,42 @@ export async function advancePhase(
       }
     }
 
+    // --- H.4: HITL auto-creation for phases that require it ---
+    if (hitlRequired && request.results) {
+      const findings = (request.results.findings ?? []) as Array<{
+        title?: string;
+        severity?: string;
+        mitigation?: string;
+      }>;
+
+      const hitlPayloads = findings
+        .filter(f => f.severity === 'critical' || f.severity === 'high')
+        .map(f => ({
+          project_id: instance.project_id,
+          workflow_instance_id: instance.id,
+          phase: nextPhase,
+          finding_title: f.title || 'Finding sin titulo',
+          finding_severity: f.severity || 'high',
+          ai_output: f as unknown as Record<string, unknown>,
+          status: 'pending_review' as const,
+        }));
+
+      if (hitlPayloads.length > 0) {
+        const { data: hitlRows } = await supabaseAdmin
+          .from('dd_hitl_decisions')
+          .insert(hitlPayloads)
+          .select('id');
+
+        hitlDecisionsCreated = hitlRows?.length ?? 0;
+
+        // Update instance counters
+        await supabaseAdmin
+          .from('dd_workflow_instances')
+          .update({ hitl_pending_count: hitlDecisionsCreated })
+          .eq('id', instance.id);
+      }
+    }
+
     // Also mark the completed phase's task group as completed
     const { data: completedTaskGroup } = await supabaseAdmin
       .from('dd_workflow_task_groups')
@@ -416,12 +536,13 @@ export async function advancePhase(
     }
   }
 
-  // --- 9. Return result ---
+  // --- 10. Return result ---
   return {
     success: true,
     instance: updatedInstance,
     next_phase: nextPhase,
     tasks_created: tasksCreated,
     hitl_required: hitlRequired,
+    hitl_decisions_created: hitlDecisionsCreated,
   };
 }

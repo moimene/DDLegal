@@ -229,7 +229,10 @@ export interface PhaseAdvanceResult {
   next_phase: WorkflowPhase | null;
   tasks_created: number;
   hitl_required: boolean;
+  hitl_decisions_created?: number;
   dod_failures?: DoRDoDCriteria[];
+  dor_failures?: DoRDoDCriteria[];
+  evidence_linked?: number;
 }
 
 /** Instantiation request */

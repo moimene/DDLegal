@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback, use } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useResolvedParams } from '@/lib/utils';
 import Link from 'next/link';
 import {
     ArrowLeft, FolderOpen, FolderPlus, FileText, Upload, ChevronRight,
@@ -63,7 +64,7 @@ const CATEGORY_OPTIONS = [
 ];
 
 export default function VDRPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id } = useResolvedParams(params);
     const [folders, setFolders] = useState<VDRFolder[]>([]);
     const [documents, setDocuments] = useState<VDRDocument[]>([]);
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);

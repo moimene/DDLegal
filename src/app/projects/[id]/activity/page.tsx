@@ -1,6 +1,7 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useResolvedParams } from '@/lib/utils';
 import Link from 'next/link';
 import { ArrowLeft, Activity, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -13,7 +14,7 @@ import PresenceIndicator from '@/components/notifications/PresenceIndicator';
 // ---------------------------------------------------------------------------
 
 export default function ActivityPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id: projectId } = use(params);
+    const { id: projectId } = useResolvedParams(params);
     const [project, setProject] = useState<DDProject | null>(null);
     const [loading, setLoading] = useState(true);
 

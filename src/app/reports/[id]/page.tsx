@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { DDReport } from '@/lib/supabase';
-import { cn, formatDate, REPORT_FAMILY_CONFIG, REPORT_CATEGORY_CONFIG, REPORT_VISIBILITY_CONFIG } from '@/lib/utils';
+import { cn, formatDate, REPORT_FAMILY_CONFIG, REPORT_CATEGORY_CONFIG, REPORT_VISIBILITY_CONFIG, useResolvedParams } from '@/lib/utils';
 import { FreezeControl, ReportVersionHistory, ReportExportPanel } from '@/components/reports';
 
 const REPORT_STATUS_CONFIG: Record<DDReport['status'], { label: string; bg: string; fg: string }> = {
@@ -190,7 +190,7 @@ function renderHarveyResponse(response: Record<string, unknown>) {
 }
 
 export default function ReportViewerPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id } = useResolvedParams(params);
     const router = useRouter();
     const [report, setReport] = useState<DDReport | null>(null);
     const [loading, setLoading] = useState(true);

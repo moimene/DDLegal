@@ -142,16 +142,29 @@ test.describe('Societario Page — Form Interaction', () => {
 
         const submitBtn = page.locator('button:has-text("Ejecutar")').first();
         await expect(submitBtn).toBeEnabled({ timeout: 5000 });
+
+        // After click, the button should enter loading state:
+        // - Text changes to "Ejecutando pipeline..."
+        // - Button becomes disabled (loading=true)
+        // - Spinner icon (.animate-spin) appears
+        // The loading state may be brief if the API call resolves quickly.
+        // Check for any of these indicators.
         await submitBtn.click();
 
-        // After click, button should show loading (Ejecutando pipeline... or animate-spin)
-        await page.waitForTimeout(500);
-        const loadingText = page.locator('text="Ejecutando pipeline..."');
-        const spinner = page.locator('.animate-spin');
-        const hasLoading = await loadingText.isVisible().catch(() => false);
-        const hasSpinner = await spinner.first().isVisible().catch(() => false);
+        // Use a short poll to detect the loading state (it may pass quickly)
+        let detected = false;
+        for (let i = 0; i < 10; i++) {
+            const hasLoadingText = await page.locator('button:has-text("Ejecutando pipeline")').first().isVisible().catch(() => false);
+            const hasSpinner = await page.locator('.animate-spin').first().isVisible().catch(() => false);
+            const isBtnDisabled = await submitBtn.isDisabled().catch(() => false);
+            if (hasLoadingText || hasSpinner || isBtnDisabled) {
+                detected = true;
+                break;
+            }
+            await page.waitForTimeout(100);
+        }
 
-        expect(hasLoading || hasSpinner).toBeTruthy();
+        expect(detected, 'Loading state should appear after submit (loading text, spinner, or disabled button)').toBeTruthy();
     });
 });
 

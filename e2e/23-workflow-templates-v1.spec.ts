@@ -62,15 +62,19 @@ test.describe('F.1 Template Catalog @workflows-v1', () => {
     expect(keys).toContain('wf_14_red_flag_report');
   });
 
-  test('planned workflows are NOT in published templates', async ({ request }) => {
-    // Planned workflows (WF-07 through WF-12) have is_published=false
+  test('all 16 v1 workflows are published (WF-07 through WF-12 included)', async ({ request }) => {
+    // All 16 workflow templates (WF-01 to WF-16) are now published.
+    // WF-07 through WF-12 were upgraded from "planned" to published in the v1 evolution.
     const res = await authGet(request, '/api/workflows/templates', token);
     const body = await res.json();
     const keys = body.templates.map(
       (t: { template_key: string }) => t.template_key,
     );
-    expect(keys).not.toContain('wf_07_inm_real_estate');
-    expect(keys).not.toContain('wf_10_environmental');
+    expect(keys).toContain('wf_07_inm_real_estate');
+    expect(keys).toContain('wf_10_environmental');
+    expect(keys).toContain('wf_08_litigation');
+    expect(keys).toContain('wf_11_data_privacy_compliance');
+    expect(keys).toContain('wf_12_competition_filing');
   });
 });
 

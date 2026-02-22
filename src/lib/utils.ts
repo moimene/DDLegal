@@ -1,3 +1,14 @@
+/**
+ * Resolve params in a way compatible with Next.js 14 (plain object) AND 15 (Promise).
+ * Next.js 14: params is a plain object — returned as-is.
+ * Next.js 15: params is a Promise — upgrade this function to use React.use() when migrating.
+ */
+export function useResolvedParams<T>(params: T | Promise<T>): T {
+    // Next.js 14.2: params is always a plain object, just cast and return.
+    // When upgrading to Next.js 15, replace with: return use(params as Promise<T>);
+    return params as T;
+}
+
 export function cn(...classes: (string | boolean | undefined | null)[]): string {
     return classes.filter(Boolean).join(' ');
 }

@@ -1,19 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useState, use } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
     ArrowLeft, Bot, ClipboardList, AlertTriangle,
     FileText, MessageSquare, CheckCircle2,
     Loader2, ListChecks, Sparkles, ChevronDown,
     ChevronUp, Zap, FileSearch, Brain,
-    Upload, FolderOpen, ChevronRight, X, ShieldCheck, Users, Activity
+    Upload, FolderOpen, ChevronRight, X, ShieldCheck, Users, Activity,
+    Swords, Target, GitBranch
 } from 'lucide-react';
 import { EventFeed } from '@/components/events';
 import { SmartSuggestions } from '@/components/events';
 import { supabase } from '@/lib/supabase';
 import type { DDProject, DDArea, DDProcess, DDTask, DDContingency, DDQA, DDDeliverable, DDSkill, DDDocument } from '@/lib/supabase';
-import { cn, STATUS_CONFIG, SEVERITY_CONFIG, SKILL_CATEGORY_CONFIG, REVIEW_DEPTH_CONFIG, ROLE_CONFIG, formatDate, formatCurrency } from '@/lib/utils';
+import { cn, STATUS_CONFIG, SEVERITY_CONFIG, SKILL_CATEGORY_CONFIG, REVIEW_DEPTH_CONFIG, ROLE_CONFIG, formatDate, formatCurrency, useResolvedParams } from '@/lib/utils';
 
 const PROJECT_STATUS_CONFIG: Record<DDProject['status'], { label: string; bg: string; fg: string }> = {
     draft: { label: 'Borrador', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
@@ -57,7 +58,7 @@ function getAiSummary(output: Record<string, unknown> | null): string {
 }
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id } = useResolvedParams(params);
     const [project, setProject] = useState<DDProject | null>(null);
     const [areas, setAreas] = useState<DDArea[]>([]);
     const [processes, setProcesses] = useState<DDProcess[]>([]);
@@ -176,6 +177,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     };
 
     const areaByCode = useMemo(() => new Map(areas.map(a => [a.code, a])), [areas]);
+    const processById = useMemo(() => new Map(processes.map(p => [p.id, p])), [processes]);
+    const areaById = useMemo(() => new Map(areas.map(a => [a.id, a])), [areas]);
 
     useEffect(() => {
         async function load() {
@@ -295,8 +298,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     const completedTasks = tasks.filter(t => t.status === 'completed').length;
     const totalTasks = tasks.length;
     const progressPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    const processById = useMemo(() => new Map(processes.map(p => [p.id, p])), [processes]);
-    const areaById = useMemo(() => new Map(areas.map(a => [a.id, a])), [areas]);
     const hitlQueueCount = tasks.filter(
         t => t.status === 'review' || (t.ai_status === 'completed' && t.status !== 'completed')
     ).length;
@@ -775,6 +776,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                     { href: `/projects/${id}/negotiation`, label: 'Negociación', icon: FileText },
                                     { href: `/projects/${id}/hitl`, label: 'HITL Review', icon: ShieldCheck },
                                     { href: `/projects/${id}/activity`, label: 'Actividad', icon: Activity },
+                                    { href: `/projects/${id}/war-room`, label: 'War Room', icon: Swords },
+                                    { href: `/projects/${id}/scoring`, label: 'Scoring', icon: Target },
+                                    { href: `/projects/${id}/workflows`, label: 'Workflows', icon: GitBranch },
                                 ].map((item) => (
                                     <Link
                                         key={item.href}

@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { loginAsRole, authGet, authPost, authPatch } from './helpers/api-helpers';
 
+const DEMO_PROJECT_ID = 'a1b2c3d4-0001-4000-8000-000000000001';
+
 // =============================================================================
 // Day 1-3 Sprint Integration Tests
 //
@@ -63,9 +65,8 @@ test.describe('S2 Kanban Alerts @kanban @day1-3', () => {
 
   test.beforeAll(async ({ request }) => {
     token = await loginAsRole(request, 'pm');
-    const res = await authGet(request, '/api/projects', token);
-    const body = await res.json();
-    projectId = body.data?.[0]?.id;
+    // Use the known demo project ID directly since there is no GET /api/projects endpoint.
+    projectId = DEMO_PROJECT_ID;
   });
 
   test('GET /api/kanban/alerts requires project_id', async ({ request }) => {
@@ -136,9 +137,8 @@ test.describe('S0 Vault RAG @vdr @day1-3', () => {
 
   test.beforeAll(async ({ request }) => {
     token = await loginAsRole(request, 'pm');
-    const res = await authGet(request, '/api/projects', token);
-    const body = await res.json();
-    projectId = body.data?.[0]?.id;
+    // Use the known demo project ID directly since there is no GET /api/projects endpoint.
+    projectId = DEMO_PROJECT_ID;
   });
 
   test('POST /api/vdr/rag/query requires project_id and question', async ({ request }) => {

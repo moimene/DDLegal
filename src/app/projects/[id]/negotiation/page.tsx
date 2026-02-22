@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useResolvedParams } from '@/lib/utils';
 import Link from 'next/link';
 import {
     ArrowLeft, Plus, LayoutGrid, Table2, Filter, X,
@@ -110,7 +111,7 @@ function truncate(text: string | null | undefined, len: number): string {
 // ── Component ────────────────────────────────────────────────────
 
 export default function NegotiationPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id } = useResolvedParams(params);
 
     // Data state
     const [items, setItems] = useState<NegotiationItem[]>([]);

@@ -210,43 +210,67 @@ function buildKanbanTasksForPhase(params: BuildKanbanParams) {
     areaCode,
   } = params;
 
-  // Build artifact-based tasks: one task per artifact defined in the phase
+  const skills = phaseDef.skills ?? [];
   const artifacts = phaseDef.artifacts ?? [];
-  const skillKey = phaseDef.skills?.[0] ?? null;
 
-  // If no artifacts, create a single task for the phase itself
-  if (artifacts.length === 0) {
-    return [
-      {
-        project_id: projectId,
-        area_code: areaCode,
-        title: phaseDef.name,
-        description: phaseDef.description || `Fase: ${phaseDef.name}`,
-        state: phaseDef.kanban_start_state ?? 'backlog',
-        priority: 'medium' as const,
-        workflow_instance_id: instanceId,
-        workflow_phase: phaseDef.phase,
-        task_group_id: taskGroupId,
-        template_version_id: templateVersionId,
-        workflow_key: templateKey,
-        skill_key: skillKey,
-      },
-    ];
+  // Strategy: AP-level task generation
+  // 1. If phase has skills → one task per skill (AI execution units)
+  // 2. Else if phase has artifacts → one task per artifact (deliverable tracking)
+  // 3. Else → single task for the phase
+
+  if (skills.length > 0) {
+    // One task per skill — enables granular AI execution + HITL tracking
+    return skills.map((skill) => ({
+      project_id: projectId,
+      area_code: areaCode,
+      title: `${phaseDef.name}: ${skill}`,
+      description: `Skill "${skill}" de la fase ${phaseDef.name}. ${phaseDef.description || ''}`.trim(),
+      state: phaseDef.kanban_start_state ?? 'backlog',
+      priority: 'medium' as const,
+      workflow_instance_id: instanceId,
+      workflow_phase: phaseDef.phase,
+      task_group_id: taskGroupId,
+      template_version_id: templateVersionId,
+      workflow_key: templateKey,
+      skill_key: skill,
+      ai_status: 'pending' as const,
+      hitl_required: phaseDef.hitl_required,
+    }));
   }
 
-  // One task per artifact
-  return artifacts.map((artifact) => ({
-    project_id: projectId,
-    area_code: areaCode,
-    title: `${phaseDef.name}: ${artifact}`,
-    description: `Artefacto "${artifact}" de la fase ${phaseDef.name}.`,
-    state: phaseDef.kanban_start_state ?? 'backlog',
-    priority: 'medium' as const,
-    workflow_instance_id: instanceId,
-    workflow_phase: phaseDef.phase,
-    task_group_id: taskGroupId,
-    template_version_id: templateVersionId,
-    workflow_key: templateKey,
-    skill_key: skillKey,
-  }));
+  if (artifacts.length > 0) {
+    // One task per artifact — deliverable tracking
+    return artifacts.map((artifact) => ({
+      project_id: projectId,
+      area_code: areaCode,
+      title: `${phaseDef.name}: ${artifact}`,
+      description: `Artefacto "${artifact}" de la fase ${phaseDef.name}.`,
+      state: phaseDef.kanban_start_state ?? 'backlog',
+      priority: 'medium' as const,
+      workflow_instance_id: instanceId,
+      workflow_phase: phaseDef.phase,
+      task_group_id: taskGroupId,
+      template_version_id: templateVersionId,
+      workflow_key: templateKey,
+      skill_key: null,
+    }));
+  }
+
+  // Fallback: single task for the phase
+  return [
+    {
+      project_id: projectId,
+      area_code: areaCode,
+      title: phaseDef.name,
+      description: phaseDef.description || `Fase: ${phaseDef.name}`,
+      state: phaseDef.kanban_start_state ?? 'backlog',
+      priority: 'medium' as const,
+      workflow_instance_id: instanceId,
+      workflow_phase: phaseDef.phase,
+      task_group_id: taskGroupId,
+      template_version_id: templateVersionId,
+      workflow_key: templateKey,
+      skill_key: null,
+    },
+  ];
 }

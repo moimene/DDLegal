@@ -200,41 +200,29 @@ test.describe('00 — Global E2E Setup', () => {
       return;
     }
 
-    // Fetch the first project via Supabase PostgREST
-    const supabaseUrl = healthBody.supabase?.url;
-    expect(supabaseUrl, 'Supabase URL should be available from health endpoint').toBeTruthy();
+    // Use the known demo project ID (seeded via migrations)
+    const DEMO_PROJECT_ID = 'a1b2c3d4-0001-4000-8000-000000000001';
 
-    const projectsResp = await request.get(
-      `${supabaseUrl}/rest/v1/dd_projects?select=id,name&limit=1&order=created_at.asc`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          apikey: token,
-        },
-      },
-    );
+    // Verify project exists by checking roles endpoint
+    const projectCheckResp = await request.get(`/api/projects/${DEMO_PROJECT_ID}/roles`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    if (!projectsResp.ok()) {
+    if (!projectCheckResp.ok()) {
       console.warn(
-        `[00-setup] Could not list projects via PostgREST — HTTP ${projectsResp.status()}. Skipping project-dependent tests.`,
+        `[00-setup] Demo project ${DEMO_PROJECT_ID} not accessible — HTTP ${projectCheckResp.status()}. Skipping project-dependent tests.`,
       );
       projectId = null;
       return;
     }
 
-    const projects = (await projectsResp.json()) as { id: string; name: string }[];
-
-    if (projects.length === 0) {
-      console.warn('[00-setup] dd_projects table has rows but PostgREST returned none (RLS?). Skipping.');
-      projectId = null;
-      return;
-    }
-
-    projectId = projects[0].id;
-    console.log(`[00-setup] Using demo project: ${projects[0].name} (${projectId})`);
+    projectId = DEMO_PROJECT_ID;
+    console.log(`[00-setup] Using demo project: ${projectId}`);
 
     // Quick sanity check — the roles endpoint should respond for this project
-    const rolesResp = await request.get(`/api/projects/${projectId}/roles`);
+    const rolesResp = await request.get(`/api/projects/${projectId}/roles`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     expect(rolesResp.ok(), `Roles endpoint for project ${projectId} should return 200`).toBeTruthy();
   });
 
@@ -259,7 +247,10 @@ test.describe('00 — Global E2E Setup', () => {
     expect(body.project_id, 'Response should echo back the project_id').toBe(projectId);
 
     // Verify roles actually got assigned via the roles endpoint
-    const rolesResp = await request.get(`/api/projects/${projectId}/roles`);
+    const token = pmAccessToken ?? await loginAs(request, 'pm@test.ddlegal.com');
+    const rolesResp = await request.get(`/api/projects/${projectId}/roles`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     expect(rolesResp.ok(), 'Roles list should succeed after assignment').toBeTruthy();
 
     const rolesBody = (await rolesResp.json()) as {

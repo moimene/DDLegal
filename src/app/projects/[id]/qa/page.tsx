@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
+import { useResolvedParams } from '@/lib/utils';
 import Link from 'next/link';
 import {
     ArrowLeft, MessageSquare, Plus, Clock, AlertTriangle,
@@ -47,7 +48,7 @@ const SENDER: Record<string, { label: string; color: string }> = {
 };
 
 export default function QAPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id } = useResolvedParams(params);
     const [threads, setThreads] = useState<QAThread[]>([]);
     const [selectedThread, setSelectedThread] = useState<QAThread | null>(null);
     const [messages, setMessages] = useState<QAMessage[]>([]);

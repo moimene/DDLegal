@@ -1,15 +1,26 @@
 import { test, expect } from '@playwright/test';
 import { loginAs, TEST_USERS, authGet, authPost, authPatch } from './helpers/api-helpers';
 
+const DEMO_PROJECT_ID = 'a1b2c3d4-0001-4000-8000-000000000001';
+
 test.describe('Kanban API @kanban', () => {
   let token: string;
   let projectId: string;
 
   test.beforeAll(async ({ request }) => {
     token = await loginAs(request, TEST_USERS.pm);
-    const projects = await authGet(request, '/api/projects', token);
-    const body = await projects.json();
-    projectId = body.data?.[0]?.id;
+    // Try API first, fallback to known demo project
+    try {
+      const projects = await authGet(request, '/api/projects', token);
+      if (projects.ok()) {
+        const body = await projects.json();
+        projectId = body.data?.[0]?.id || DEMO_PROJECT_ID;
+      } else {
+        projectId = DEMO_PROJECT_ID;
+      }
+    } catch {
+      projectId = DEMO_PROJECT_ID;
+    }
   });
 
   test('GET /api/kanban/board returns columns with WIP', async ({ request }) => {

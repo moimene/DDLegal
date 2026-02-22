@@ -9,4 +9,7 @@ export type {
   HarveyHistoryRequest,
   HarveyHistoryEntry,
   HarveyHistoryResponse,
+  RequestFamily,
+  FamilyLimitConfig,
+  FamilyLimits,
 } from './types';

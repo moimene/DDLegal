@@ -3,8 +3,11 @@ import { createClient } from '@supabase/supabase-js';
 
 const PUBLIC_ROUTES = [
   '/api/auth/login',
+  '/api/auth/setup-test-users',  // Uses CRON_SECRET internally
+  '/api/system/health',          // Health check should always be public
   '/api/gateway/whoami',
   '/api/gateway/health',
+  '/api/cron/',           // Cron routes use CRON_SECRET, not Bearer auth
 ];
 
 export async function middleware(req: NextRequest) {

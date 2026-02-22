@@ -1,14 +1,22 @@
 import { test, expect } from '@playwright/test';
+import { loginAs, TEST_USERS, authGet, authPost } from './helpers/api-helpers';
 
 /**
  * Societario API E2E Tests
  *
  * Tests the complete Due Diligence pipeline API routes.
  * Tests run serially to allow sequential pipeline testing.
+ * All routes require authentication (x-user-id header set by middleware).
  */
 
 // Force serial execution — tests depend on each other
 test.describe.configure({ mode: 'serial' });
+
+let token: string;
+
+test.beforeAll(async ({ request }) => {
+    token = await loginAs(request, TEST_USERS.pm);
+});
 
 // ============================================================
 // 1. BORME Summary Fetcher — GET /api/societario/borme
@@ -16,14 +24,14 @@ test.describe.configure({ mode: 'serial' });
 
 test.describe('BORME Summary API', () => {
     test('returns 400 if no date parameter', async ({ request }) => {
-        const resp = await request.get('/api/societario/borme');
+        const resp = await authGet(request, '/api/societario/borme', token);
         expect(resp.status()).toBe(400);
         const body = await resp.json();
         expect(body.error).toContain('date parameter required');
     });
 
     test('returns 400 for invalid date format', async ({ request }) => {
-        const resp = await request.get('/api/societario/borme?date=2024-01-15');
+        const resp = await authGet(request, '/api/societario/borme?date=2024-01-15', token);
         expect(resp.status()).toBe(400);
         const body = await resp.json();
         expect(body.error).toContain('YYYYMMDD');
@@ -31,13 +39,13 @@ test.describe('BORME Summary API', () => {
 
     test('handles weekend date gracefully', async ({ request }) => {
         // 2025-01-04 is a Saturday — no BORME published
-        const resp = await request.get('/api/societario/borme?date=20250104');
+        const resp = await authGet(request, '/api/societario/borme?date=20250104', token);
         const body = await resp.json();
         expect(body).toHaveProperty('date', '20250104');
     });
 
     test('fetches BORME for a valid weekday', async ({ request }) => {
-        const resp = await request.get('/api/societario/borme?date=20250210');
+        const resp = await authGet(request, '/api/societario/borme?date=20250210', token);
         const body = await resp.json();
         expect(body.success).toBe(true);
         expect(body.date).toBe('20250210');
@@ -54,21 +62,17 @@ const testCompany = `TestCo-${Date.now()}`;
 
 test.describe('Societario Request API', () => {
     test('returns 400 if sociedad_target missing', async ({ request }) => {
-        const resp = await request.post('/api/societario/request', {
-            data: {},
-        });
+        const resp = await authPost(request, '/api/societario/request', token, {});
         expect(resp.status()).toBe(400);
         const body = await resp.json();
         expect(body.error).toContain('sociedad_target');
     });
 
     test('creates a new request successfully', async ({ request }) => {
-        const resp = await request.post('/api/societario/request', {
-            data: {
-                sociedad_target: testCompany,
-                nif_hint: 'B99999999',
-                periodo_anios: 3,
-            },
+        const resp = await authPost(request, '/api/societario/request', token, {
+            sociedad_target: testCompany,
+            nif_hint: 'B99999999',
+            periodo_anios: 3,
         });
         expect(resp.ok()).toBeTruthy();
         const body = await resp.json();
@@ -80,12 +84,10 @@ test.describe('Societario Request API', () => {
     });
 
     test('returns existing request for same idempotency key', async ({ request }) => {
-        const resp = await request.post('/api/societario/request', {
-            data: {
-                sociedad_target: testCompany,
-                nif_hint: 'B99999999',
-                periodo_anios: 3,
-            },
+        const resp = await authPost(request, '/api/societario/request', token, {
+            sociedad_target: testCompany,
+            nif_hint: 'B99999999',
+            periodo_anios: 3,
         });
         expect(resp.ok()).toBeTruthy();
         const body = await resp.json();
@@ -96,7 +98,7 @@ test.describe('Societario Request API', () => {
 
     test('GET returns request details with id', async ({ request }) => {
         expect(createdRequestId).toBeTruthy();
-        const resp = await request.get(`/api/societario/request?id=${createdRequestId}`);
+        const resp = await authGet(request, `/api/societario/request?id=${createdRequestId}`, token);
         expect(resp.ok()).toBeTruthy();
         const body = await resp.json();
         expect(body.success).toBe(true);
@@ -105,12 +107,12 @@ test.describe('Societario Request API', () => {
     });
 
     test('GET returns 400 without id param', async ({ request }) => {
-        const resp = await request.get('/api/societario/request');
+        const resp = await authGet(request, '/api/societario/request', token);
         expect(resp.status()).toBe(400);
     });
 
     test('GET returns 404 for non-existent id', async ({ request }) => {
-        const resp = await request.get('/api/societario/request?id=00000000-0000-0000-0000-000000000000');
+        const resp = await authGet(request, '/api/societario/request?id=00000000-0000-0000-0000-000000000000', token);
         expect(resp.status()).toBe(404);
     });
 });
@@ -121,23 +123,21 @@ test.describe('Societario Request API', () => {
 
 test.describe('Identity Resolution API', () => {
     test('returns 400 if request_id missing', async ({ request }) => {
-        const resp = await request.post('/api/societario/resolve', {
-            data: {},
-        });
+        const resp = await authPost(request, '/api/societario/resolve', token, {});
         expect(resp.status()).toBe(400);
     });
 
     test('returns 404 for non-existent request', async ({ request }) => {
-        const resp = await request.post('/api/societario/resolve', {
-            data: { request_id: '00000000-0000-0000-0000-000000000000' },
+        const resp = await authPost(request, '/api/societario/resolve', token, {
+            request_id: '00000000-0000-0000-0000-000000000000',
         });
         expect(resp.status()).toBe(404);
     });
 
     test('resolves identity for the created request', async ({ request }) => {
         expect(createdRequestId).toBeTruthy();
-        const resp = await request.post('/api/societario/resolve', {
-            data: { request_id: createdRequestId },
+        const resp = await authPost(request, '/api/societario/resolve', token, {
+            request_id: createdRequestId,
         });
         expect(resp.ok()).toBeTruthy();
         const body = await resp.json();
@@ -152,23 +152,21 @@ test.describe('Identity Resolution API', () => {
 
 test.describe('Snapshot Builder API', () => {
     test('returns 400 if request_id missing', async ({ request }) => {
-        const resp = await request.post('/api/societario/snapshot', {
-            data: {},
-        });
+        const resp = await authPost(request, '/api/societario/snapshot', token, {});
         expect(resp.status()).toBe(400);
     });
 
     test('returns 404 for non-existent request', async ({ request }) => {
-        const resp = await request.post('/api/societario/snapshot', {
-            data: { request_id: '00000000-0000-0000-0000-000000000000' },
+        const resp = await authPost(request, '/api/societario/snapshot', token, {
+            request_id: '00000000-0000-0000-0000-000000000000',
         });
         expect(resp.status()).toBe(404);
     });
 
     test('builds snapshot for the resolved request', async ({ request }) => {
         expect(createdRequestId).toBeTruthy();
-        const resp = await request.post('/api/societario/snapshot', {
-            data: { request_id: createdRequestId },
+        const resp = await authPost(request, '/api/societario/snapshot', token, {
+            request_id: createdRequestId,
         });
         const body = await resp.json();
         if (resp.ok()) {
@@ -187,15 +185,13 @@ test.describe('Snapshot Builder API', () => {
 
 test.describe('Grounding Validator API', () => {
     test('returns 400 if report_id missing', async ({ request }) => {
-        const resp = await request.post('/api/societario/validate', {
-            data: {},
-        });
+        const resp = await authPost(request, '/api/societario/validate', token, {});
         expect(resp.status()).toBe(400);
     });
 
     test('returns 404 for non-existent report', async ({ request }) => {
-        const resp = await request.post('/api/societario/validate', {
-            data: { report_id: '00000000-0000-0000-0000-000000000000' },
+        const resp = await authPost(request, '/api/societario/validate', token, {
+            report_id: '00000000-0000-0000-0000-000000000000',
         });
         expect(resp.status()).toBe(404);
     });
@@ -207,19 +203,15 @@ test.describe('Grounding Validator API', () => {
 
 test.describe('BORME Ingest API', () => {
     test('returns 400 if required params missing', async ({ request }) => {
-        const resp = await request.post('/api/societario/borme/ingest', {
-            data: {},
-        });
+        const resp = await authPost(request, '/api/societario/borme/ingest', token, {});
         expect(resp.status()).toBe(400);
     });
 
     test('returns 404 for non-existent sociedad', async ({ request }) => {
-        const resp = await request.post('/api/societario/borme/ingest', {
-            data: {
-                sociedad_id: '00000000-0000-0000-0000-000000000000',
-                date_from: '2025-01-01',
-                date_to: '2025-01-03',
-            },
+        const resp = await authPost(request, '/api/societario/borme/ingest', token, {
+            sociedad_id: '00000000-0000-0000-0000-000000000000',
+            date_from: '2025-01-01',
+            date_to: '2025-01-03',
         });
         expect(resp.status()).toBe(404);
     });
@@ -231,15 +223,13 @@ test.describe('BORME Ingest API', () => {
 
 test.describe('Report Generation API', () => {
     test('returns 400 if request_id missing', async ({ request }) => {
-        const resp = await request.post('/api/societario/report', {
-            data: {},
-        });
+        const resp = await authPost(request, '/api/societario/report', token, {});
         expect(resp.status()).toBe(400);
     });
 
     test('returns 404 for non-existent request', async ({ request }) => {
-        const resp = await request.post('/api/societario/report', {
-            data: { request_id: '00000000-0000-0000-0000-000000000000' },
+        const resp = await authPost(request, '/api/societario/report', token, {
+            request_id: '00000000-0000-0000-0000-000000000000',
         });
         expect(resp.status()).toBe(404);
     });

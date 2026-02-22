@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, use } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
     ArrowLeft, Inbox, Send, Download, CheckCircle, Search, Sparkles,
@@ -8,7 +8,7 @@ import {
     AlertTriangle, Bot, RefreshCw, GripVertical,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { KANBAN_STATE_CONFIG, AREA_COLORS } from '@/lib/utils';
+import { KANBAN_STATE_CONFIG, AREA_COLORS, useResolvedParams } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -115,7 +115,7 @@ function authHeaders(): Record<string, string> {
 /* ------------------------------------------------------------------ */
 
 export default function KanbanPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id: projectId } = use(params);
+    const { id: projectId } = useResolvedParams(params);
 
     const [board, setBoard] = useState<BoardColumn[]>([]);
     const [metrics, setMetrics] = useState<KanbanMetrics | null>(null);

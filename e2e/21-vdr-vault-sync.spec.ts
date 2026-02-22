@@ -17,7 +17,7 @@ test.describe('VDR Vault Sync API @vdr-vault', () => {
   // ── POST validation ─────────────────────────────────────────
 
   test('POST /api/vdr/vault/sync requires project_id', async ({ request }) => {
-    const res = await request.post('/api/vdr/vault/sync', { data: {} });
+    const res = await authPost(request, '/api/vdr/vault/sync', token, {});
     expect(res.status()).toBe(400);
     const body = await res.json();
     expect(body.success).toBe(false);
@@ -27,7 +27,7 @@ test.describe('VDR Vault Sync API @vdr-vault', () => {
   // ── GET validation ──────────────────────────────────────────
 
   test('GET /api/vdr/vault/sync requires project_id', async ({ request }) => {
-    const res = await request.get('/api/vdr/vault/sync');
+    const res = await authGet(request, '/api/vdr/vault/sync', token);
     expect(res.status()).toBe(400);
     const body = await res.json();
     expect(body.success).toBe(false);

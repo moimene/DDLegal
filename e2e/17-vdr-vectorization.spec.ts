@@ -1,8 +1,15 @@
 import { test, expect } from '@playwright/test';
+import { loginAs, TEST_USERS, authGet, authPost } from './helpers/api-helpers';
 
 test.describe('VDR Vectorization API @vdr-vector', () => {
+  let token: string;
+
+  test.beforeAll(async ({ request }) => {
+    token = await loginAs(request, TEST_USERS.pm);
+  });
+
   test('POST /api/vdr/ingest requires document_id', async ({ request }) => {
-    const res = await request.post('/api/vdr/ingest', { data: {} });
+    const res = await authPost(request, '/api/vdr/ingest', token, {});
     expect(res.status()).toBe(400);
     const body = await res.json();
     expect(body.success).toBe(false);
@@ -10,15 +17,16 @@ test.describe('VDR Vectorization API @vdr-vector', () => {
   });
 
   test('POST /api/vdr/search/semantic requires project_id and query', async ({ request }) => {
-    const res = await request.post('/api/vdr/search/semantic', { data: {} });
+    const res = await authPost(request, '/api/vdr/search/semantic', token, {});
     expect(res.status()).toBe(400);
     const body = await res.json();
     expect(body.success).toBe(false);
   });
 
   test('POST /api/vdr/search/semantic returns results array', async ({ request }) => {
-    const res = await request.post('/api/vdr/search/semantic', {
-      data: { project_id: '00000000-0000-0000-0000-000000000000', query: 'contrato de compraventa' },
+    const res = await authPost(request, '/api/vdr/search/semantic', token, {
+      project_id: '00000000-0000-0000-0000-000000000000',
+      query: 'contrato de compraventa',
     });
     const body = await res.json();
     if (res.ok()) {
@@ -28,7 +36,7 @@ test.describe('VDR Vectorization API @vdr-vector', () => {
   });
 
   test('GET /api/vdr/ingest/nonexistent returns 404', async ({ request }) => {
-    const res = await request.get('/api/vdr/ingest/00000000-0000-0000-0000-000000000000');
+    const res = await authGet(request, '/api/vdr/ingest/00000000-0000-0000-0000-000000000000', token);
     expect(res.status()).toBe(404);
   });
 });

@@ -1,5 +1,6 @@
 import { getHarveyGateway } from '@/lib/harvey';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { semanticSearch } from '@/lib/vdr/semantic-search';
 import { WORKFLOW_DEFINITIONS } from './constants';
 import { loadWorkflowTemplate } from './template-loader';
 import { WORKFLOW_TEMPLATES_FEATURE_FLAG } from './template-types';
@@ -57,6 +58,80 @@ function inferAreaCode(finding: WorkflowFinding): string {
     if (text.includes(hint)) return code;
   }
   return 'GENERAL';
+}
+
+// ---------------------------------------------------------------------------
+// H.3: Evidence auto-linking via VDR semantic retrieval
+// ---------------------------------------------------------------------------
+
+/**
+ * After workflow execution, search VDR for relevant chunks and link them
+ * to the workflow's kanban tasks. Returns the count of evidence refs linked.
+ */
+async function linkEvidenceToWorkflowTasks(
+  projectId: string,
+  workflowKey: string,
+  findings: WorkflowFinding[],
+): Promise<number> {
+  if (findings.length === 0) return 0;
+
+  // Get kanban tasks created for this workflow
+  const { data: tasks } = await supabaseAdmin
+    .from('dd_kanban_tasks')
+    .select('id, title, skill_key, evidence_refs')
+    .eq('project_id', projectId)
+    .eq('workflow_key', workflowKey)
+    .in('state', ['backlog', 'en_analisis', 'ia_propuesta', 'hitl_revision']);
+
+  if (!tasks || tasks.length === 0) return 0;
+
+  let totalLinked = 0;
+
+  for (const finding of findings) {
+    // Semantic search for chunks related to this finding
+    try {
+      const chunks = await semanticSearch(projectId, finding.title, {
+        threshold: 0.65,
+        limit: 5,
+        areaCode: inferAreaCode(finding),
+      });
+
+      if (chunks.length === 0) continue;
+
+      // Find the best matching task for this finding
+      const matchingTask = tasks.find(t =>
+        t.title.toLowerCase().includes(finding.title.toLowerCase().slice(0, 30))
+      ) || tasks[0];
+
+      // Build new evidence refs
+      const existingRefs = (matchingTask.evidence_refs ?? []) as Array<{ source_id: string }>;
+      const existingIds = new Set(existingRefs.map(r => r.source_id));
+
+      const newRefs = chunks
+        .filter(c => !existingIds.has(c.chunk_id))
+        .map(c => ({
+          source_id: c.chunk_id,
+          snippet: c.content.slice(0, 200),
+          similarity: c.similarity,
+          document_name: c.document_name,
+        }));
+
+      if (newRefs.length > 0) {
+        const mergedRefs = [...existingRefs, ...newRefs];
+
+        await supabaseAdmin
+          .from('dd_kanban_tasks')
+          .update({ evidence_refs: mergedRefs })
+          .eq('id', matchingTask.id);
+
+        totalLinked += newRefs.length;
+      }
+    } catch {
+      // Semantic search may fail if no embeddings exist — skip silently
+    }
+  }
+
+  return totalLinked;
 }
 
 /**
@@ -236,6 +311,14 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
     backlogGenerated = await generateDDBacklog(req.project_id, gatewayFindings);
   }
 
+  // H.3: Auto-link VDR evidence to workflow tasks
+  let evidenceLinked: number | undefined;
+  if (gatewayFindings.length > 0) {
+    evidenceLinked = await linkEvidenceToWorkflowTasks(
+      req.project_id, req.workflow_key, gatewayFindings
+    );
+  }
+
   return {
     success: true,
     workflow_key: req.workflow_key,
@@ -246,6 +329,7 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
     hitl_required: hitlRequired,
     source: 'gateway',
     backlog_generated: backlogGenerated,
+    evidence_linked: evidenceLinked,
   };
 }
 

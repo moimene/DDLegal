@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, AlertTriangle, CalendarDays, CheckCircle2, Loader2, Upload, MessageSquare, CheckCheck } from 'lucide-react';
-import { formatDate, formatCurrency } from '@/lib/utils';
+import { formatDate, formatCurrency, useResolvedParams } from '@/lib/utils';
 
 type ProjectStatus = 'draft' | 'active' | 'review' | 'closed';
 
@@ -59,7 +59,7 @@ const PROJECT_STATUS_BG: Record<ProjectStatus, string> = {
 };
 
 export default function ClientProjectPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id } = useResolvedParams(params);
     const [payload, setPayload] = useState<ClientPayload | null>(null);
     const [loading, setLoading] = useState(true);
 
