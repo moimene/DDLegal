@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ project_id: string }> }) {
   const { project_id } = await params;
   const userId = req.headers.get('x-user-id');
+
+  // Permission check
+  const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_war_room');
+  if (!authorized) return authError!;
+
   try {
     const body = await req.json();
     const { decision_type, title, rationale, contingency_id, alert_id, evidence_refs, client_visible } = body;
@@ -26,6 +32,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ project_id: string }> }) {
   const { project_id } = await params;
+
+  // Permission check
+  const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_war_room');
+  if (!authorized) return authError!;
+
   const { data, error } = await supabaseAdmin.from('dd_war_room_decisions').select('*').eq('project_id', project_id).order('decided_at', { ascending: false });
   if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   return NextResponse.json({ success: true, decisions: data || [] });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { buildEvidencePack, generateReport } from '@/lib/reporting/report-engine';
 import { getTemplate, getAllTemplateTypes, REPORT_TEMPLATES } from '@/lib/reporting/templates';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Generic Report Generator
@@ -45,6 +46,12 @@ export async function POST(req: NextRequest) {
                 { error: `Unknown template: ${template_type}. Use GET ?list=true for available templates.` },
                 { status: 400 }
             );
+        }
+
+        // Permission check — require can_view_reports when project_id is provided
+        if (project_id) {
+            const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_reports');
+            if (!authorized) return authError!;
         }
 
         // Build sources based on template type

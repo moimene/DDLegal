@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * POST /api/reports/compare
@@ -154,10 +155,17 @@ function generateSummary(
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { report_id_a, report_id_b } = body as {
+        const { report_id_a, report_id_b, project_id } = body as {
             report_id_a: string;
             report_id_b: string;
+            project_id?: string;
         };
+
+        // Permission check — require can_view_reports when project_id is provided
+        if (project_id) {
+            const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_reports');
+            if (!authorized) return authError!;
+        }
 
         if (!report_id_a || !report_id_b) {
             return NextResponse.json(

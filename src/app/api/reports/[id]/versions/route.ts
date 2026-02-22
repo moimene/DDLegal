@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * GET  /api/reports/[id]/versions — Lista todas las versiones de un informe
@@ -7,11 +8,18 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
  */
 
 export async function GET(
-    _req: NextRequest,
+    req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { id } = await params;
+
+        // Permission check — require can_view_reports when project_id is provided
+        const projectId = req.nextUrl.searchParams.get('project_id');
+        if (projectId) {
+            const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_reports');
+            if (!authorized) return authError!;
+        }
 
         // Obtener el informe base para encontrar el report_type y project_id
         const { data: baseReport, error: fetchError } = await supabaseAdmin
@@ -85,10 +93,17 @@ export async function POST(
     try {
         const { id } = await params;
         const body = await req.json();
-        const { based_on_version, change_notes } = body as {
+        const { based_on_version, change_notes, project_id } = body as {
             based_on_version?: number;
             change_notes?: string;
+            project_id?: string;
         };
+
+        // Permission check — require can_view_reports when project_id is provided
+        if (project_id) {
+            const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_reports');
+            if (!authorized) return authError!;
+        }
 
         // Obtener el informe fuente
         const { data: sourceReport, error: fetchError } = await supabaseAdmin

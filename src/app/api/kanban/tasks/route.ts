@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -8,6 +9,10 @@ export async function POST(req: NextRequest) {
   if (!project_id || !area_code || !title) {
     return NextResponse.json({ success: false, error: 'project_id, area_code, title required' }, { status: 400 });
   }
+
+  // Permission check
+  const { authorized, error: authError } = await requirePermission(req, project_id, 'can_edit_tasks');
+  if (!authorized) return authError!;
 
   const { data, error } = await supabaseAdmin
     .from('dd_kanban_tasks')

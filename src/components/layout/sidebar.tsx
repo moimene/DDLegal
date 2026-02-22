@@ -59,6 +59,7 @@ const NAV_SECTION_CONFIGURACION: NavSection = {
         { label: 'Plantillas', icon: FileText, path: '/configuracion/templates' },
         { label: 'Dominios', icon: ListChecks, path: '/configuracion/dominios' },
         { label: 'Seguridad', icon: ShieldCheck, path: '/configuracion/seguridad' },
+        { label: 'Observabilidad', icon: Activity, path: '/observability' },
     ],
 };
 
@@ -79,6 +80,7 @@ function buildProjectSection(projectId: string): NavSection {
             { label: 'Q&A', icon: MessageCircle, path: `${base}/qa` },
             { label: 'Deal Cockpit', icon: Gauge, path: `${base}/cockpit` },
             { label: 'Negociacion', icon: Handshake, path: `${base}/negotiation` },
+            { label: 'Kanban', icon: FolderKanban, path: `${base}/kanban` },
             { label: 'HITL Review', icon: UserCheck, path: `${base}/hitl` },
             { label: 'Actividad', icon: Activity, path: `${base}/activity` },
         ],

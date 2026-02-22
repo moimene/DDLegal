@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ project_id: string }> }) {
   const { project_id } = await params;
   const severity = req.nextUrl.searchParams.get('severity');
+
+  // Permission check
+  const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_contingencies');
+  if (!authorized) return authError!;
+
   try {
     let alertQuery = supabaseAdmin.from('dd_negotiation_alerts').select('*').eq('project_id', project_id).order('severity', { ascending: true }).order('created_at', { ascending: false });
     if (severity) alertQuery = alertQuery.eq('severity', severity);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * POST /api/reports/[id]/freeze
@@ -16,10 +17,17 @@ export async function POST(
     try {
         const { id } = await params;
         const body = await req.json();
-        const { action, frozen_by } = body as {
+        const { action, frozen_by, project_id } = body as {
             action: 'freeze' | 'unfreeze';
             frozen_by?: string;
+            project_id?: string;
         };
+
+        // Permission check — require can_approve_reports when project_id is provided
+        if (project_id) {
+            const { authorized, error: authError } = await requirePermission(req, project_id, 'can_approve_reports');
+            if (!authorized) return authError!;
+        }
 
         if (!action || (action !== 'freeze' && action !== 'unfreeze')) {
             return NextResponse.json(

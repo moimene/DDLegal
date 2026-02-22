@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,6 +19,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (fetchErr || !task) {
     return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
   }
+
+  // Permission check
+  const { authorized, error: authError } = await requirePermission(req, task.project_id, 'can_edit_tasks');
+  if (!authorized) return authError!;
 
   const { data: config } = await supabaseAdmin
     .from('dd_kanban_config')

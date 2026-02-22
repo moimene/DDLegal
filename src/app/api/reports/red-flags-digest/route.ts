@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Red Flags Digest
@@ -42,6 +43,12 @@ export async function POST(req: NextRequest) {
                 { error: 'request_id or project_id is required' },
                 { status: 400 }
             );
+        }
+
+        // Permission check — require can_view_reports when project_id is provided
+        if (project_id) {
+            const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_reports');
+            if (!authorized) return authError!;
         }
 
         return handleDigest(request_id, project_id, since);

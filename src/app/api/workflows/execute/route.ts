@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeWorkflow } from '@/lib/workflows';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -9,6 +10,11 @@ export async function POST(req: NextRequest) {
   if (!workflow_key || !project_id) {
     return NextResponse.json({ success: false, error: 'workflow_key and project_id required' }, { status: 400 });
   }
+
+  // Permission check — uses can_manage_qa as proxy for AI trigger capability
+  // (can_trigger_ai is not yet defined in the permission matrix)
+  const { authorized, error: authError } = await requirePermission(req, project_id, 'can_manage_qa');
+  if (!authorized) return authError!;
 
   const startTime = Date.now();
 

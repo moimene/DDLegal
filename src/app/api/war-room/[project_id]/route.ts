@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ project_id: string }> }) {
   const { project_id } = await params;
+
+  // Permission check
+  const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_war_room');
+  if (!authorized) return authError!;
+
   try {
     const [alertsRes, blockersRes, tasksRes, decisionsRes, notifsRes] = await Promise.all([
       supabaseAdmin.from('dd_negotiation_alerts').select('*').eq('project_id', project_id).in('severity', ['critical', 'high']).order('created_at', { ascending: false }).limit(20),
