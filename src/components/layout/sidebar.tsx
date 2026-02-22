@@ -11,6 +11,7 @@ import {
     Swords, Workflow, Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useProjectNavBadges } from '@/hooks/use-project-nav-badges';
 import ProjectSelector from './project-selector';
 
 /* ------------------------------------------------------------------ */
@@ -232,6 +233,7 @@ export default function Sidebar() {
     const pathname = usePathname();
     const { sections, projectGroups, projectId } = useResolvedNav(pathname);
     const { collapsedGroups, toggle } = useGroupCollapse(projectId, projectGroups, pathname);
+    const badges = useProjectNavBadges(projectId);
 
     /* Shared renderer for a single nav item */
     const renderNavItem = (item: NavItem) => {
@@ -366,6 +368,23 @@ export default function Sidebar() {
                             >
                                 {group.header}
                             </span>
+                            {/* Badge */}
+                            {badges[group.id as keyof typeof badges] && (
+                                <span
+                                    style={{
+                                        fontSize: '0.5625rem',
+                                        fontWeight: 600,
+                                        color: 'var(--g-brand-3308)',
+                                        backgroundColor: 'var(--g-brand-bright)',
+                                        borderRadius: 'var(--g-radius-full)',
+                                        padding: '1px 6px',
+                                        lineHeight: '1.4',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    {badges[group.id as keyof typeof badges]}
+                                </span>
+                            )}
                             <ChevronDown
                                 className="h-3.5 w-3.5 shrink-0 transition-transform"
                                 style={{
