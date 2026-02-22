@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get('project_id');
@@ -7,21 +8,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'project_id required' }, { status: 400 });
   }
 
-  // Project membership check — user must have ANY active role on this project
-  const userId = req.headers.get('x-user-id');
-  if (!userId) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
-  const { data: roleData } = await supabaseAdmin
-    .from('dd_project_user_roles')
-    .select('role')
-    .eq('user_id', userId)
-    .eq('project_id', projectId)
-    .eq('is_active', true)
-    .single();
-  if (!roleData) {
-    return NextResponse.json({ success: false, error: 'No role on project' }, { status: 403 });
-  }
+  // Permission check
+  const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_contingencies');
+  if (!authorized) return authError!;
 
   const [tasksRes, configRes] = await Promise.all([
     supabaseAdmin

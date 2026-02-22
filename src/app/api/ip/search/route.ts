@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * IP Radar — Registry Search (OEPM + EUIPO)
@@ -175,6 +176,18 @@ export async function POST(req: NextRequest) {
 
         if (!request || !titular) {
             return NextResponse.json({ error: 'Request or titular not found' }, { status: 404 });
+        }
+
+        // Permission check — use project_id from the IP request record if available
+        if (request.project_id) {
+            const { authorized, error: authError } = await requirePermission(req, request.project_id, 'can_edit_contingencies');
+            if (!authorized) return authError!;
+        } else {
+            // No project_id on this request — verify user is authenticated at minimum
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         const jurisdicciones = (request.scope_jurisdicciones as string[]) || ['ES', 'EU'];

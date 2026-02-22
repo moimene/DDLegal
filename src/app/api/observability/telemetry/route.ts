@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function GET(req: NextRequest) {
+  // Verify authenticated user
+  const userId = req.headers.get('x-user-id');
+  if (!userId) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50', 10), 200);
   const statusFilter = req.nextUrl.searchParams.get('status');
 

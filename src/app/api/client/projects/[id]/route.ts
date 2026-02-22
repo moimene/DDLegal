@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 interface ProgressByArea {
     area_id: string;
@@ -16,6 +17,10 @@ export async function GET(
 ) {
     try {
         const { id } = await params;
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(_req, id, 'can_view_reports');
+        if (!authorized) return authError!;
 
         const [projectRes, areasRes, tasksRes, contingenciesRes] = await Promise.all([
             supabaseAdmin.from('dd_projects').select('*').eq('id', id).single(),

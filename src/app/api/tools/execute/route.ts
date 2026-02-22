@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Execute a microtool
@@ -16,6 +17,17 @@ export async function POST(req: NextRequest) {
                 { error: 'tool_slug and params are required' },
                 { status: 400 }
             );
+        }
+
+        // Permission check
+        if (project_id) {
+            const { authorized, error: authError } = await requirePermission(req, project_id, 'can_edit_tasks');
+            if (!authorized) return authError!;
+        } else {
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         // 1. Look up the tool

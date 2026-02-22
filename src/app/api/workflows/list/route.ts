@@ -1,7 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { WORKFLOW_DEFINITIONS } from '@/lib/workflows';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Verify authenticated user
+  const userId = req.headers.get('x-user-id');
+  if (!userId) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   const workflows = Object.values(WORKFLOW_DEFINITIONS).map(w => ({
     key: w.key,
     name: w.name,

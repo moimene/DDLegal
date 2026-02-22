@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 type BulkAction = 'archive' | 'move' | 'delete' | 'tag';
 
@@ -39,6 +40,19 @@ export async function POST(req: NextRequest) {
                 error: 'tags (non-empty array) required for tag action',
             }, { status: 400 });
         }
+
+        // Fetch first document to get project_id for permission check
+        const { data: firstDoc, error: docError } = await supabaseAdmin
+            .from('vdr_documents')
+            .select('project_id')
+            .eq('id', document_ids[0])
+            .single();
+
+        if (docError || !firstDoc) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, firstDoc.project_id, 'can_upload_vdr');
+        if (!authorized) return authError!;
 
         let successCount = 0;
         let failedCount = 0;

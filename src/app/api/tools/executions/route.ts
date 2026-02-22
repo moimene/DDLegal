@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * List tool executions with optional filters
@@ -12,6 +13,17 @@ export async function GET(req: NextRequest) {
         const projectId = searchParams.get('project_id');
         const status = searchParams.get('status');
         const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
+
+        // Permission check
+        if (projectId) {
+            const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_reports');
+            if (!authorized) return authError!;
+        } else {
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
+        }
 
         let query = supabase
             .from('dd_tool_executions')

@@ -1,5 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+
+// ---------------------------------------------------------------------------
+// Admin check: verify authenticated user has an admin-level role (clo or pm_transaccion)
+// ---------------------------------------------------------------------------
+async function requireAdmin(req: NextRequest): Promise<NextResponse | null> {
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const { data: adminRole } = await supabaseAdmin
+        .from('dd_project_user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .in('role', ['clo', 'pm_transaccion'])
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+    if (!adminRole) {
+        return NextResponse.json({ success: false, error: 'Admin role required' }, { status: 403 });
+    }
+    return null; // authorized
+}
 
 /**
  * Skills Telemetry API — Aggregate execution stats from dd_tool_executions
@@ -11,6 +34,9 @@ import { supabase } from '@/lib/supabase';
  */
 export async function GET(req: NextRequest) {
     try {
+        const adminErr = await requireAdmin(req);
+        if (adminErr) return adminErr;
+
         const { searchParams } = new URL(req.url);
         const projectId = searchParams.get('project_id');
         const period = searchParams.get('period') || 'last_30d';

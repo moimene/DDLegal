@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
         const projectId = searchParams.get('project_id');
         if (!projectId) return NextResponse.json({ error: 'project_id required' }, { status: 400 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_contingencies');
+        if (!authorized) return authError!;
 
         // --- Pagination params ---
         const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10), 1), 100);
@@ -127,6 +132,10 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { project_id, folder_id, area_code, name, description, category, is_confidential, tags } = body;
         if (!project_id || !name) return NextResponse.json({ error: 'project_id and name required' }, { status: 400 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, project_id, 'can_upload_vdr');
+        if (!authorized) return authError!;
 
         const { data, error } = await supabaseAdmin
             .from('vdr_documents')

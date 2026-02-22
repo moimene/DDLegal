@@ -2,11 +2,36 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // ---------------------------------------------------------------------------
+// Admin check: verify authenticated user has an admin-level role (clo or pm_transaccion)
+// ---------------------------------------------------------------------------
+async function requireAdmin(req: NextRequest): Promise<NextResponse | null> {
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const { data: adminRole } = await supabaseAdmin
+        .from('dd_project_user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .in('role', ['clo', 'pm_transaccion'])
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+    if (!adminRole) {
+        return NextResponse.json({ success: false, error: 'Admin role required' }, { status: 403 });
+    }
+    return null; // authorized
+}
+
+// ---------------------------------------------------------------------------
 // GET /api/configuracion/dominios?domain=severity
 // List enums, optionally filtered by domain. Returns grouped by domain.
 // ---------------------------------------------------------------------------
 export async function GET(req: NextRequest) {
     try {
+        const adminErr = await requireAdmin(req);
+        if (adminErr) return adminErr;
+
         const { searchParams } = new URL(req.url);
         const domain = searchParams.get('domain');
 
@@ -48,6 +73,9 @@ export async function GET(req: NextRequest) {
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
     try {
+        const adminErr = await requireAdmin(req);
+        if (adminErr) return adminErr;
+
         const body = await req.json();
         const { domain, code, label, label_en, color, icon, sort_order, metadata } = body;
 
@@ -94,6 +122,9 @@ export async function POST(req: NextRequest) {
 // ---------------------------------------------------------------------------
 export async function PATCH(req: NextRequest) {
     try {
+        const adminErr = await requireAdmin(req);
+        if (adminErr) return adminErr;
+
         const body = await req.json();
         const { id, ...fields } = body;
 
@@ -146,6 +177,9 @@ export async function PATCH(req: NextRequest) {
 // ---------------------------------------------------------------------------
 export async function DELETE(req: NextRequest) {
     try {
+        const adminErr = await requireAdmin(req);
+        if (adminErr) return adminErr;
+
         const body = await req.json();
         const { id } = body;
 

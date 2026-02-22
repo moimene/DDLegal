@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Events API — List recent events with filters
@@ -20,6 +21,17 @@ export async function GET(request: NextRequest) {
     const eventType = searchParams.get('type');
     const since = searchParams.get('since');
     const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
+
+    // Permission check
+    if (projectId) {
+      const { authorized, error: authError } = await requirePermission(request, projectId, 'can_view_contingencies');
+      if (!authorized) return authError!;
+    } else {
+      const userId = request.headers.get('x-user-id');
+      if (!userId) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+    }
 
     // ── 1. Try dd_event_log first (canonical source) ──────────
     let eventLogEvents: Array<{

@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
+
+    // Fetch document to get project_id for permission check
+    const { data: doc, error: docError } = await supabaseAdmin
+        .from('vdr_documents')
+        .select('project_id')
+        .eq('id', id)
+        .single();
+
+    if (docError || !doc) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+
+    // Permission check
+    const { authorized, error: authError } = await requirePermission(req, doc.project_id, 'can_view_contingencies');
+    if (!authorized) return authError!;
+
     const { data, error } = await supabaseAdmin
         .from('vdr_document_versions')
         .select('*')
@@ -16,6 +31,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     try {
+        // Fetch document to get project_id for permission check
+        const { data: doc, error: docError } = await supabaseAdmin
+            .from('vdr_documents')
+            .select('project_id')
+            .eq('id', id)
+            .single();
+
+        if (docError || !doc) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, doc.project_id, 'can_upload_vdr');
+        if (!authorized) return authError!;
+
         const body = await req.json();
         const { original_filename, file_type, file_size_bytes, storage_path, checksum_sha256, change_notes, uploaded_by } = body;
         if (!original_filename || !file_type || !storage_path) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { randomBytes } from 'crypto';
 
 export async function POST(req: NextRequest) {
@@ -7,6 +8,30 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { document_id, folder_id, permission, expires_hours, max_downloads, created_by } = body;
         if (!document_id && !folder_id) return NextResponse.json({ error: 'document_id or folder_id required' }, { status: 400 });
+
+        // Resolve project_id from document or folder
+        let projectId: string | null = null;
+        if (document_id) {
+            const { data: doc } = await supabaseAdmin
+                .from('vdr_documents')
+                .select('project_id')
+                .eq('id', document_id)
+                .single();
+            projectId = doc?.project_id || null;
+        } else if (folder_id) {
+            const { data: folder } = await supabaseAdmin
+                .from('vdr_folders')
+                .select('project_id')
+                .eq('id', folder_id)
+                .single();
+            projectId = folder?.project_id || null;
+        }
+
+        if (!projectId) return NextResponse.json({ error: 'Could not resolve project_id from document or folder' }, { status: 404 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, projectId, 'can_upload_vdr');
+        if (!authorized) return authError!;
 
         const token = randomBytes(32).toString('hex');
         const expiresAt = new Date(Date.now() + (expires_hours || 24) * 3600 * 1000).toISOString();

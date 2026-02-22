@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Project Role Assignments — API Route
@@ -14,6 +15,10 @@ export async function GET(
 ) {
     try {
         const { id: projectId } = await params;
+
+        // Permission check — GET requires can_view_all_areas
+        const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_all_areas');
+        if (!authorized) return authError!;
 
         const { data: roles, error } = await supabaseAdmin
             .from('dd_project_user_roles')
@@ -51,6 +56,11 @@ export async function POST(
 ) {
     try {
         const { id: projectId } = await params;
+
+        // Permission check — POST requires can_manage_roles
+        const { authorized, error: authError } = await requirePermission(req, projectId, 'can_manage_roles');
+        if (!authorized) return authError!;
+
         const body = await req.json();
         const { user_id, role, area_code, granted_by } = body as {
             user_id?: string;
@@ -123,6 +133,11 @@ export async function DELETE(
 ) {
     try {
         const { id: projectId } = await params;
+
+        // Permission check — DELETE requires can_manage_roles
+        const { authorized, error: authError } = await requirePermission(req, projectId, 'can_manage_roles');
+        if (!authorized) return authError!;
+
         const { searchParams } = new URL(req.url);
         const roleId = searchParams.get('role_id');
 

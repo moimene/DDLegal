@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function GET(req: NextRequest) {
+  // Verify authenticated user
+  const userId = req.headers.get('x-user-id');
+  if (!userId) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   const hours = parseInt(req.nextUrl.searchParams.get('hours') || '24', 10);
   const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 

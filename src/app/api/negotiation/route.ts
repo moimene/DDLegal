@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Negotiation CRUD — dd_contingencies_ext
@@ -21,6 +22,10 @@ export async function GET(req: NextRequest) {
                 { status: 400 }
             );
         }
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_negotiation');
+        if (!authorized) return authError!;
 
         // ── Single contingency with clause maps ──────────────────
         if (contingencyId) {
@@ -160,7 +165,7 @@ export async function POST(req: NextRequest) {
         // Verify the contingency exists
         const { data: contingency, error: cError } = await supabaseAdmin
             .from('dd_contingencies')
-            .select('id')
+            .select('id, project_id')
             .eq('id', contingency_id)
             .single();
 
@@ -169,6 +174,16 @@ export async function POST(req: NextRequest) {
                 { error: 'Contingency not found' },
                 { status: 404 }
             );
+        }
+
+        // Permission check
+        if (contingency.project_id) {
+            const { authorized, error: authError } = await requirePermission(req, contingency.project_id, 'can_view_negotiation');
+            if (!authorized) return authError!;
+        } else {
+            // Fallback: require at least an authenticated user
+            const userId = req.headers.get('x-user-id');
+            if (!userId) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
 
         // Upsert into dd_contingencies_ext
@@ -228,6 +243,29 @@ export async function PATCH(req: NextRequest) {
                 { error: 'id is required' },
                 { status: 400 }
             );
+        }
+
+        // Permission check: look up ext record to find contingency's project_id
+        const { data: extRecord } = await supabaseAdmin
+            .from('dd_contingencies_ext')
+            .select('contingency_id')
+            .eq('id', id)
+            .maybeSingle();
+        if (extRecord?.contingency_id) {
+            const { data: cont } = await supabaseAdmin
+                .from('dd_contingencies')
+                .select('project_id')
+                .eq('id', extRecord.contingency_id)
+                .maybeSingle();
+            if (cont?.project_id) {
+                const { authorized, error: authError } = await requirePermission(req, cont.project_id, 'can_view_negotiation');
+                if (!authorized) return authError!;
+            }
+        } else {
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         if (Object.keys(fieldsToUpdate).length === 0) {

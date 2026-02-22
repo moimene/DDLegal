@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -11,6 +12,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         .single();
 
     if (error || !thread) return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
+
+    // Permission check
+    const { authorized, error: authError } = await requirePermission(req, thread.project_id, 'can_respond_qa');
+    if (!authorized) return authError!;
 
     const { data: messages } = await supabaseAdmin
         .from('qa_messages')
@@ -34,6 +39,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     try {
+        // Fetch thread to get project_id for permission check
+        const { data: thread } = await supabaseAdmin
+            .from('qa_threads')
+            .select('project_id')
+            .eq('id', id)
+            .single();
+        if (!thread) return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, thread.project_id, 'can_manage_qa');
+        if (!authorized) return authError!;
+
         const body = await req.json();
         const allowedFields = ['status', 'priority', 'assigned_to', 'due_date', 'sla_hours', 'sla_breached', 'client_visible', 'tags'];
         const updates: Record<string, unknown> = {};

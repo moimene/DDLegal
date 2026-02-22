@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get('project_id');
     if (!projectId) return NextResponse.json({ error: 'project_id required' }, { status: 400 });
+
+    // Permission check
+    const { authorized, error: authError } = await requirePermission(req, projectId, 'can_respond_qa');
+    if (!authorized) return authError!;
 
     let query = supabaseAdmin.from('qa_threads').select('*').eq('project_id', projectId);
 
@@ -25,6 +30,10 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { project_id, area_code, subject, priority, source, assigned_to, due_date, sla_hours, client_visible, related_task_id, related_contingency_id, tags, created_by } = body;
         if (!project_id || !subject) return NextResponse.json({ error: 'project_id and subject required' }, { status: 400 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, project_id, 'can_manage_qa');
+        if (!authorized) return authError!;
 
         const { data, error } = await supabaseAdmin
             .from('qa_threads')

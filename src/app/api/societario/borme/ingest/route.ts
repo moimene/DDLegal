@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * BORME Ingest
@@ -73,13 +74,25 @@ function similarity(a: string, b: string): number {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { sociedad_id, date_from, date_to } = body;
+        const { sociedad_id, date_from, date_to, project_id } = body;
 
         if (!sociedad_id || !date_from || !date_to) {
             return NextResponse.json(
                 { error: 'sociedad_id, date_from, and date_to are required' },
                 { status: 400 }
             );
+        }
+
+        // Permission check — this route operates on sociedad_id (not project-scoped).
+        // If project_id is provided, do a full permission check; otherwise verify authentication.
+        if (project_id) {
+            const { authorized, error: authError } = await requirePermission(req, project_id, 'can_edit_contingencies');
+            if (!authorized) return authError!;
+        } else {
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         // Get sociedad details

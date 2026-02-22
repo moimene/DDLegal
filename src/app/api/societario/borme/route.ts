@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * BORME Summary Fetcher
@@ -33,6 +34,20 @@ function normalizeDenominacion(name: string): string {
 
 export async function GET(req: NextRequest) {
     try {
+        // Authentication check — this route fetches public BORME data by date
+        // and has no project_id scope, so a full permission check is not feasible.
+        // We verify the user is authenticated at minimum.
+        const userId = req.headers.get('x-user-id');
+        if (!userId) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const project_id = req.nextUrl.searchParams.get('project_id');
+        if (project_id) {
+            const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_contingencies');
+            if (!authorized) return authError!;
+        }
+
         const { searchParams } = new URL(req.url);
         const date = searchParams.get('date');
 

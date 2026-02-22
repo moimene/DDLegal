@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { randomUUID } from 'crypto';
 
 type AuditActionType = 'upload' | 'delete' | 'version' | 'share' | 'view' | 'update' | 'move' | 'archive' | 'approve';
@@ -188,6 +189,10 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const projectId = searchParams.get('project_id');
         if (!projectId) return NextResponse.json({ error: 'project_id required' }, { status: 400 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_all_areas');
+        if (!authorized) return authError!;
 
         const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10), 1), 500);
         const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10), 0);

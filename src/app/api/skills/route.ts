@@ -7,6 +7,12 @@ import { supabase } from '@/lib/supabase';
  */
 export async function GET(req: NextRequest) {
     try {
+        // Verify authenticated user
+        const userId = req.headers.get('x-user-id');
+        if (!userId) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { searchParams } = new URL(req.url);
         const areaCode = searchParams.get('area_code');
         const category = searchParams.get('category');

@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get('project_id');
     if (!projectId) return NextResponse.json({ error: 'project_id required' }, { status: 400 });
+
+    // Permission check
+    const { authorized, error: authError } = await requirePermission(req, projectId, 'can_manage_roles');
+    if (!authorized) return authError!;
 
     let query = supabaseAdmin.from('vdr_acl').select('*').eq('project_id', projectId);
     const folderId = searchParams.get('folder_id');
@@ -24,6 +29,10 @@ export async function POST(req: NextRequest) {
         if (!project_id || !role || !permission) return NextResponse.json({ error: 'project_id, role, and permission required' }, { status: 400 });
         if (!document_id && !folder_id) return NextResponse.json({ error: 'document_id or folder_id required' }, { status: 400 });
 
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, project_id, 'can_manage_roles');
+        if (!authorized) return authError!;
+
         const { data, error } = await supabaseAdmin
             .from('vdr_acl')
             .insert({ project_id, document_id: document_id || null, folder_id: folder_id || null, role, area_code: area_code || null, permission })
@@ -38,7 +47,25 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const aclId = searchParams.get('id');
+    const projectId = searchParams.get('project_id');
     if (!aclId) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+    // If project_id is provided in query, use it directly; otherwise fetch from ACL entry
+    let resolvedProjectId = projectId;
+    if (!resolvedProjectId) {
+        const { data: aclEntry, error: aclError } = await supabaseAdmin
+            .from('vdr_acl')
+            .select('project_id')
+            .eq('id', aclId)
+            .single();
+
+        if (aclError || !aclEntry) return NextResponse.json({ error: 'ACL entry not found' }, { status: 404 });
+        resolvedProjectId = aclEntry.project_id;
+    }
+
+    // Permission check
+    const { authorized, error: authError } = await requirePermission(req, resolvedProjectId!, 'can_manage_roles');
+    if (!authorized) return authError!;
 
     const { error } = await supabaseAdmin.from('vdr_acl').delete().eq('id', aclId);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

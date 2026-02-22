@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 import type { DDTask } from '@/lib/supabase';
 
 type HitlDecision = 'approve' | 'correct' | 'reject';
@@ -42,6 +43,17 @@ export async function POST(req: NextRequest) {
 
         if (taskError || !task) {
             return NextResponse.json({ error: 'Task not found.' }, { status: 404 });
+        }
+
+        // Permission check using the task's project_id
+        if (task.project_id) {
+            const { authorized, error: authError } = await requirePermission(req, task.project_id, 'can_edit_tasks');
+            if (!authorized) return authError!;
+        } else {
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         const statusPatch = DECISION_STATUS_MAP[decision];
@@ -122,6 +134,17 @@ export async function PATCH(req: NextRequest) {
 
         if (taskError || !task) {
             return NextResponse.json({ error: 'Task not found.' }, { status: 404 });
+        }
+
+        // Permission check using the task's project_id
+        if (task.project_id) {
+            const { authorized, error: authError } = await requirePermission(req, task.project_id, 'can_edit_tasks');
+            if (!authorized) return authError!;
+        } else {
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         const statusPatch = QUICK_DECISION_STATUS_MAP[decision];

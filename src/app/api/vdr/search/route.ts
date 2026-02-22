@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 interface SearchResult {
     id: string;
@@ -29,6 +30,10 @@ export async function GET(req: NextRequest) {
 
         if (!projectId) return NextResponse.json({ error: 'project_id required' }, { status: 400 });
         if (!q || q.trim().length === 0) return NextResponse.json({ error: 'q (search keyword) required' }, { status: 400 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_contingencies');
+        if (!authorized) return authError!;
 
         const keyword = q.trim();
         const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10), 1), 200);

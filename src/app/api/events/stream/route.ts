@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 /**
@@ -8,6 +9,12 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
  * as SSE-formatted messages to the client.
  */
 export async function GET(request: Request) {
+  // Verify authenticated user
+  const userId = request.headers.get('x-user-id');
+  if (!userId) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get('project_id');
 

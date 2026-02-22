@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get('project_id');
   if (!projectId) {
     return NextResponse.json({ success: false, error: 'project_id required' }, { status: 400 });
   }
+
+  // Permission check
+  const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_contingencies');
+  if (!authorized) return authError!;
 
   const { data: tasks } = await supabaseAdmin
     .from('dd_kanban_tasks')

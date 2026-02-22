@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Harvey AI Integration — API Route
@@ -19,6 +20,10 @@ export async function POST(req: NextRequest) {
         if (!project_id || !process_id || !prompt) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, project_id, 'can_edit_tasks');
+        if (!authorized) return authError!;
 
         // Enrich the prompt with project context
         const enrichedPrompt = prompt

@@ -2,11 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // ---------------------------------------------------------------------------
+// Auth helper: verify x-user-id header exists (JWT middleware passed)
+// ---------------------------------------------------------------------------
+function requireAuth(req: NextRequest): NextResponse | null {
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    return null;
+}
+
+// ---------------------------------------------------------------------------
 // GET /api/system/skills?area_code=MERC&category=verificacion&is_active=true
 // List skills, optionally filtered by area_code, category, is_active.
 // ---------------------------------------------------------------------------
 export async function GET(req: NextRequest) {
     try {
+        const authErr = requireAuth(req);
+        if (authErr) return authErr;
+
         const { searchParams } = new URL(req.url);
         const areaCode = searchParams.get('area_code');
         const category = searchParams.get('category');
@@ -51,6 +65,9 @@ export async function GET(req: NextRequest) {
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
     try {
+        const authErr = requireAuth(req);
+        if (authErr) return authErr;
+
         const body = await req.json();
         const { skill_key, area_code, name, category, prompt_template } = body;
 
@@ -109,6 +126,9 @@ export async function POST(req: NextRequest) {
 // ---------------------------------------------------------------------------
 export async function PATCH(req: NextRequest) {
     try {
+        const authErr = requireAuth(req);
+        if (authErr) return authErr;
+
         const body = await req.json();
         const { skill_id, ...fields } = body;
 
@@ -163,6 +183,9 @@ export async function PATCH(req: NextRequest) {
 // ---------------------------------------------------------------------------
 export async function DELETE(req: NextRequest) {
     try {
+        const authErr = requireAuth(req);
+        if (authErr) return authErr;
+
         const body = await req.json();
         const { skill_id } = body;
 

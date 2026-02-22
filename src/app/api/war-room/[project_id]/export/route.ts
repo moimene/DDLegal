@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ project_id: string }> }) {
   const { project_id } = await params;
+
+  // Permission check
+  const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_war_room');
+  if (!authorized) return authError!;
+
   try {
     const body = await req.json().catch(() => ({}));
     const format = body.format || 'json';

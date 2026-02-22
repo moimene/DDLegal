@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Deal Cockpit / War Room — Aggregation Endpoint
@@ -21,6 +22,10 @@ export async function GET(
 ) {
     try {
         const { id: projectId } = await params;
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(_req, projectId, 'can_view_war_room');
+        if (!authorized) return authError!;
 
         // ── 1. Project info ──────────────────────────────────────
         const { data: project, error: projectError } = await supabaseAdmin

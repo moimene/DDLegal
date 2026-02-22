@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { emitEvent } from '@/lib/events';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Auto-Classification endpoint
@@ -214,6 +215,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Permission check
+    if (!project_id) {
+      return NextResponse.json({ error: 'project_id is required' }, { status: 400 });
+    }
+    const { authorized, error: authError } = await requirePermission(request, project_id, 'can_upload_vdr');
+    if (!authorized) return authError!;
 
     // Run classification
     const result = classifyFilename(filename, content_preview);

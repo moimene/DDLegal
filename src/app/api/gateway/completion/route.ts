@@ -1,8 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getHarveyGateway, HarveyGatewayError } from '@/lib/harvey';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function POST(req: NextRequest) {
   try {
+    // We need to clone the request to read body twice
+    const clonedReq = req.clone();
+    const bodyForAuth = await clonedReq.json().catch(() => ({}));
+    const projectId = bodyForAuth.project_id;
+
+    // Permission check
+    if (projectId) {
+      const { authorized, error: authError } = await requirePermission(req, projectId, 'can_edit_tasks');
+      if (!authorized) return authError!;
+    } else {
+      const userId = req.headers.get('x-user-id');
+      if (!userId) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
     const featureFlag = process.env.HARVEY_FEATURE_FLAG || 'gateway';
     const gateway = getHarveyGateway();
 

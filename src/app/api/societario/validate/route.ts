@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Grounding Validator
@@ -35,6 +36,32 @@ export async function POST(req: NextRequest) {
 
         if (!report) {
             return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+        }
+
+        // Permission check — trace report -> request -> project_id
+        if (report.request_id) {
+            const { data: parentRequest } = await supabaseAdmin
+                .from('dd_requests')
+                .select('project_id')
+                .eq('id', report.request_id)
+                .single();
+
+            if (parentRequest?.project_id) {
+                const { authorized, error: authError } = await requirePermission(req, parentRequest.project_id, 'can_edit_contingencies');
+                if (!authorized) return authError!;
+            } else {
+                // No project_id on this request — verify user is authenticated at minimum
+                const userId = req.headers.get('x-user-id');
+                if (!userId) {
+                    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+                }
+            }
+        } else {
+            // No request_id on this report — verify user is authenticated at minimum
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         const evidencePack = report.evidence_pack as Record<string, unknown>;

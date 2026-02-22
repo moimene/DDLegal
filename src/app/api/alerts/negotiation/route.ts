@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Negotiation Alerts System
@@ -19,6 +20,17 @@ export async function GET(req: NextRequest) {
     const requestId = searchParams.get('request_id');
     const projectId = searchParams.get('project_id');
     const status = searchParams.get('status');
+
+    // Permission check
+    if (projectId) {
+        const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_negotiation');
+        if (!authorized) return authError!;
+    } else {
+        const userId = req.headers.get('x-user-id');
+        if (!userId) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+    }
 
     let query = supabaseAdmin
         .from('dd_negotiation_alerts')
@@ -52,6 +64,17 @@ export async function POST(req: NextRequest) {
 
         if (!request_id) {
             return NextResponse.json({ error: 'request_id is required' }, { status: 400 });
+        }
+
+        // Permission check
+        if (project_id) {
+            const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_negotiation');
+            if (!authorized) return authError!;
+        } else {
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         const newAlerts: Array<{
@@ -223,10 +246,21 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
     try {
         const body = await req.json();
-        const { alert_id, status } = body;
+        const { alert_id, status, project_id } = body;
 
         if (!alert_id || !status) {
             return NextResponse.json({ error: 'alert_id and status are required' }, { status: 400 });
+        }
+
+        // Permission check
+        if (project_id) {
+            const { authorized, error: authError } = await requirePermission(req, project_id, 'can_view_negotiation');
+            if (!authorized) return authError!;
+        } else {
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         if (!['new', 'acknowledged', 'resolved'].includes(status)) {

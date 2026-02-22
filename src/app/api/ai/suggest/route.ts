@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Smart Suggestions API
@@ -389,6 +390,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Permission check
+    const { authorized, error: authError } = await requirePermission(request, project_id, 'can_view_contingencies');
+    if (!authorized) return authError!;
 
     const validContexts: SuggestContext[] = ['dashboard', 'vdr', 'qa', 'tasks'];
     const effectiveContext: SuggestContext = validContexts.includes(context as SuggestContext)

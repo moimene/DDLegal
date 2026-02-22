@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * List evidence by entity
@@ -21,6 +22,17 @@ export async function GET(req: NextRequest) {
                 { error: 'At least one filter required: project_id, task_id, execution_id, or contingency_id' },
                 { status: 400 }
             );
+        }
+
+        // Permission check
+        if (projectId) {
+            const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_contingencies');
+            if (!authorized) return authError!;
+        } else {
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         let query = supabase

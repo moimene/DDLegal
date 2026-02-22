@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * SPA Clause Library & Contingency-Clause Mappings
@@ -10,6 +11,12 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function GET(req: NextRequest) {
     try {
+        // Verify authenticated user
+        const userId = req.headers.get('x-user-id');
+        if (!userId) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { searchParams } = new URL(req.url);
         const clauseType = searchParams.get('clause_type');
         const areaCode = searchParams.get('area_code');
@@ -75,6 +82,22 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Permission check: look up contingency's project_id
+        const { data: cont } = await supabaseAdmin
+            .from('dd_contingencies')
+            .select('project_id')
+            .eq('id', contingency_id)
+            .maybeSingle();
+        if (cont?.project_id) {
+            const { authorized, error: authError } = await requirePermission(req, cont.project_id, 'can_view_negotiation');
+            if (!authorized) return authError!;
+        } else {
+            const uid = req.headers.get('x-user-id');
+            if (!uid) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
+        }
+
         const { data, error } = await supabaseAdmin
             .from('dd_contingency_clause_map')
             .insert({
@@ -127,6 +150,22 @@ export async function DELETE(req: NextRequest) {
                 { error: 'contingency_id and clause_key are required' },
                 { status: 400 }
             );
+        }
+
+        // Permission check: look up contingency's project_id
+        const { data: cont } = await supabaseAdmin
+            .from('dd_contingencies')
+            .select('project_id')
+            .eq('id', contingency_id)
+            .maybeSingle();
+        if (cont?.project_id) {
+            const { authorized, error: authError } = await requirePermission(req, cont.project_id, 'can_view_negotiation');
+            if (!authorized) return authError!;
+        } else {
+            const uid = req.headers.get('x-user-id');
+            if (!uid) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         const { error } = await supabaseAdmin

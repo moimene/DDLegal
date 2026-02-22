@@ -3,6 +3,12 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function PATCH(req: NextRequest) {
   try {
+    // Verify authenticated user
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { tool_id, is_active } = await req.json();
 
     if (!tool_id || typeof is_active !== 'boolean') {

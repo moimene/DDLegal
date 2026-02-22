@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Societario Request
@@ -19,6 +20,18 @@ export async function POST(req: NextRequest) {
                 { error: 'sociedad_target is required' },
                 { status: 400 }
             );
+        }
+
+        // Permission check
+        if (project_id) {
+            const { authorized, error: authError } = await requirePermission(req, project_id, 'can_edit_contingencies');
+            if (!authorized) return authError!;
+        } else {
+            // No project_id scope — verify user is authenticated at minimum
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         const periodo = periodo_anios || 5;
@@ -138,6 +151,18 @@ export async function GET(req: NextRequest) {
 
         if (error || !request) {
             return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+        }
+
+        // Permission check — use project_id from the request record if available
+        if (request.project_id) {
+            const { authorized, error: authError } = await requirePermission(req, request.project_id, 'can_view_contingencies');
+            if (!authorized) return authError!;
+        } else {
+            // No project_id on this request — verify user is authenticated at minimum
+            const userId = req.headers.get('x-user-id');
+            if (!userId) {
+                return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            }
         }
 
         // Get related data based on pipeline step

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
         const projectId = searchParams.get('project_id');
         if (!projectId) return NextResponse.json({ error: 'project_id required' }, { status: 400 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_contingencies');
+        if (!authorized) return authError!;
 
         const includeCounts = searchParams.get('include_counts') === 'true';
 
@@ -59,6 +64,10 @@ export async function POST(req: NextRequest) {
         const { project_id, parent_id, name, area_code, sort_order } = body;
         if (!project_id || !name) return NextResponse.json({ error: 'project_id and name required' }, { status: 400 });
 
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, project_id, 'can_upload_vdr');
+        if (!authorized) return authError!;
+
         const { data, error } = await supabaseAdmin
             .from('vdr_folders')
             .insert({ project_id, parent_id: parent_id || null, name, area_code: area_code || null, sort_order: sort_order || 0 })
@@ -77,6 +86,19 @@ export async function PATCH(req: NextRequest) {
         const body = await req.json();
         const { id, name, area_code, sort_order, parent_id } = body;
         if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+        // Fetch folder to get project_id for permission check
+        const { data: folder, error: folderError } = await supabaseAdmin
+            .from('vdr_folders')
+            .select('project_id')
+            .eq('id', id)
+            .single();
+
+        if (folderError || !folder) return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, folder.project_id, 'can_upload_vdr');
+        if (!authorized) return authError!;
 
         const updates: Record<string, unknown> = {};
         if (name !== undefined) updates.name = name;
@@ -107,6 +129,19 @@ export async function DELETE(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const folderId = searchParams.get('id');
         if (!folderId) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+        // Fetch folder to get project_id for permission check
+        const { data: folder, error: folderError } = await supabaseAdmin
+            .from('vdr_folders')
+            .select('project_id')
+            .eq('id', folderId)
+            .single();
+
+        if (folderError || !folder) return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, folder.project_id, 'can_upload_vdr');
+        if (!authorized) return authError!;
 
         // Check for documents inside this folder
         const { count: docCount, error: countErr } = await supabaseAdmin

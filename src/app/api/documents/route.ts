@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
@@ -8,6 +9,10 @@ export async function GET(req: NextRequest) {
     if (!projectId) {
         return NextResponse.json({ error: 'project_id required' }, { status: 400 });
     }
+
+    // Permission check
+    const { authorized, error: authError } = await requirePermission(req, projectId, 'can_upload_vdr');
+    if (!authorized) return authError!;
 
     // Read from compatibility view (VDR v2 data in legacy format)
     // Falls back to dd_documents if view doesn't exist yet
@@ -69,6 +74,10 @@ export async function POST(req: NextRequest) {
         if (!project_id || !name || !original_filename || !file_type) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, project_id, 'can_upload_vdr');
+        if (!authorized) return authError!;
 
         // Create in VDR v2 instead of legacy dd_documents
         const { data: doc, error: docErr } = await supabaseAdmin

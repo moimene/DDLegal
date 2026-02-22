@@ -14,6 +14,12 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
  */
 export async function GET(req: NextRequest) {
     try {
+        // Verify authenticated user (x-user-id set by middleware)
+        const xUserId = req.headers.get('x-user-id');
+        if (!xUserId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const authHeader = req.headers.get('authorization');
 
         if (!authHeader || !authHeader.startsWith('Bearer ')) {

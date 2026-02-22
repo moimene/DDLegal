@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Link a tool execution to a DD project
@@ -17,6 +18,10 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, project_id, 'can_edit_tasks');
+        if (!authorized) return authError!;
 
         // Verify execution exists
         const { data: execution } = await supabaseAdmin

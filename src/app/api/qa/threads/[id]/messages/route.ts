@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
+
+    // Fetch parent thread to get project_id for permission check
+    const { data: thread } = await supabaseAdmin
+        .from('qa_threads')
+        .select('project_id')
+        .eq('id', id)
+        .single();
+    if (!thread) return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
+
+    // Permission check
+    const { authorized, error: authError } = await requirePermission(req, thread.project_id, 'can_respond_qa');
+    if (!authorized) return authError!;
+
     const { data, error } = await supabaseAdmin
         .from('qa_messages')
         .select('*')
@@ -16,6 +30,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     try {
+        // Fetch parent thread to get project_id for permission check
+        const { data: thread } = await supabaseAdmin
+            .from('qa_threads')
+            .select('project_id')
+            .eq('id', id)
+            .single();
+        if (!thread) return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
+
+        // Permission check
+        const { authorized, error: authError } = await requirePermission(req, thread.project_id, 'can_respond_qa');
+        if (!authorized) return authError!;
+
         const body = await req.json();
         const { sender_role, sender_id, content, attachments, is_internal } = body;
         if (!sender_role || !content) return NextResponse.json({ error: 'sender_role and content required' }, { status: 400 });

@@ -57,6 +57,12 @@ function typeToCategory(type: string): string {
 // ---------------------------------------------------------------------------
 
 export async function GET(req: NextRequest) {
+    // Verify authenticated user
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get('project_id');
     if (!projectId) {
@@ -293,6 +299,12 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
     try {
+        // Verify authenticated user
+        const patchUserId = req.headers.get('x-user-id');
+        if (!patchUserId) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await req.json();
         const ids: string[] = body.ids;
 
