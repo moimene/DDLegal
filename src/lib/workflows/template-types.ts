@@ -16,7 +16,16 @@ export type WorkflowPhase =
   | 'tratamiento'; // legacy — kept for backward compat with existing seed
 
 /** Workflow template categories */
-export type TemplateCategory = 'transactional' | 'compliance' | 'operational';
+export type TemplateCategory =
+  | 'transactional'
+  | 'compliance'
+  | 'operational'
+  | 'transversal'
+  | 'area'
+  | 'area_multi'
+  | 'synthesis'
+  | 'deliverable'
+  | 'negotiation';
 
 /** Workflow instance status */
 export type WorkflowInstanceStatus =
