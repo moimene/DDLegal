@@ -17,6 +17,8 @@ export interface ReportTemplate {
     cadencia: 'on_demand' | 'daily' | 'weekly' | 'monthly';
     audience: ('equipo' | 'cliente' | 'pm')[];
     url_allowlist?: string[];
+    /** Whether this report_type has a dedicated HTML template in dd_report_render */
+    has_dedicated_template?: boolean;
 }
 
 // ============================================================
