@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { generateEmbeddings } from '@/lib/embeddings';
 import { chunkText } from './chunker';
+import { computeContentHash } from './content-hash';
 import type { Chunk } from './chunker';
 
 export async function startIngestion(documentId: string, versionId?: string): Promise<string> {
@@ -30,6 +31,30 @@ async function processIngestion(jobId: string, documentId: string, versionId?: s
       if (version?.change_notes) textContent = version.change_notes + '\n\n' + textContent;
     }
 
+    // Level-1 cache: compute content hash for deduplication
+    const contentHash = computeContentHash(textContent);
+
+    const { data: existingDoc } = await supabaseAdmin
+      .from('vdr_documents')
+      .select('content_hash, embedding_status')
+      .eq('id', documentId)
+      .single();
+
+    if (existingDoc?.content_hash === contentHash && existingDoc?.embedding_status === 'done') {
+      // Content unchanged, skip re-processing
+      await supabaseAdmin.from('vdr_ingestion_jobs').update({
+        status: 'completed',
+        chunks_created: 0,
+        completed_at: new Date().toISOString(),
+      }).eq('id', jobId);
+      return;
+    }
+
+    // Mark as processing
+    await supabaseAdmin.from('vdr_documents').update({
+      embedding_status: 'processing',
+    }).eq('id', documentId);
+
     await supabaseAdmin.from('vdr_chunks').delete().eq('document_id', documentId);
 
     const chunks: Chunk[] = chunkText(textContent);
@@ -56,8 +81,19 @@ async function processIngestion(jobId: string, documentId: string, versionId?: s
     const { error: insertError } = await supabaseAdmin.from('vdr_chunks').insert(rows);
     if (insertError) throw new Error(`Chunk insert failed: ${insertError.message}`);
 
+    // Update cache columns after successful embedding
+    await supabaseAdmin.from('vdr_documents').update({
+      content_hash: contentHash,
+      embedding_status: 'done',
+      last_embedded_at: new Date().toISOString(),
+    }).eq('id', documentId);
+
     await supabaseAdmin.from('vdr_ingestion_jobs').update({ status: 'completed', chunks_created: chunks.length, completed_at: new Date().toISOString() }).eq('id', jobId);
   } catch (err) {
+    // Mark embedding as stale on failure
+    await supabaseAdmin.from('vdr_documents').update({
+      embedding_status: 'stale',
+    }).eq('id', documentId);
     await supabaseAdmin.from('vdr_ingestion_jobs').update({ status: 'failed', error_message: (err as Error).message, completed_at: new Date().toISOString() }).eq('id', jobId);
   }
 }
