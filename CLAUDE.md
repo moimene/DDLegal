@@ -107,36 +107,29 @@ Feature flag: `WORKFLOW_TEMPLATES_V1` — cuando `false`, usa `WORKFLOW_DEFINITI
 
 ## Demo Users
 
-8 usuarios demo en Supabase Auth. Login page (`/login`) permite seleccion directa con auto-fill de credenciales.
+16 usuarios en Supabase Auth (8 demo + 8 extended seed v3). Login page (`/login`) permite seleccion directa con auto-fill. Credenciales en seed migration (NO en este fichero).
 
-| Email | Password | Rol | UUID |
-|-------|----------|-----|------|
-| admin@ddlegal.com | admin123456 | Superusuario (admin) | `aaaa0001-0000-4000-8000-000000000000` |
-| clo@test.ddlegal.com | test123456 | CLO / Director Legal | `aaaa0001-0001-4000-8000-000000000001` |
-| pm@test.ddlegal.com | test123456 | PM Transaccion | `aaaa0001-0002-4000-8000-000000000002` |
-| abogado.merc@test.ddlegal.com | test123456 | Abogado Mercantil | `aaaa0001-0003-4000-8000-000000000003` |
-| sponsor@test.ddlegal.com | test123456 | Deal Sponsor | `aaaa0001-0004-4000-8000-000000000004` |
-| target@test.ddlegal.com | test123456 | Contacto Target | `aaaa0001-0005-4000-8000-000000000005` |
-| stakeholder@test.ddlegal.com | test123456 | Stakeholder Negocio | `aaaa0001-0006-4000-8000-000000000006` |
-| cliente@test.ddlegal.com | test123456 | Cliente Externo | `aaaa0001-0007-4000-8000-000000000007` |
+| Rol | UUID | Notas |
+|-----|------|-------|
+| Superusuario (admin) | `aaaa0001-0000-4000-8000-000000000000` | Admin principal |
+| CLO / Director Legal | `aaaa0001-0001-4000-8000-000000000001` | |
+| PM Transaccion | `aaaa0001-0002-4000-8000-000000000002` | |
+| Abogado Mercantil | `aaaa0001-0003-4000-8000-000000000003` | |
+| Deal Sponsor | `aaaa0001-0004-4000-8000-000000000004` | |
+| Contacto Target | `aaaa0001-0005-4000-8000-000000000005` | |
+| Stakeholder Negocio | `aaaa0001-0006-4000-8000-000000000006` | |
+| Cliente Externo | `aaaa0001-0007-4000-8000-000000000007` | |
+| Abogado Contractual | `aaaa0001-0008-...` | Seed v3 |
+| Abogado Fiscal | `aaaa0001-0009-...` | Seed v3 |
+| Abogado PI | `aaaa0001-000a-...` | Seed v3 |
+| Abogado Laboral | `aaaa0001-000b-...` | Seed v3 |
+| Abogado Litigios | `aaaa0001-000c-...` | Seed v3 |
+| Abogado ADM | `aaaa0001-000d-...` | Seed v3 |
+| Inactive (former) | `aaaa0001-000e-...` | Seed v3 |
+| Expired user | `aaaa0001-000f-...` | Seed v3 |
 
 Demo project: `a1b2c3d4-0001-4000-8000-000000000001` (FMC Due Diligence - Prototipo).
-Seed migration: `supabase/migrations/202602270001_seed_demo_users.sql`.
-
-### Extended Test Users (seed v3)
-
-8 additional users created for project role testing (total 16 in auth.users):
-
-| Email | Rol | UUID |
-|-------|-----|------|
-| abogado.cont@test.ddlegal.com | Abogado Contractual | `aaaa0001-0008-...` |
-| abogado.fisc@test.ddlegal.com | Abogado Fiscal | `aaaa0001-0009-...` |
-| abogado.pi@test.ddlegal.com | Abogado PI | `aaaa0001-000a-...` |
-| abogado.lab@test.ddlegal.com | Abogado Laboral | `aaaa0001-000b-...` |
-| abogado.lit@test.ddlegal.com | Abogado Litigios | `aaaa0001-000c-...` |
-| abogado.adm@test.ddlegal.com | Abogado ADM | `aaaa0001-000d-...` |
-| former@test.ddlegal.com | Inactive user (former) | `aaaa0001-000e-...` |
-| expired@test.ddlegal.com | Expired user | `aaaa0001-000f-...` |
+Credenciales y emails: ver `supabase/migrations/202602270001_seed_demo_users.sql` (local only, nunca en repo publico).
 
 **GoTrue gotcha**: `email_change` column in `auth.users` MUST be `''` (empty string), not NULL. GoTrue's Go code scans it as `string` type which cannot handle NULL.
 
