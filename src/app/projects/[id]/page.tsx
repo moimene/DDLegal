@@ -269,16 +269,19 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
     const updateTaskStatus = async (taskId: string, status: DDTask['status']) => {
         setStatusUpdating(taskId);
-        const { error } = await supabase
-            .from('dd_tasks')
-            .update({
-                status,
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', taskId);
-
-        if (!error) {
-            setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, status } : t)));
+        try {
+            const res = await fetch(`/api/tasks/${taskId}/status`, {
+                method: 'PATCH',
+                headers: authHeaders(),
+                body: JSON.stringify({ status }),
+            });
+            if (res.ok) {
+                setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, status } : t)));
+            } else {
+                console.error('Failed to update task status:', res.status);
+            }
+        } catch (err) {
+            console.error('Error updating task status:', err);
         }
         setStatusUpdating(null);
     };
