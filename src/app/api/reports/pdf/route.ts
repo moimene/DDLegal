@@ -53,10 +53,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Dynamic import puppeteer to keep it server-side only
-  let pdfBuffer: Buffer;
+  // puppeteer is an optional peer dependency — installed at deploy time
+  let pdfBytes: ArrayBuffer;
   try {
-    const puppeteer = await import('puppeteer');
-    const browser = await puppeteer.default.launch({
+    /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
+    const puppeteer = require('puppeteer') as any;
+    /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
+    const browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
@@ -75,7 +78,9 @@ export async function GET(request: NextRequest) {
         scale: 0.95,
       });
 
-      pdfBuffer = Buffer.from(result);
+      // Convert to ArrayBuffer for NextResponse compatibility
+      const uint8 = new Uint8Array(result);
+      pdfBytes = uint8.buffer as ArrayBuffer;
     } finally {
       await browser.close();
     }
@@ -90,7 +95,7 @@ export async function GET(request: NextRequest) {
   const sanitizedType = version.report_type.replace(/[^a-zA-Z0-9_-]/g, '_');
   const filename = `${sanitizedType}_v${version.version}.pdf`;
 
-  return new NextResponse(pdfBuffer, {
+  return new NextResponse(pdfBytes, {
     status: 200,
     headers: {
       'Content-Type': 'application/pdf',
