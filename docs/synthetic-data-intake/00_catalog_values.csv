@@ -1,0 +1,146 @@
+domain,value,notes
+project_status,active,Proyecto activo
+project_status,blocked,Proyecto bloqueado
+project_status,on_hold,Proyecto en pausa
+review_depth,light,Revision ligera
+review_depth,standard,Revision estandar
+review_depth,enhanced,Revision reforzada
+role,clo,Chief Legal Officer
+role,pm_transaccion,Project manager legal
+role,abogado_area,Abogado por area
+role,deal_sponsor,Patrocinador del deal
+role,target_liaison,Contacto target
+role,stakeholder_negocio,Stakeholder de negocio
+role,cliente_externo,Cliente externo
+area_code,MERC,Mercantil societario
+area_code,CONT,Contratos
+area_code,LAB,Laboral
+area_code,FISC,Fiscal
+area_code,PI,Propiedad intelectual
+area_code,LIT,Litigios
+area_code,INM,Inmobiliario
+area_code,ADM,Administrativo regulatorio
+area_code,AMB,Medio ambiente
+area_code,GENERAL,Transversal
+priority,critical,Critica
+priority,high,Alta
+priority,medium,Media
+priority,low,Baja
+kanban_state,backlog,Por iniciar
+kanban_state,info_solicitada,Informacion solicitada
+kanban_state,info_recibida,Informacion recibida
+kanban_state,lista_para_analisis,Lista para analisis
+kanban_state,en_analisis,En analisis
+kanban_state,ia_propuesta,Propuesta IA
+kanban_state,hitl_revision,Revision humana
+kanban_state,conclusion,Conclusion
+kanban_state,integrado_en_informe,Integrado en informe
+kanban_state,bloqueado,Bloqueado
+task_ai_status,pending,Pendiente
+task_ai_status,running,En ejecucion
+task_ai_status,done,Completado
+task_ai_status,failed,Fallido
+contingency_status,identified,Identificada
+contingency_status,confirmed,Confirmada
+contingency_status,mitigated,Mitigada
+contingency_status,resolved,Resuelta
+contingency_status,accepted,Aceptada
+contingency_probability,certain,Cierta
+contingency_probability,probable,Probable
+contingency_probability,possible,Posible
+contingency_probability,remote,Remota
+contingency_treatment,indemnity,Indemnidad
+contingency_treatment,retention,Retencion
+contingency_treatment,escrow,Escrow
+contingency_treatment,price_adjustment,Ajuste de precio
+contingency_treatment,insurance,Seguro
+contingency_treatment,waiver,Renuncia
+negotiation_status,open,Abierta
+negotiation_status,proposed,Propuesta
+negotiation_status,agreed,Acordada
+negotiation_status,rejected,Rechazada
+negotiation_status,deferred,Diferida
+basket_type,deductible,Deductible
+basket_type,tipping,Tipping
+basket_type,mini_basket,Mini basket
+basket_type,none,No aplica
+qa_status,draft,Borrador
+qa_status,sent,Enviada
+qa_status,pending_response,Esperando respuesta
+qa_status,answered,Respondida
+qa_status,follow_up,Seguimiento
+qa_status,escalated,Escalada
+qa_status,closed,Cerrada
+qa_source,manual,Manual
+qa_source,ai_generated,Generada por IA
+qa_source,gap_analysis,Gap analysis
+qa_source,cross_check,Cross check
+qa_sender_role,advisor,Equipo asesor
+qa_sender_role,target,Target
+qa_sender_role,system,Sistema
+qa_sender_role,ai,Asistente IA
+report_status,pending,Pendiente
+report_status,generating,Generando
+report_status,done,Completo
+report_status,failed,Fallido
+report_category,operational,Operativo
+report_category,workstream,Workstream
+report_category,consolidated,Consolidado
+report_category,transactional,Transaccional
+report_category,final,Final
+report_category,negotiation,Negociacion
+report_visibility,internal,Interno
+report_visibility,client,Cliente
+report_visibility,deal_team,Deal team
+report_visibility,counterparty,Contraparte
+report_visibility,committee,Comite
+hitl_status,pending_review,Pendiente revision
+hitl_status,approved,Aprobado
+hitl_status,rejected,Rechazado
+hitl_status,needs_evidence,Requiere evidencia
+hitl_status,escalated,Escalado
+hitl_decision,approve,Aprobar
+hitl_decision,correct,Corregir
+hitl_decision,reject,Rechazar
+war_decision_type,accept_risk,Aceptar riesgo
+war_decision_type,mitigate,Mitigar
+war_decision_type,transfer,Transferir
+war_decision_type,reject,Rechazar
+war_decision_type,defer,Diferir
+war_decision_type,escalate,Escalar
+war_notification_type,severity_change,Cambio de severidad
+war_notification_type,new_blocker,Nuevo blocker
+war_notification_type,request_overdue,Request vencida
+war_notification_type,decision_required,Decision requerida
+war_notification_type,red_flag_new,Nueva red flag
+deal_recommendation,go,Go
+deal_recommendation,conditional_go,Go condicionado
+deal_recommendation,no_go,No go
+vdr_category,contrato,Contrato
+vdr_category,escritura,Escritura
+vdr_category,estatutos,Estatutos
+vdr_category,cuentas_anuales,Cuentas anuales
+vdr_category,nomina,Nomina
+vdr_category,poliza,Poliza
+vdr_category,licencia,Licencia
+vdr_category,sentencia,Sentencia
+vdr_category,informe,Informe
+vdr_category,certificado,Certificado
+vdr_category,convenio,Convenio
+vdr_category,acta,Acta
+vdr_category,poder,Poder
+vdr_category,registro,Registro
+vdr_category,general,General
+vdr_status,draft,Borrador
+vdr_status,staged,En staging
+vdr_status,uploaded,Subido
+vdr_status,processing,Procesando
+vdr_status,indexed,Indexado
+vdr_status,superseded,Sustituido
+vdr_status,archived,Archivado
+vdr_status,error,Error
+evidence_source_type,document,Documento
+evidence_source_type,registry_scrape,Fuente registral
+evidence_source_type,api_response,Respuesta API
+evidence_source_type,manual_entry,Carga manual
+evidence_source_type,ai_output,Salida IA
