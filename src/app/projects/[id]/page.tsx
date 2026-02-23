@@ -12,16 +12,30 @@ import {
 } from 'lucide-react';
 import { EventFeed } from '@/components/events';
 import { SmartSuggestions } from '@/components/events';
-import { supabase } from '@/lib/supabase';
 import type { DDProject, DDArea, DDProcess, DDTask, DDContingency, DDQA, DDDeliverable, DDSkill, DDDocument } from '@/lib/supabase';
+
+function getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('dd_session_token');
+}
+
+function authHeaders(): Record<string, string> {
+    const token = getToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+}
 import { cn, STATUS_CONFIG, SEVERITY_CONFIG, SKILL_CATEGORY_CONFIG, REVIEW_DEPTH_CONFIG, ROLE_CONFIG, formatDate, formatCurrency, useResolvedParams } from '@/lib/utils';
 
-const PROJECT_STATUS_CONFIG: Record<DDProject['status'], { label: string; bg: string; fg: string }> = {
+const PROJECT_STATUS_CONFIG: Record<string, { label: string; bg: string; fg: string }> = {
     draft: { label: 'Borrador', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
     active: { label: 'Activo', bg: 'var(--g-brand-3308)', fg: 'var(--g-text-inverse)' },
     review: { label: 'En revisión', bg: 'var(--status-warning)', fg: 'var(--g-text-inverse)' },
     closed: { label: 'Cerrado', bg: 'var(--status-success)', fg: 'var(--g-text-inverse)' },
+    hold: { label: 'En espera', bg: 'var(--status-warning)', fg: 'var(--g-text-inverse)' },
+    cancelled: { label: 'Cancelado', bg: 'var(--status-error)', fg: 'var(--g-text-inverse)' },
 };
+const DEFAULT_STATUS_STYLE = { label: 'Desconocido', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' };
 
 const AI_STATUS_CONFIG: Record<DDTask['ai_status'], { label: string; bg: string; fg: string }> = {
     none: { label: 'No ejecutado', bg: 'var(--g-surface-muted)', fg: 'var(--g-text-primary)' },
@@ -94,7 +108,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
     const fetchDocuments = async () => {
         try {
-            const res = await fetch(`/api/documents?project_id=${id}`);
+            const res = await fetch(`/api/documents?project_id=${id}`, {
+                headers: authHeaders(),
+            });
             const json = await res.json();
             if (json.success) {
                 setDdDocuments(json.documents);
@@ -116,7 +132,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
     useEffect(() => {
         if (activeTab === 'team') {
-            fetch(`/api/projects/${id}/roles`)
+            fetch(`/api/projects/${id}/roles`, { headers: authHeaders() })
                 .then(r => r.json())
                 .then(data => setTeamRoles(data.roles || []))
                 .catch(err => console.error('Error fetching team:', err));
@@ -130,7 +146,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         try {
             await fetch('/api/documents', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders(),
                 body: JSON.stringify({
                     project_id: id,
                     area_code: docFormArea || null,
@@ -182,47 +198,48 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
     useEffect(() => {
         async function load() {
-            const [pRes, aRes, prRes, tRes, cRes, qaRes, dRes] = await Promise.all([
-                supabase.from('dd_projects').select('*').eq('id', id).single(),
-                supabase.from('dd_areas').select('*').order('sort_order'),
-                supabase.from('dd_processes').select('*').order('sort_order'),
-                supabase.from('dd_tasks').select('*').eq('project_id', id).order('created_at'),
-                supabase.from('dd_contingencies').select('*').eq('project_id', id).order('severity'),
-                supabase.from('dd_qa').select('*').eq('project_id', id).order('created_at', { ascending: false }),
-                supabase.from('dd_deliverables').select('*').eq('project_id', id).order('created_at', { ascending: false }),
-            ]);
-
-            const skillsRes = await supabase
-                .from('dd_skills_catalog')
-                .select('*')
-                .eq('is_active', true)
-                .order('area_code, skill_key');
-
-            const warnings: string[] = [];
-            if (qaRes.error) {
-                warnings.push('No se pudo cargar la pestaña Q&A (tabla dd_qa no disponible o sin permisos).');
+            try {
+                const res = await fetch(`/api/projects/${id}/overview`, {
+                    headers: authHeaders(),
+                });
+                if (!res.ok) {
+                    console.error('Overview fetch failed:', res.status);
+                    setLoading(false);
+                    return;
+                }
+                const data = await res.json();
+                if (!data.success) {
+                    console.error('Overview error:', data.error);
+                    setLoading(false);
+                    return;
+                }
+                setProject(data.project);
+                setAreas(data.areas || []);
+                setProcesses(data.processes || []);
+                setTasks(data.tasks || []);
+                setContingencies(data.contingencies || []);
+                setQas(data.qas || []);
+                setDeliverables(data.deliverables || []);
+                setSkills(data.skills || []);
+                setLoadWarnings(data.warnings || []);
+            } catch (err) {
+                console.error('Overview load error:', err);
             }
-            if (dRes.error) {
-                warnings.push('No se pudo cargar la pestaña Documentos (tabla dd_deliverables no disponible o sin permisos).');
-            }
-
-            setProject(pRes.data);
-            setAreas(aRes.data || []);
-            setProcesses(prRes.data || []);
-            setTasks(tRes.data || []);
-            setContingencies(cRes.data || []);
-            setQas(qaRes.data || []);
-            setDeliverables(dRes.data || []);
-            setSkills(skillsRes.data || []);
-            setLoadWarnings(warnings);
             setLoading(false);
         }
         load();
     }, [id]);
 
     const refreshTasks = async () => {
-        const { data } = await supabase.from('dd_tasks').select('*').eq('project_id', id).order('created_at');
-        setTasks(data || []);
+        try {
+            const res = await fetch(`/api/projects/${id}/overview`, { headers: authHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success) setTasks(data.tasks || []);
+            }
+        } catch (err) {
+            console.error('Refresh tasks error:', err);
+        }
     };
 
     const invokeHarvey = async (processId: string, skillKey?: string) => {
@@ -233,7 +250,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
             await fetch('/api/harvey', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders(),
                 body: JSON.stringify({
                     project_id: id,
                     process_id: processId,
@@ -350,11 +367,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         className="inline-flex items-center px-3 py-1 text-sm font-medium"
                         style={{
                             borderRadius: 'var(--g-radius-full)',
-                            backgroundColor: PROJECT_STATUS_CONFIG[project.status].bg,
-                            color: PROJECT_STATUS_CONFIG[project.status].fg,
+                            backgroundColor: (PROJECT_STATUS_CONFIG[project.status] || DEFAULT_STATUS_STYLE).bg,
+                            color: (PROJECT_STATUS_CONFIG[project.status] || DEFAULT_STATUS_STYLE).fg,
                         }}
                     >
-                        {PROJECT_STATUS_CONFIG[project.status].label}
+                        {(PROJECT_STATUS_CONFIG[project.status] || DEFAULT_STATUS_STYLE).label}
                     </span>
                 </div>
             </div>

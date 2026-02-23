@@ -1,0 +1,4 @@
+contingency_code,buy_position,sell_position,treatment,cap_amount,basket_type,basket_amount,survival_months,rwi_coverage,spa_clause_ref,negotiation_status,notes
+CONT_GREEN_001,Waiver obligatorio para cierre,Waiver solo sujeto a mejores esfuerzos,indemnity,500000,deductible,50000,24,true,cap_general,proposed,Posicion compradora firme
+CONT_AMBER_001,Regularizacion como CP,Cierre sin CP con carta de confort,price_adjustment,150000,none,0,12,false,third_party_consent,open,En negociacion inicial
+CONT_RED_001,Escrow alto e indemnidad especifica,Sin escrow y cap reducido,escrow,900000,tipping,10000,36,true,specific_indemnity,rejected,Riesgo no aceptable para comprador

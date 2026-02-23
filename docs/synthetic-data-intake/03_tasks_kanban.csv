@@ -1,0 +1,5 @@
+task_code,project_code,area_code,title,description,state,priority,assigned_email,reviewer_email,due_date,workflow_key,workflow_phase,skill_key,hitl_required,ai_status,client_visible,evidence_refs_json
+TSK_GREEN_001,PJT_GREEN,CONT,Inventario de contratos,Cargar contratos principales,backlog,high,pm.green@testlegal.com,clo.green@testlegal.com,2026-03-05,wf_04_cont_material_contracts,obtencion,,false,pending,false,[]
+TSK_GREEN_002,PJT_GREEN,CONT,Analisis clausulas COC,Analizar change of control,en_analisis,critical,merc.green@testlegal.com,clo.green@testlegal.com,2026-03-10,wf_04_cont_material_contracts,analisis,cont_change_of_control,true,running,false,[]
+TSK_AMBER_001,PJT_AMBER,MERC,Validacion gobierno societario,Revision de administradores,hitl_revision,high,pm.amber@testlegal.com,clo.amber@testlegal.com,2026-03-08,wf_03_merc_societario,valoracion,,true,done,false,[]
+TSK_RED_001,PJT_RED,LAB,Riesgo laboral colectivo,Contingencia laboral potencial,bloqueado,critical,pm.red@testlegal.com,clo.red@testlegal.com,2026-02-28,wf_06_lab_fisc_risk_register,analisis,,true,failed,true,[]

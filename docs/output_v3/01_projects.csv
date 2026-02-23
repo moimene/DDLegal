@@ -1,0 +1,4 @@
+project_code,name,target_company,target_sector,project_type,status,review_depth,client_name,start_date,end_date,notes
+PJT_GREEN,Proyecto Green,Synapse AI SL,Software / Tecnologia,acquisition,active,standard,Garrigues,2026-01-10,2026-06-30,Adquisicion de empresa tecnologica de IA. Riesgo medio. Revision estandar con foco en contratos y mercantil.
+PJT_AMBER,Proyecto Amber,DataForge SA,Industrial / Manufactura,acquisition,active,enhanced,Cliente Demo,2026-01-20,2026-07-31,Adquisicion de empresa industrial. Multiples red flags en gobierno societario y dependencia de proveedor. Revision reforzada.
+PJT_RED,Proyecto Red,Legacy Systems SL,Servicios / IT,acquisition,blocked,enhanced,Cliente Demo,2026-01-05,2026-05-31,Proyecto bloqueado por hallazgos criticos: demanda colectiva laboral inminente y litigio activo con ex-socio. Requiere decision de comite.

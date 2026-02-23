@@ -1,6 +1,6 @@
 # DD Legal PMO
 
-Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room y Observabilidad. 108 API routes, 29 E2E suites, 39 migrations. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
+Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room y Observabilidad. 108 API routes, 29 E2E suites, 40 migrations. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
 
 ## Stack
 
@@ -75,7 +75,7 @@ src/
     tokens.css              # Garrigues design tokens (--g-* CSS variables)
   middleware.ts             # Auth + feature flag middleware
 supabase/
-  migrations/               # 39 SQL migrations (RLS, pgvector, seeds, kanban, workflows, observability, security hardening, BM25, H3 scoring)
+  migrations/               # 40 SQL migrations (RLS, pgvector, seeds, kanban, workflows, observability, security hardening, BM25, H3 scoring, seed_v3_schema)
 e2e/                        # 29 Playwright test suites (257 passed, 0 failed)
 vercel.json                 # Vercel config: cron job (audit-sync every 15 min)
 scripts/
@@ -122,7 +122,84 @@ Feature flag: `WORKFLOW_TEMPLATES_V1` — cuando `false`, usa `WORKFLOW_DEFINITI
 Demo project: `a1b2c3d4-0001-4000-8000-000000000001` (FMC Due Diligence - Prototipo).
 Seed migration: `supabase/migrations/202602270001_seed_demo_users.sql`.
 
+### Extended Test Users (seed v3)
+
+8 additional users created for project role testing (total 16 in auth.users):
+
+| Email | Rol | UUID |
+|-------|-----|------|
+| abogado.cont@test.ddlegal.com | Abogado Contractual | `aaaa0001-0008-...` |
+| abogado.fisc@test.ddlegal.com | Abogado Fiscal | `aaaa0001-0009-...` |
+| abogado.pi@test.ddlegal.com | Abogado PI | `aaaa0001-000a-...` |
+| abogado.lab@test.ddlegal.com | Abogado Laboral | `aaaa0001-000b-...` |
+| abogado.lit@test.ddlegal.com | Abogado Litigios | `aaaa0001-000c-...` |
+| abogado.adm@test.ddlegal.com | Abogado ADM | `aaaa0001-000d-...` |
+| former@test.ddlegal.com | Inactive user (former) | `aaaa0001-000e-...` |
+| expired@test.ddlegal.com | Expired user | `aaaa0001-000f-...` |
+
 **GoTrue gotcha**: `email_change` column in `auth.users` MUST be `''` (empty string), not NULL. GoTrue's Go code scans it as `string` type which cannot handle NULL.
+
+## Synthetic Test Dataset v3
+
+3 fully-seeded projects with 342+ rows across 16 tables, loaded via SQL directly to Supabase production (project `mxanelzxyaklvuypuafa`). Deterministic UUIDs via `seed_uuid(key) = md5('dd_seed_v3::' || key)::uuid`.
+
+| Project | Code | Score | Recommendation | Economic Exposure |
+|---------|------|-------|----------------|-------------------|
+| Proyecto Green (Synapse AI SL) | PJT_GREEN | 74 | conditional_go | 855K EUR |
+| Proyecto Amber (DataForge SA) | PJT_AMBER | 68 | go | 755K EUR |
+| Proyecto Red (Legacy Systems SL) | PJT_RED | 22 | no_go | 3.235M EUR |
+
+### Seed data counts
+
+| Table | Total | Seed v3 |
+|-------|-------|---------|
+| dd_projects | 4 | 3 |
+| dd_workflow_instances | 19 | 16 |
+| dd_kanban_tasks | 56 | 23 |
+| dd_contingencies | 19 | 19 |
+| dd_contingencies_ext | 19 | 19 |
+| dd_contingency_clause_map | 32 | 32 |
+| dd_deal_risk_scores | 32 | 3 |
+| dd_hitl_decisions | 18 | 16 |
+| dd_war_room_decisions | 31 | 16 |
+| dd_war_room_notifications | 16 | 16 |
+| dd_evidence | 18 | 18 |
+| dd_reports | 22 | 16 |
+| dd_project_user_roles | 47 | 39 |
+| dd_qa_threads | 20 | 20 |
+| dd_qa_messages | 63 | 63 |
+| dd_spa_clause_library | 34 | 18 |
+
+### CSV source files
+
+All seed data originates from `docs/output_v3/*.csv` (17 files). Schema mapping and DDL migration applied via Supabase MCP tool.
+
+### Area codes → UUIDs
+
+| Code | UUID |
+|------|------|
+| MERC | `b4ee7c1b-8aa4-4897-84cf-07d9dfaabe78` |
+| CONT | `494b59cc-00a6-4269-aa37-b7a8a3e803bb` |
+| LAB | `d6dec417-57dd-4740-aca7-c5d4e22e3c84` |
+| FISC | `dd68cc5e-2265-4c08-8639-8bebceb3c51d` |
+| PI | `ef610832-083e-4512-8b7d-ad723f106ee6` |
+| ADM | `2493fc84-226f-4efb-955e-f89c88989562` |
+| LIT | `68bf73da-cfd7-4ab8-b990-b2e6132c2f43` |
+
+## Workflow Consolidation (2026-02-23)
+
+Consolidated workflow engine with enriched iteration context for Harvey AI:
+
+- **prompt-builder.ts** (`src/lib/workflows/prompt-builder.ts`): Builds structured prompt/payload per iteration including active skills metadata, workflow context, loop history
+- **engine.ts** (modified): Template and legacy paths now use enriched prompts with skills + iteration context. n8n path sends enriched payload
+- **instance-runner.ts** (modified): Calculates `loop_number`, `phase_loop_number`, and previous loops history before each execution
+- **Unit tests**: `src/lib/workflows/__tests__/prompt-builder.test.ts` (11 tests passing)
+
+### Known Issues
+
+1. **Vista General Contingencies tab empty**: The project detail page (`src/app/projects/[id]/page.tsx`) is a `'use client'` component that queries `dd_contingencies` via the anon Supabase client. Since login stores the JWT as `dd_session_token` (not Supabase's default storage key), the client has no authenticated session → `auth.uid()` returns null → RLS blocks all data. Kanban, War Room, Scoring, Workflows pages work correctly because they use `fetch('/api/...', { Authorization: Bearer })` pattern.
+2. **n8n not operational**: Feature flag set to `gateway`, n8n webhook (`localhost:5678`) not reachable. Code path exists but routing disabled.
+3. **HITL Review route**: `/projects/[id]/hitl` (not `/hitl-review` — sidebar link text doesn't match route)
 
 ## Sprint Progress (Feb 2026)
 
@@ -157,7 +234,9 @@ Seed migration: `supabase/migrations/202602270001_seed_demo_users.sql`.
 - HITL is **mandatory** for CONT, LAB, FISC, LIT area outputs.
 - Path alias: `@/*` maps to `./src/*`.
 - Design system: Garrigues tokens in `src/styles/tokens.css` — use `--g-*` CSS variables, never hardcode colors. Brand: `--g-brand-3308: #004438`. Font: Montserrat.
-- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602270001_seed_demo_users.sql`). Next available: `202602270013`.
+- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602270001_seed_demo_users.sql`). Next available: `202602270014`.
+- **dd_deal_risk_scores JSON formats**: `top_risks` and `deal_breakers` must be arrays of `ScoredFinding` objects (`{id, title, raw_score, weighted_score, is_deal_breaker, area_code}`), NOT plain strings. `area_scores` must be `{score, finding_count, critical_count}` objects, NOT plain numbers.
+- **RLS + project access**: Users must have an active entry in `dd_project_user_roles` with appropriate role for their project. Admin user needs CLO role on each project. RLS function `user_has_permission(project_id, permission)` checks `auth.uid()` against `dd_project_user_roles`.
 - Next.js dynamic params use `{ params }: { params: Promise<{ id: string }> }` pattern.
 - pgvector embeddings are 1536 dimensions (OpenAI text-embedding-3-small). HNSW index with cosine distance.
 - Supabase RPC: `match_vdr_chunks` for semantic search, `bm25_search_vdr_chunks` for full-text. Never call pgvector directly from client.

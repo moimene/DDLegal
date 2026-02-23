@@ -1,0 +1,4 @@
+decision_code,project_code,contingency_code,decision_type,title,rationale,evidence_refs_json,decided_by_email,decided_at,client_visible
+WRD_GREEN_001,PJT_GREEN,CONT_GREEN_001,mitigate,Mitigar riesgo COC,Exigir waiver como condicion precedente,["DOC_GREEN_001"],clo.green@testlegal.com,2026-03-03T17:00:00Z,false
+WRD_AMBER_001,PJT_AMBER,CONT_AMBER_001,accept_risk,Aceptar riesgo residual de poderes,Riesgo acotado con regularizacion post closing,["DOC_AMBER_001"],clo.amber@testlegal.com,2026-03-04T10:30:00Z,false
+WRD_RED_001,PJT_RED,CONT_RED_001,escalate,Escalar demanda colectiva al comite,Riesgo incompatible con recomendacion go,["DOC_RED_001"],clo.red@testlegal.com,2026-02-27T18:20:00Z,true

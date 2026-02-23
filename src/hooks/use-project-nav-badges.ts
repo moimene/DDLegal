@@ -8,6 +8,11 @@ interface NavBadges {
     decision: string | null;
 }
 
+function getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('dd_session_token');
+}
+
 export function useProjectNavBadges(projectId: string | null): NavBadges {
     const [badges, setBadges] = useState<NavBadges>({
         informacion: null,
@@ -20,7 +25,10 @@ export function useProjectNavBadges(projectId: string | null): NavBadges {
 
         async function fetchBadges() {
             try {
-                const res = await fetch(`/api/projects/${projectId}/nav-badges`);
+                const token = getToken();
+                const res = await fetch(`/api/projects/${projectId}/nav-badges`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
                 if (res.ok) {
                     const data = await res.json();
                     setBadges({

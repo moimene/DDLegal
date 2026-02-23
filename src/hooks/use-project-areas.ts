@@ -7,6 +7,11 @@ interface ActiveArea {
     name: string;
 }
 
+function getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('dd_session_token');
+}
+
 export function useProjectAreas(projectId: string | null): ActiveArea[] {
     const [areas, setAreas] = useState<ActiveArea[]>([]);
 
@@ -15,7 +20,10 @@ export function useProjectAreas(projectId: string | null): ActiveArea[] {
 
         async function fetchAreas() {
             try {
-                const res = await fetch(`/api/projects/${projectId}/active-areas`);
+                const token = getToken();
+                const res = await fetch(`/api/projects/${projectId}/active-areas`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
                 if (res.ok) {
                     const data = await res.json();
                     setAreas(data.areas || []);

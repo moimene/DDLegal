@@ -1,0 +1,4 @@
+thread_code,project_code,area_code,subject,priority,status,source,assigned_email,due_at,sla_hours,client_visible,related_task_code,related_contingency_code,tags_csv
+QAT_GREEN_001,PJT_GREEN,CONT,Aclarar clausula de cambio de control,high,pending_response,manual,merc.green@testlegal.com,2026-03-06T18:00:00Z,48,false,TSK_GREEN_002,CONT_GREEN_001,contratos;coc
+QAT_AMBER_001,PJT_AMBER,MERC,Documentacion de poderes faltante,medium,answered,gap_analysis,merc.amber@testlegal.com,2026-03-04T18:00:00Z,48,false,TSK_AMBER_001,CONT_AMBER_001,mercantil;poderes
+QAT_RED_001,PJT_RED,LAB,Detalle de potencial demanda colectiva,critical,escalated,cross_check,lab.red@testlegal.com,2026-02-27T12:00:00Z,24,true,TSK_RED_001,CONT_RED_001,laboral;litigio

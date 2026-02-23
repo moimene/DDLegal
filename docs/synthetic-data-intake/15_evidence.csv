@@ -1,0 +1,4 @@
+evidence_code,project_code,source_type,source_reference,source_name,page_range,snippet,confidence_score,task_code,contingency_code,report_code,metadata_json
+EVD_GREEN_001,PJT_GREEN,document,DOC_GREEN_001,Contrato cliente principal,12-15,Clausula COC requiere consentimiento previo,0.94,TSK_GREEN_002,CONT_GREEN_001,RPT_GREEN_001,{"seed":"synthetic_e2e_v1"}
+EVD_AMBER_001,PJT_AMBER,document,DOC_AMBER_001,Escritura poderes mercantiles,4-7,Limitacion de facultades para actos de disposicion,0.88,TSK_AMBER_001,CONT_AMBER_001,RPT_AMBER_001,{"seed":"synthetic_e2e_v1"}
+EVD_RED_001,PJT_RED,manual_entry,LAB_NOTE_001,Nota interna de conflicto colectivo,,Riesgo de demanda colectiva con impacto alto,0.72,TSK_RED_001,CONT_RED_001,RPT_RED_001,{"seed":"synthetic_e2e_v1"}

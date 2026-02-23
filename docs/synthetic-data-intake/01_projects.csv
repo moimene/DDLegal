@@ -1,0 +1,4 @@
+project_code,name,target_company,target_sector,project_type,status,review_depth,client_name,start_date,end_date,notes
+PJT_GREEN,Proyecto Green,Synapse AI SL,Software,acquisition,active,standard,Garrigues,2026-01-10,2026-06-30,Proyecto con riesgo medio
+PJT_AMBER,Proyecto Amber,DataForge SA,Industrial,acquisition,active,enhanced,Cliente Demo,2026-01-20,2026-07-31,Proyecto con varias red flags
+PJT_RED,Proyecto Red,Legacy Systems SL,Servicios,acquisition,blocked,enhanced,Cliente Demo,2026-01-05,2026-05-31,Proyecto bloqueado por hallazgos criticos

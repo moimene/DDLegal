@@ -1,5 +1,5 @@
 # PRD - DD Legal PMO v3.0
-**Ultima actualizacion: 22 febrero 2026 — Desplegado en produccion: `dd-legal-pmo.vercel.app`**
+**Ultima actualizacion: 23 febrero 2026 — Desplegado en produccion: `dd-legal-pmo.vercel.app`**
 
 ## 1. Contexto y problema
 
@@ -306,6 +306,8 @@ Cada fase declara: inputs, skills, artefactos, DoR/DoD, kanban_start/end_state, 
 - **Phase engine** (`phase-engine.ts`): Avance de fases con DoD validation, template-aware ordering
 - **Dual-run** (`engine.ts`): Feature flag `WORKFLOW_TEMPLATES_V1` → template path vs legacy path
 - **Circuit breaker** en gateway: 30% threshold, 60s cooldown, Retry-After header parsing
+- **Prompt builder** (`prompt-builder.ts`): Construye prompt/payload enriquecido por iteracion con skills activas, contexto de loop (loop_number, phase_loop_number, previous_loops)
+- **Instance runner enrichment** (`instance-runner.ts`): Calcula y adjunta contexto de iteracion antes de cada ejecucion
 
 ##### DB Schema (4 migraciones)
 
@@ -344,7 +346,7 @@ Cada workflow produce:
 5. Feature flag `WORKFLOW_TEMPLATES_V1=false` revierte a legacy sin perdida.
 6. 16 templates seedeados (10 published, 6 planned).
 
-**Estado actual:** ✅ Implementado (16 template DB-backed versionados, 6 fases DD, dual-run engine, instantiation + phase advancement, 7 API endpoints, circuit breaker + Retry-After, negotiation actions). E2E tests.
+**Estado actual:** ✅ Implementado (16 template DB-backed versionados, 6 fases DD, dual-run engine, instantiation + phase advancement, 7 API endpoints, circuit breaker + Retry-After, negotiation actions, prompt-builder con enriquecimiento por iteracion/skills). E2E tests + unit tests (prompt-builder).
 
 #### 4.B.5 VDR v2 + Vectorizacion (Slice S4)
 
@@ -483,6 +485,7 @@ POST /api/war-room/[project_id]/export    -> { file_url } (PDF/Excel)
 - **IA**: Harvey AI via Harvey Gateway (con fallback a n8n).
 - **Orquestacion**: n8n Cloud (9 workflows, migracion progresiva a gateway).
 - **Deploy**: Vercel (production: `dd-legal-pmo.vercel.app`, auto-deploy desde main).
+- **Auth**: 16 usuarios Supabase Auth (1 admin + 8 demo + 4 project-specific + 3 seed).
 - **Tests**: Playwright E2E (29 suites, 257+ tests, 0 failures).
 
 ### Diagrama E2E
@@ -504,7 +507,7 @@ VDR interno (docs + versiones + permisos)
 
 ### Modelo de datos
 
-#### Tablas existentes (64 total en public schema)
+#### Tablas existentes (66 total en public schema)
 
 | Tabla | Descripcion |
 |-------|-------------|
@@ -526,7 +529,7 @@ VDR interno (docs + versiones + permisos)
 | `dd_expected_documents` | Gap list (22 docs, 6 areas) |
 | `dd_domain_enums` | 15 enumeraciones canonicas |
 | VDR tables | vdr_folders, vdr_documents, vdr_document_versions, vdr_acl, vdr_links |
-| QA tables | qa_threads, qa_messages, qa_assignments, qa_sla, qa_links |
+| QA tables | qa_threads, qa_messages, qa_assignments, qa_sla, qa_links, dd_qa_threads, dd_qa_messages |
 | Negotiation | dd_contingency_ext, dd_spa_clauses, dd_contingency_clause_map |
 | Events/Audit | dd_event_log, dd_audit_log |
 
@@ -549,7 +552,7 @@ VDR interno (docs + versiones + permisos)
 | `dd_workflow_task_groups` | S3 | Grupo de tareas por fase de instancia |
 | `dd_negotiation_actions` | S3/S6 | Acciones de negociacion (fase propuesta_transaccional) |
 
-### Migraciones existentes (39)
+### Migraciones existentes (40)
 
 ```
 supabase/migrations/
@@ -572,6 +575,7 @@ supabase/migrations/
   202602270011_security_search_path.sql     # Idempotent search_path fixes
   202602270012_rls_tighten_policies.sql     # Project-scoped RLS on 10 tables
   ... + 14 more (skills, seeds, vdr, war room)
+  202602230001_seed_v3_schema.sql          # Seed v3: dd_qa_threads, dd_qa_messages, seed_uuid()
 ```
 
 ### Flujo IA end-to-end (v3.0)
@@ -773,8 +777,9 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 8. **H3 Scoring** ✅ — Deal Risk Score engine (severity×probability×timing×area weighting), per-project scoring API.
 9. **Reporting** ✅ — Final report compiler, red flag report generator, workflow report engine.
 10. Tests E2E: 29 suites, 257+ tests (0 failures) covering all slices.
-11. DB: 64+ tablas, 39 migrations, Postgres 17.6 Pro.
+11. DB: 66+ tablas, 40 migrations, Postgres 17.6 Pro.
 12. **Deploy**: Vercel `dd-legal-pmo.vercel.app` ✅, 10 env vars, Supabase connected, n8n reachable, Cron audit-sync active.
+13. **Synthetic Test Dataset v3**: 3 proyectos seed (Green/Amber/Red) con 342+ filas en 16 tablas, 16 usuarios auth, 47 project roles. CSVs fuente en `docs/output_v3/`. Consolidacion de workflows con prompt-builder enriquecido (sesion 2026-02-23, reporte en `docs/reports/`).
 
 ### P1 — Expansion Areas + Golden Path (Horizonte 2)
 1. ~~Publicar 6 workflows planned (WF-07 a WF-12)~~ ✅ Done.
@@ -869,7 +874,17 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 - VDR con vectorizacion para volumenes grandes.
 - Kanban con WIP limits para control de flujo.
 
-## 14. Infraestructura
+## 14. Known Issues
+
+~~Todos resueltos (23 feb 2026).~~
+
+| Issue | Estado | Fix aplicado |
+|-------|--------|-------------|
+| ~~Vista General sin datos RLS~~ | ✅ Resuelto | Nuevo endpoint `/api/projects/[id]/overview` + migrar page.tsx de anon Supabase client a `fetch()` con Bearer token |
+| ~~401 en nav-badges, active-areas~~ | ✅ Resuelto | Auth headers anadidos a hooks `use-project-nav-badges.ts` y `use-project-areas.ts` |
+| ~~HITL ruta incorrecta~~ | ✅ Ya correcto | Todas las referencias en codigo apuntan a `/projects/[id]/hitl` correctamente |
+
+## 15. Infraestructura
 
 | Servicio | Instancia | Uso |
 |----------|-----------|-----|
@@ -879,7 +894,7 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 | Harvey AI | eu.api.harvey.ai | LLM legal especializado (via Gateway) |
 | GitHub | moimene/DDLegal | Repositorio codigo fuente |
 
-## 15. Variables de entorno
+## 16. Variables de entorno
 
 | Variable | Tipo | Scope | Descripcion |
 |----------|------|-------|-------------|

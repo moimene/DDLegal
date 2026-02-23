@@ -1,0 +1,4 @@
+report_code,project_code,request_ref,snapshot_ref,report_type,report_category,version_number,status,visibility,is_frozen,frozen_by_email,frozen_at,grounding_score,grounding_issues_json,evidence_pack_json
+RPT_GREEN_001,PJT_GREEN,REQ_GREEN_01,SNAP_GREEN_01,societario_standard,workstream,1,done,internal,false,,,92,[],{"sources":12}
+RPT_AMBER_001,PJT_AMBER,REQ_AMBER_01,SNAP_AMBER_01,red_flag_digest,transactional,2,done,deal_team,true,clo.amber@testlegal.com,2026-03-04T16:00:00Z,86,[],{"sources":18}
+RPT_RED_001,PJT_RED,REQ_RED_01,SNAP_RED_01,final_pack,final,1,generating,committee,false,,,71,["missing_supporting_doc"],{"sources":9}

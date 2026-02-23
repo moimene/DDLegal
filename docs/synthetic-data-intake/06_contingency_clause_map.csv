@@ -1,0 +1,6 @@
+contingency_code,clause_key,is_primary,merge_fields_json
+CONT_GREEN_001,cap_general,true,"{""cap_percentage"":""10"",""cap_amount"":""500000""}"
+CONT_GREEN_001,basket_deductible,false,"{""basket_amount"":""50000""}"
+CONT_AMBER_001,third_party_consent,true,"{}"
+CONT_RED_001,specific_indemnity,true,"{}"
+CONT_RED_001,time_limitation,false,"{""survival_months"":""36""}"

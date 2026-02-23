@@ -1,0 +1,4 @@
+hitl_code,project_code,task_code,workflow_instance_ref,phase,finding_title,finding_severity,status,decision,note,decided_by_email,decided_at
+HITL_GREEN_001,PJT_GREEN,TSK_GREEN_002,WFI_GREEN_01,valoracion,Clausula COC sin waiver,critical,pending_review,,Pendiente evidencia de contraparte,clo.green@testlegal.com,2026-03-03T10:00:00Z
+HITL_AMBER_001,PJT_AMBER,TSK_AMBER_001,WFI_AMBER_01,valoracion,Defecto en poderes,high,approved,approve,Aprobado con condicion de CP,clo.amber@testlegal.com,2026-03-03T11:00:00Z
+HITL_RED_001,PJT_RED,TSK_RED_001,WFI_RED_01,valoracion,Demanda colectiva inminente,critical,rejected,reject,No seguir sin protecciones economicas,clo.red@testlegal.com,2026-02-27T14:00:00Z

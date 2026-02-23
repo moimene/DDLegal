@@ -1,0 +1,4 @@
+contingency_code,project_code,area_code,linked_task_code,title,description,severity,probability,status,estimated_amount,currency,recommendation,client_visible,is_deal_breaker,go_no_go,risk_score
+CONT_GREEN_001,PJT_GREEN,CONT,TSK_GREEN_002,Clausula COC sin waiver,Riesgo de resolucion por cambio de control,critical,probable,identified,450000,EUR,Negociar waiver pre closing,false,true,conditional_go,88
+CONT_AMBER_001,PJT_AMBER,MERC,TSK_AMBER_001,Defecto en cadena de poderes,Inconsistencia en facultades de firma,high,possible,confirmed,120000,EUR,Regularizar poderes y ratificar,false,false,go,63
+CONT_RED_001,PJT_RED,LAB,TSK_RED_001,Demanda colectiva inminente,Riesgo laboral con alto impacto economico,critical,certain,identified,980000,EUR,Escrow e indemnidad especifica,true,true,no_go,96

@@ -1,0 +1,7 @@
+thread_code,sender_role,sender_email,content,is_internal,created_at
+QAT_GREEN_001,advisor,merc.green@testlegal.com,Confirmad si existe waiver firmado,false,2026-03-01T10:00:00Z
+QAT_GREEN_001,target,target.green@testlegal.com,No hay waiver firmado a fecha de hoy,false,2026-03-02T09:30:00Z
+QAT_AMBER_001,advisor,merc.amber@testlegal.com,Adjuntad certificacion de poderes,false,2026-03-01T11:00:00Z
+QAT_AMBER_001,target,target.amber@testlegal.com,Se adjunta certificacion y acta,false,2026-03-02T12:10:00Z
+QAT_RED_001,advisor,lab.red@testlegal.com,Necesitamos detalle de trabajadores afectados,false,2026-02-25T08:40:00Z
+QAT_RED_001,system,,SLA breached sin respuesta del target,true,2026-02-27T12:30:00Z

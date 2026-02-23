@@ -1,0 +1,4 @@
+score_code,project_code,overall_score,recommendation,total_economic_exposure,scored_by_email,area_scores_json,deal_breakers_json,top_risks_json,sensitivity_json
+DRS_GREEN_001,PJT_GREEN,74,conditional_go,450000,clo.green@testlegal.com,"{""CONT"":88,""MERC"":62,""LAB"":40}","[""CONT_GREEN_001""]","[""Clausula COC sin waiver""]","{""best_case"":81,""base_case"":74,""worst_case"":58}"
+DRS_AMBER_001,PJT_AMBER,68,go,210000,clo.amber@testlegal.com,"{""MERC"":63,""CONT"":55,""FISC"":61}","[]","[""Defecto en poderes""]","{""best_case"":74,""base_case"":68,""worst_case"":52}"
+DRS_RED_001,PJT_RED,31,no_go,980000,clo.red@testlegal.com,"{""LAB"":96,""LIT"":90,""CONT"":45}","[""CONT_RED_001""]","[""Demanda colectiva inminente""]","{""best_case"":44,""base_case"":31,""worst_case"":20}"
