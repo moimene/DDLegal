@@ -1,11 +1,11 @@
 # DD Legal PMO
 
-Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room y Observabilidad. 108 API routes, 29 E2E suites, 40 migrations. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
+Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room y Observabilidad. 109 API routes, 29 E2E suites, 40 migrations. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
 
 ## Stack
 
 - **Frontend**: Next.js 14 (App Router), React 18, Zustand, TanStack Table, Lucide icons, Montserrat (Garrigues)
-- **Backend**: Next.js API routes (108 endpoints), Supabase (Postgres + RLS + pgvector + BM25)
+- **Backend**: Next.js API routes (109 endpoints), Supabase (Postgres + RLS + pgvector + BM25)
 - **AI**: Harvey AI gateway, OpenAI embeddings (text-embedding-3-small, 1536d)
 - **Infra**: Vercel (produccion: `dd-legal-pmo.vercel.app`), Supabase hosted, n8n workflows
 - **Tests**: Playwright E2E (29 suites, 257+ tests), Vitest unit tests
@@ -25,7 +25,7 @@ Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n
 ```
 src/
   app/
-    api/                    # 108 API routes across 30+ groups
+    api/                    # 109 API routes across 30+ groups
       ai/                   # classify, suggest
       alerts/               # SLA alerts
       auth/                 # login, me, roles, setup-test-users
@@ -43,6 +43,7 @@ src/
       reports/              # Report generation: final, red-flags, workflow
       scoring/              # H3: Deal Risk Score (POST/GET per project)
       war-room/             # S6: dashboard, decisions, red-flags, export, negotiation-actions, spa-mapping, timeline, negotiation-dashboard, decision-resolution
+      tasks/                # [id]/status PATCH (authenticated task status update)
       workflows/            # templates, instantiate, instances, phase, list, execute
       # + 16 more: client, configuracion, documents, events, evidence,
       #   harvey, hitl, ip, negotiation, notifications, projects, qa,
@@ -195,11 +196,12 @@ Consolidated workflow engine with enriched iteration context for Harvey AI:
 - **instance-runner.ts** (modified): Calculates `loop_number`, `phase_loop_number`, and previous loops history before each execution
 - **Unit tests**: `src/lib/workflows/__tests__/prompt-builder.test.ts` (11 tests passing)
 
-### Known Issues
+### Known Issues (all resolved 23 feb 2026)
 
-1. **Vista General Contingencies tab empty**: The project detail page (`src/app/projects/[id]/page.tsx`) is a `'use client'` component that queries `dd_contingencies` via the anon Supabase client. Since login stores the JWT as `dd_session_token` (not Supabase's default storage key), the client has no authenticated session → `auth.uid()` returns null → RLS blocks all data. Kanban, War Room, Scoring, Workflows pages work correctly because they use `fetch('/api/...', { Authorization: Bearer })` pattern.
-2. **n8n not operational**: Feature flag set to `gateway`, n8n webhook (`localhost:5678`) not reachable. Code path exists but routing disabled.
-3. **HITL Review route**: `/projects/[id]/hitl` (not `/hitl-review` — sidebar link text doesn't match route)
+1. ~~**Vista General empty data**~~: ✅ Resuelto. Creado endpoint consolidado `/api/projects/[id]/overview` con `supabaseAdmin`. Migrado `page.tsx` de 7 `supabase.from()` calls a `fetch()` con Bearer token. `updateTaskStatus` tambien migrado a `/api/tasks/[id]/status` PATCH. **0 usos de cliente anon `supabase` en page.tsx.**
+2. ~~**401 en nav-badges/active-areas**~~: ✅ Resuelto. Auth headers Bearer anadidos a `use-project-nav-badges.ts` y `use-project-areas.ts`.
+3. ~~**HITL ruta incorrecta**~~: ✅ Ya correcto. Todas las referencias apuntan a `/projects/[id]/hitl`.
+4. **n8n not operational**: Feature flag set to `gateway`, n8n webhook (`localhost:5678`) not reachable. Code path exists but routing disabled. (No es un bug, es configuracion intencional.)
 
 ## Sprint Progress (Feb 2026)
 

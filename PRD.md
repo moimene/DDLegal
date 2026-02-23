@@ -480,7 +480,7 @@ POST /api/war-room/[project_id]/export    -> { file_url } (PDF/Excel)
 ### Stack
 - **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Garrigues Design System.
 - **State**: Zustand 5.0 (client), UserContext (auth/roles).
-- **Backend**: Next.js API Routes (108 endpoints server-side).
+- **Backend**: Next.js API Routes (109 endpoints server-side).
 - **Base de datos**: Supabase (PostgreSQL + RLS + pgvector).
 - **IA**: Harvey AI via Harvey Gateway (con fallback a n8n).
 - **Orquestacion**: n8n Cloud (9 workflows, migracion progresiva a gateway).
@@ -648,6 +648,11 @@ GET  /api/war-room/[project_id]/red-flags             -> { flags[]{severity, pro
 POST /api/war-room/[project_id]/export                -> { file_url, format }
 POST /api/war-room/[project_id]/negotiation-actions   -> { success, action }
 GET  /api/war-room/[project_id]/negotiation-actions   -> { actions[] }
+```
+
+#### Tasks (1)
+```
+PATCH  /api/tasks/[id]/status                 -> { success, task } (status validation: backlog/todo/in_progress/review/blocked/done/cancelled)
 ```
 
 #### Workflows v1 (5 nuevos)
@@ -880,15 +885,15 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 
 | Issue | Estado | Fix aplicado |
 |-------|--------|-------------|
-| ~~Vista General sin datos RLS~~ | ✅ Resuelto | Nuevo endpoint `/api/projects/[id]/overview` + migrar page.tsx de anon Supabase client a `fetch()` con Bearer token |
-| ~~401 en nav-badges, active-areas~~ | ✅ Resuelto | Auth headers anadidos a hooks `use-project-nav-badges.ts` y `use-project-areas.ts` |
+| ~~Vista General sin datos RLS~~ | ✅ Resuelto | Endpoint consolidado `/api/projects/[id]/overview` + migrar page.tsx de anon Supabase a `fetch()` con Bearer. `updateTaskStatus` migrado a `/api/tasks/[id]/status` PATCH. **0 usos de cliente anon en page.tsx.** |
+| ~~401 en nav-badges, active-areas~~ | ✅ Resuelto | Auth headers Bearer anadidos a hooks `use-project-nav-badges.ts` y `use-project-areas.ts` |
 | ~~HITL ruta incorrecta~~ | ✅ Ya correcto | Todas las referencias en codigo apuntan a `/projects/[id]/hitl` correctamente |
 
 ## 15. Infraestructura
 
 | Servicio | Instancia | Uso |
 |----------|-----------|-----|
-| Vercel | dd-legal-pmo (`prj_c6BXNArsGxvSeM1k3bKqthgHQpYP`) | Frontend + API Routes (108 endpoints) ✅ LIVE |
+| Vercel | dd-legal-pmo (`prj_c6BXNArsGxvSeM1k3bKqthgHQpYP`) | Frontend + API Routes (109 endpoints) ✅ LIVE |
 | Supabase | mxanelzxyaklvuypuafa (NexusDD) | Base de datos + RLS + pgvector + Auth |
 | n8n Cloud | mmenendeza.app.n8n.cloud | Orquestacion IA + Agent Pipeline (migracion progresiva) |
 | Harvey AI | eu.api.harvey.ai | LLM legal especializado (via Gateway) |
