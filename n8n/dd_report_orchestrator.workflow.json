@@ -1,0 +1,125 @@
+{
+  "name": "DD Legal PMO — Report Orchestrator",
+  "nodes": [
+    {
+      "id": "webhook-orch",
+      "name": "Webhook - Orchestrator",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [250, 300],
+      "parameters": { "httpMethod": "POST", "path": "dd-report-orchestrator", "responseMode": "responseNode", "options": {} },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "extract-orch-input",
+      "name": "Extract Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300],
+      "parameters": { "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst projectId = body.project_id;\nconst reportType = body.report_type || null;\nconst forceRefresh = body.force_refresh || false;\n\nif (!projectId) throw new Error('project_id is required');\n\nreturn [{\n  json: {\n    project_id: projectId,\n    report_type: reportType,\n    force_refresh: forceRefresh,\n    started_at: new Date().toISOString()\n  }\n}];" }
+    },
+    {
+      "id": "compute-evidence-hash",
+      "name": "Compute Evidence Hash",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 300],
+      "parameters": { "method": "GET", "url": "={{ $env.SUPABASE_URL || 'https://mxanelzxyaklvuypuafa.supabase.co' }}/rest/v1/vdr_documents", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendQuery": true, "queryParameters": { "parameters": [{ "name": "select", "value": "content_hash" }, { "name": "project_id", "value": "=eq.{{ $json.project_id }}" }, { "name": "embedding_status", "value": "=eq.done" }, { "name": "content_hash", "value": "=not.is.null" }, { "name": "order", "value": "content_hash.asc" }] }, "options": { "timeout": 15000 } }
+    },
+    {
+      "id": "build-evidence-hash",
+      "name": "Build Evidence Hash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 300],
+      "parameters": { "jsCode": "const crypto = require('crypto');\nconst docs = $input.first().json;\nconst docsArray = Array.isArray(docs) ? docs : [docs];\nconst hashes = docsArray.map(d => d.content_hash).filter(Boolean).sort();\nconst evidenceHash = crypto.createHash('sha256').update(hashes.join('|'), 'utf-8').digest('hex');\nconst prevData = $('Extract Input').first().json;\n\nreturn [{\n  json: {\n    ...prevData,\n    evidence_hash: evidenceHash,\n    indexed_docs_count: hashes.length\n  }\n}];" }
+    },
+    {
+      "id": "check-cache-orch",
+      "name": "Check Cache",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 300],
+      "parameters": { "method": "GET", "url": "={{ $env.SUPABASE_URL || 'https://mxanelzxyaklvuypuafa.supabase.co' }}/rest/v1/dd_report_cache", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendQuery": true, "queryParameters": { "parameters": [{ "name": "select", "value": "id,html_content,md_content,json_output,valid_until" }, { "name": "project_id", "value": "=eq.{{ $('Build Evidence Hash').first().json.project_id }}" }, { "name": "report_type", "value": "=eq.{{ $('Build Evidence Hash').first().json.report_type }}" }, { "name": "evidence_hash", "value": "=eq.{{ $('Build Evidence Hash').first().json.evidence_hash }}" }, { "name": "is_valid", "value": "=eq.true" }, { "name": "valid_until", "value": "=gt.{{ new Date().toISOString() }}" }] }, "options": { "timeout": 15000 } }
+    },
+    {
+      "id": "cache-hit-check",
+      "name": "Cache Hit?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1350, 300],
+      "parameters": { "conditions": { "options": { "version": 2, "caseSensitive": true, "leftValue": "", "typeValidation": "loose" }, "conditions": [{ "id": "cond-cache-hit", "leftValue": "={{ $json.length > 0 && !$('Build Evidence Hash').first().json.force_refresh }}", "rightValue": "true", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" } }
+    },
+    {
+      "id": "return-cached",
+      "name": "Return Cached",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 200],
+      "parameters": { "jsCode": "const cached = $('Check Cache').first().json[0];\nconst meta = $('Build Evidence Hash').first().json;\n\nreturn [{\n  json: {\n    status: 'cache_hit',\n    project_id: meta.project_id,\n    report_type: meta.report_type,\n    evidence_hash: meta.evidence_hash,\n    html_content: cached.html_content,\n    md_content: cached.md_content,\n    json_output: cached.json_output,\n    source: 'cache'\n  }\n}];" }
+    },
+    {
+      "id": "load-analysis",
+      "name": "Load Analysis Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1570, 400],
+      "parameters": { "method": "GET", "url": "={{ $env.SUPABASE_URL || 'https://mxanelzxyaklvuypuafa.supabase.co' }}/rest/v1/dd_analysis_results", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendQuery": true, "queryParameters": { "parameters": [{ "name": "select", "value": "*" }, { "name": "project_id", "value": "=eq.{{ $('Build Evidence Hash').first().json.project_id }}" }, { "name": "report_type", "value": "=eq.{{ $('Build Evidence Hash').first().json.report_type }}" }, { "name": "order", "value": "updated_at.desc" }] }, "options": { "timeout": 15000 } }
+    },
+    {
+      "id": "consolidate-json",
+      "name": "Consolidate JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1790, 400],
+      "parameters": { "jsCode": "const results = $input.first().json;\nconst resultsArray = Array.isArray(results) ? results : [results];\nconst meta = $('Build Evidence Hash').first().json;\n\nconst sections = {};\nfor (const r of resultsArray) {\n  if (!r.finding_key) continue;\n  sections[r.finding_key] = {\n    data: r.structured_data,\n    confidence: r.confidence_score,\n    evidence: r.evidence_refs,\n    version: r.version,\n    skill: r.source_skill\n  };\n}\n\nreturn [{\n  json: {\n    project_id: meta.project_id,\n    report_type: meta.report_type,\n    evidence_hash: meta.evidence_hash,\n    json_output: {\n      report_type: meta.report_type,\n      generated_at: new Date().toISOString(),\n      evidence_hash: meta.evidence_hash,\n      indexed_docs_count: meta.indexed_docs_count,\n      sections: sections,\n      findings_count: Object.keys(sections).length\n    }\n  }\n}];" }
+    },
+    {
+      "id": "call-render",
+      "name": "Call Report Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2010, 400],
+      "parameters": { "method": "POST", "url": "={{ $env.N8N_WEBHOOK_BASE || 'https://mmenendeza.app.n8n.cloud' }}/webhook/dd-report-render", "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify({ report_type: $json.report_type, json_output: $json.json_output, project_metadata: { project_id: $json.project_id, evidence_hash: $json.evidence_hash } }) }}", "options": { "timeout": 120000 } }
+    },
+    {
+      "id": "store-cache-version",
+      "name": "Store Cache & Version",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2230, 400],
+      "parameters": { "method": "POST", "url": "={{ $env.SUPABASE_URL || 'https://mxanelzxyaklvuypuafa.supabase.co' }}/rest/v1/dd_report_cache", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "Prefer", "value": "resolution=merge-duplicates" }] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify({ project_id: $('Consolidate JSON').first().json.project_id, report_type: $('Consolidate JSON').first().json.report_type, evidence_hash: $('Consolidate JSON').first().json.evidence_hash, html_content: $json.html_content || '', md_content: $json.md_content || '', json_output: $('Consolidate JSON').first().json.json_output, is_valid: true, valid_until: new Date(Date.now() + 30*24*60*60*1000).toISOString() }) }}", "options": { "timeout": 15000 } }
+    },
+    {
+      "id": "build-response",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2450, 300],
+      "parameters": { "jsCode": "const items = $input.all();\nconst item = items[0].json;\nconst meta = $('Build Evidence Hash').first().json;\n\nconst isCacheHit = item.source === 'cache';\n\nreturn [{\n  json: {\n    status: isCacheHit ? 'cache_hit' : 'generated',\n    project_id: meta.project_id,\n    report_type: meta.report_type,\n    evidence_hash: meta.evidence_hash,\n    html_content: item.html_content || '',\n    md_content: item.md_content || '',\n    json_output: item.json_output || {},\n    completed_at: new Date().toISOString()\n  }\n}];" }
+    },
+    {
+      "id": "respond-orch",
+      "name": "Return Report",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [2670, 300],
+      "parameters": { "respondWith": "json", "responseBody": "={{ JSON.stringify($json) }}" }
+    }
+  ],
+  "connections": {
+    "Webhook - Orchestrator": { "main": [[{ "node": "Extract Input", "type": "main", "index": 0 }]] },
+    "Extract Input": { "main": [[{ "node": "Compute Evidence Hash", "type": "main", "index": 0 }]] },
+    "Compute Evidence Hash": { "main": [[{ "node": "Build Evidence Hash", "type": "main", "index": 0 }]] },
+    "Build Evidence Hash": { "main": [[{ "node": "Check Cache", "type": "main", "index": 0 }]] },
+    "Check Cache": { "main": [[{ "node": "Cache Hit?", "type": "main", "index": 0 }]] },
+    "Cache Hit?": { "main": [[{ "node": "Return Cached", "type": "main", "index": 0 }], [{ "node": "Load Analysis Results", "type": "main", "index": 0 }]] },
+    "Return Cached": { "main": [[{ "node": "Build Response", "type": "main", "index": 0 }]] },
+    "Load Analysis Results": { "main": [[{ "node": "Consolidate JSON", "type": "main", "index": 0 }]] },
+    "Consolidate JSON": { "main": [[{ "node": "Call Report Render", "type": "main", "index": 0 }]] },
+    "Call Report Render": { "main": [[{ "node": "Store Cache & Version", "type": "main", "index": 0 }]] },
+    "Store Cache & Version": { "main": [[{ "node": "Build Response", "type": "main", "index": 0 }]] },
+    "Build Response": { "main": [[{ "node": "Return Report", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

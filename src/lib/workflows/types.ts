@@ -1,10 +1,4 @@
-export type WorkflowKey =
-  | 'arranque_dd'
-  | 'data_room_gap'
-  | 'societario'
-  | 'contratos_materiales'
-  | 'ip_titularidad'
-  | 'laboral_fiscal';
+export type WorkflowKey = string;
 
 export interface WorkflowDefinition {
   key: WorkflowKey;
@@ -21,6 +15,7 @@ export interface WorkflowExecutionRequest {
   workflow_key: WorkflowKey;
   project_id: string;
   input: Record<string, unknown>;
+  phase?: string;
 }
 
 export interface WorkflowExecutionResult {

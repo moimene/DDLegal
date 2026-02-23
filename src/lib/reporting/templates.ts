@@ -27,6 +27,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
         url_allowlist: ['boe.es', 'borme.es', 'registradores.org'],
+        has_dedicated_template: true,
     },
 
     red_flags_digest: {
@@ -39,6 +40,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         export_formats: ['pdf', 'json', 'html'],
         cadencia: 'weekly',
         audience: ['equipo', 'cliente', 'pm'],
+        has_dedicated_template: true,
     },
 
     ip_report: {
@@ -53,6 +55,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente'],
         url_allowlist: ['oepm.es', 'euipo.europa.eu', 'wipo.int', 'consultas2.oepm.es'],
+        has_dedicated_template: true,
     },
 
     rw_report: {
@@ -216,6 +219,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         export_formats: ['pdf', 'html'],
         cadencia: 'weekly',
         audience: ['equipo', 'cliente', 'pm'],
+        has_dedicated_template: true,
     },
 
     // ============================================================
@@ -232,6 +236,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         export_formats: ['pdf', 'html', 'json'],
         cadencia: 'weekly',
         audience: ['pm', 'equipo'],
+        has_dedicated_template: true,
     },
 
     pmo_workload: {
@@ -421,6 +426,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         export_formats: ['pdf', 'json', 'markdown'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente', 'pm'],
+        has_dedicated_template: true,
     },
 
     disclosure_schedule: {
@@ -478,6 +484,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
         export_formats: ['pdf', 'html', 'json'],
         cadencia: 'on_demand',
         audience: ['equipo', 'cliente', 'pm'],
+        has_dedicated_template: true,
     },
 };
 

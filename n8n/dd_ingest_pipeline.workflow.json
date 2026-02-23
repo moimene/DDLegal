@@ -1,0 +1,229 @@
+{
+  "name": "DD Legal PMO — Ingest Pipeline",
+  "nodes": [
+    {
+      "id": "webhook-ingest",
+      "name": "Webhook - Ingest Pipeline",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dd-ingest-pipeline",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "extract-input",
+      "name": "Extract Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst projectId = body.project_id;\nconst documents = body.documents || [];\n\nif (!projectId) throw new Error('project_id is required');\nif (!documents.length) throw new Error('documents array is required');\n\nreturn [{\n  json: {\n    project_id: projectId,\n    documents: documents,\n    total_documents: documents.length,\n    started_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "split-docs",
+      "name": "Split Documents",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 300],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst items = input.documents.map(doc => ({\n  json: {\n    project_id: input.project_id,\n    document_id: doc.document_id,\n    content: doc.content || '',\n    name: doc.name || doc.document_id,\n    area_code: doc.area_code || 'general'\n  }\n}));\nreturn items;"
+      }
+    },
+    {
+      "id": "compute-hash",
+      "name": "Compute Content Hash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 300],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst doc = $input.first().json;\nconst contentHash = crypto.createHash('sha256').update(doc.content, 'utf-8').digest('hex');\n\nreturn [{\n  json: {\n    ...doc,\n    content_hash: contentHash\n  }\n}];"
+      }
+    },
+    {
+      "id": "check-existing-hash",
+      "name": "Check Existing Hash",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL || 'https://mxanelzxyaklvuypuafa.supabase.co' }}/rest/v1/vdr_documents",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "id,content_hash,embedding_status" },
+            { "name": "id", "value": "=eq.{{ $json.document_id }}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "is-changed",
+      "name": "Is Changed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1350, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "condition-hash",
+              "leftValue": "={{ $('Check Existing Hash').first().json[0].content_hash }}",
+              "rightValue": "={{ $('Compute Content Hash').first().json.content_hash }}",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "update-hash-status",
+      "name": "Update Hash & Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1570, 200],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL || 'https://mxanelzxyaklvuypuafa.supabase.co' }}/rest/v1/vdr_documents",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": { "parameters": [{ "name": "id", "value": "=eq.{{ $('Compute Content Hash').first().json.document_id }}" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content_hash: $('Compute Content Hash').first().json.content_hash, embedding_status: 'processing' }) }}",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "call-skill-executor",
+      "name": "Execute Skills",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1790, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE || 'https://mmenendeza.app.n8n.cloud' }}/webhook/dd-skill-executor",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $('Compute Content Hash').first().json.project_id, document_id: $('Compute Content Hash').first().json.document_id, area_code: $('Compute Content Hash').first().json.area_code, content: $('Compute Content Hash').first().json.content, skill_key: 'auto_ingest', prompt_template: 'Analiza el documento y extrae hallazgos clave para due diligence legal.', evidence_pack: { content: $('Compute Content Hash').first().json.content } }) }}",
+        "options": { "timeout": 120000 }
+      }
+    },
+    {
+      "id": "upsert-results",
+      "name": "Upsert Analysis Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2010, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL || 'https://mxanelzxyaklvuypuafa.supabase.co' }}/rest/v1/dd_analysis_results",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Prefer", "value": "resolution=merge-duplicates" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $('Compute Content Hash').first().json.project_id, area: $('Compute Content Hash').first().json.area_code, report_type: 'auto_ingest', finding_key: $('Compute Content Hash').first().json.document_id + '_findings', structured_data: $json.output || {}, evidence_refs: [$('Compute Content Hash').first().json.document_id], source_skill: 'auto_ingest' }) }}",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "mark-done",
+      "name": "Mark Embedding Done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2230, 200],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL || 'https://mxanelzxyaklvuypuafa.supabase.co' }}/rest/v1/vdr_documents",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": { "parameters": [{ "name": "id", "value": "=eq.{{ $('Compute Content Hash').first().json.document_id }}" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ embedding_status: 'done', last_embedded_at: new Date().toISOString() }) }}",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "skip-unchanged",
+      "name": "Skip Unchanged",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 400],
+      "parameters": {
+        "jsCode": "const doc = $input.first().json;\nreturn [{ json: { skipped: true, document_id: doc.document_id || 'unknown', reason: 'content_hash_unchanged' } }];"
+      }
+    },
+    {
+      "id": "collect-results",
+      "name": "Collect Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2450, 300],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst processed = items.filter(i => !i.json.skipped).length;\nconst skipped = items.filter(i => i.json.skipped).length;\n\nreturn [{\n  json: {\n    status: 'completed',\n    total_documents: processed + skipped,\n    documents_processed: processed,\n    documents_skipped: skipped,\n    completed_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "invalidate-cache",
+      "name": "Invalidate Report Cache",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2670, 300],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL || 'https://mxanelzxyaklvuypuafa.supabase.co' }}/rest/v1/dd_report_cache",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": { "parameters": [{ "name": "project_id", "value": "=eq.{{ $('Extract Input').first().json.project_id }}" }, { "name": "is_valid", "value": "=eq.true" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ is_valid: false }) }}",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "respond-ingest",
+      "name": "Return Summary",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [2890, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ...$('Collect Results').first().json, cache_invalidated: true }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - Ingest Pipeline": { "main": [[{ "node": "Extract Input", "type": "main", "index": 0 }]] },
+    "Extract Input": { "main": [[{ "node": "Split Documents", "type": "main", "index": 0 }]] },
+    "Split Documents": { "main": [[{ "node": "Compute Content Hash", "type": "main", "index": 0 }]] },
+    "Compute Content Hash": { "main": [[{ "node": "Check Existing Hash", "type": "main", "index": 0 }]] },
+    "Check Existing Hash": { "main": [[{ "node": "Is Changed?", "type": "main", "index": 0 }]] },
+    "Is Changed?": { "main": [[{ "node": "Update Hash & Status", "type": "main", "index": 0 }], [{ "node": "Skip Unchanged", "type": "main", "index": 0 }]] },
+    "Update Hash & Status": { "main": [[{ "node": "Execute Skills", "type": "main", "index": 0 }]] },
+    "Execute Skills": { "main": [[{ "node": "Upsert Analysis Results", "type": "main", "index": 0 }]] },
+    "Upsert Analysis Results": { "main": [[{ "node": "Mark Embedding Done", "type": "main", "index": 0 }]] },
+    "Mark Embedding Done": { "main": [[{ "node": "Collect Results", "type": "main", "index": 0 }]] },
+    "Skip Unchanged": { "main": [[{ "node": "Collect Results", "type": "main", "index": 0 }]] },
+    "Collect Results": { "main": [[{ "node": "Invalidate Report Cache", "type": "main", "index": 0 }]] },
+    "Invalidate Report Cache": { "main": [[{ "node": "Return Summary", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

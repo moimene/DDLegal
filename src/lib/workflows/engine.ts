@@ -2,6 +2,11 @@ import { getHarveyGateway } from '@/lib/harvey';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { semanticSearch } from '@/lib/vdr/semantic-search';
 import { WORKFLOW_DEFINITIONS } from './constants';
+import {
+  buildHarveyWorkflowPrompt,
+  buildN8nExecutionPayload,
+  type WorkflowSkillContext,
+} from './prompt-builder';
 import { loadWorkflowTemplate } from './template-loader';
 import { WORKFLOW_TEMPLATES_FEATURE_FLAG } from './template-types';
 import type { WorkflowTemplateWithVersion } from './template-types';
@@ -58,6 +63,35 @@ function inferAreaCode(finding: WorkflowFinding): string {
     if (text.includes(hint)) return code;
   }
   return 'GENERAL';
+}
+
+type CatalogSkillRow = WorkflowSkillContext;
+
+function uniqueSkillKeys(keys: string[]): string[] {
+  return Array.from(new Set(keys));
+}
+
+function sortSkillsByKeyOrder(
+  skills: CatalogSkillRow[],
+  preferredKeys: string[],
+): CatalogSkillRow[] {
+  const byKey = new Map(skills.map((skill) => [skill.skill_key, skill]));
+  const sorted: CatalogSkillRow[] = [];
+  const seen = new Set<string>();
+
+  for (const key of preferredKeys) {
+    const row = byKey.get(key);
+    if (!row) continue;
+    sorted.push(row);
+    seen.add(key);
+  }
+
+  for (const skill of skills) {
+    if (seen.has(skill.skill_key)) continue;
+    sorted.push(skill);
+  }
+
+  return sorted;
 }
 
 // ---------------------------------------------------------------------------
@@ -184,6 +218,22 @@ async function generateDDBacklog(
   return allTasks.length;
 }
 
+function noAutomationResult(
+  req: WorkflowExecutionRequest,
+  hitlRequired: boolean,
+): WorkflowExecutionResult {
+  const scope = req.phase ? `fase "${req.phase}"` : 'workflow';
+  return {
+    success: true,
+    workflow_key: req.workflow_key,
+    report_section: `No hay skills automatizadas activas para ${scope}. Avance manual requerido.`,
+    findings: [],
+    evidence_refs: [],
+    hitl_required: hitlRequired,
+    source: 'gateway',
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Template-based executor (feature flag: WORKFLOW_TEMPLATES_V1)
 // ---------------------------------------------------------------------------
@@ -206,22 +256,23 @@ async function executeWithTemplate(
     return executeLegacy(req);
   }
 
-  // Extract all skill keys from all phases in the template version
-  const templateSkillKeys = template.latest_version.phases.flatMap(
-    (p) => p.skills
-  );
-
-  if (templateSkillKeys.length === 0) {
-    console.warn(
-      `[WFv1] Template "${req.workflow_key}" has no skills defined, falling back to legacy engine`
-    );
-    return executeLegacy(req);
-  }
-
   // Determine HITL requirement from template's hitl_policy + phase-level flags
   const hitlRequired =
     template.latest_version.hitl_policy.required_areas.length > 0 ||
     template.latest_version.phases.some((p) => p.hitl_required);
+
+  const selectedPhases = req.phase
+    ? template.latest_version.phases.filter((p) => p.phase === req.phase)
+    : template.latest_version.phases;
+
+  // Extract skill keys from selected phases
+  const templateSkillKeys = uniqueSkillKeys(selectedPhases.flatMap(
+    (p) => p.skills
+  ));
+
+  if (templateSkillKeys.length === 0) {
+    return noAutomationResult(req, hitlRequired);
+  }
 
   // Query skills from catalog using template-derived keys
   const { data: skills } = await supabaseAdmin
@@ -232,10 +283,14 @@ async function executeWithTemplate(
     .in('skill_key', templateSkillKeys)
     .eq('is_active', true);
 
-  const combinedPrompt = (skills || [])
-    .map((s) => s.prompt_template)
-    .filter(Boolean)
-    .join('\n\n---\n\n');
+  if (!skills || skills.length === 0) {
+    return noAutomationResult(req, hitlRequired);
+  }
+
+  const orderedSkills = sortSkillsByKeyOrder(
+    skills as CatalogSkillRow[],
+    templateSkillKeys,
+  );
 
   const systemPrompt = `You are a legal due diligence analyst. Analyze the following for ${template.name}.
 Return findings in JSON format with: title, severity (critical/high/medium/low/informational),
@@ -254,10 +309,17 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
   if (featureFlag === 'n8n') {
     const n8nUrl = process.env.N8N_WEBHOOK_BASE_URL;
     const webhookPath = `/dd-workflow-${req.workflow_key.replace(/_/g, '-')}`;
+    const payload = buildN8nExecutionPayload({
+      workflow_key: req.workflow_key,
+      project_id: req.project_id,
+      input: req.input,
+      phase: req.phase,
+      skills: orderedSkills,
+    });
     const res = await fetch(`${n8nUrl}${webhookPath}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...req.input, project_id: req.project_id }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
 
@@ -283,7 +345,13 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
 
   // --- Gateway route ---
   const gateway = getHarveyGateway();
-  const prompt = `${combinedPrompt}\n\n---\nProject: ${req.project_id}\nInput: ${JSON.stringify(req.input)}`;
+  const prompt = buildHarveyWorkflowPrompt({
+    workflow_key: req.workflow_key,
+    project_id: req.project_id,
+    input: req.input,
+    phase: req.phase,
+    skills: orderedSkills,
+  });
 
   const result = await gateway.completion({
     prompt,
@@ -358,10 +426,10 @@ async function executeLegacy(
     .in('skill_key', definition.skill_keys)
     .eq('is_active', true);
 
-  const combinedPrompt = (skills || [])
-    .map((s) => s.prompt_template)
-    .filter(Boolean)
-    .join('\n\n---\n\n');
+  const orderedSkills = sortSkillsByKeyOrder(
+    (skills || []) as CatalogSkillRow[],
+    definition.skill_keys,
+  );
 
   const systemPrompt = `You are a legal due diligence analyst. Analyze the following for ${definition.name}.
 Return findings in JSON format with: title, severity (critical/high/medium/low/informational),
@@ -371,10 +439,17 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
   if (featureFlag === 'n8n') {
     const n8nUrl = process.env.N8N_WEBHOOK_BASE_URL;
     const webhookPath = `/dd-workflow-${req.workflow_key.replace(/_/g, '-')}`;
+    const payload = buildN8nExecutionPayload({
+      workflow_key: req.workflow_key,
+      project_id: req.project_id,
+      input: req.input,
+      phase: req.phase,
+      skills: orderedSkills,
+    });
     const res = await fetch(`${n8nUrl}${webhookPath}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...req.input, project_id: req.project_id }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
 
@@ -398,7 +473,13 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
   }
 
   const gateway = getHarveyGateway();
-  const prompt = `${combinedPrompt}\n\n---\nProject: ${req.project_id}\nInput: ${JSON.stringify(req.input)}`;
+  const prompt = buildHarveyWorkflowPrompt({
+    workflow_key: req.workflow_key,
+    project_id: req.project_id,
+    input: req.input,
+    phase: req.phase,
+    skills: orderedSkills,
+  });
 
   const result = await gateway.completion({
     prompt,
@@ -445,10 +526,13 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
 export async function executeWorkflow(
   req: WorkflowExecutionRequest
 ): Promise<WorkflowExecutionResult> {
+  const flagValue = (process.env[WORKFLOW_TEMPLATES_FEATURE_FLAG] || '').toLowerCase();
+
   // --- Template-based execution (v1) ---
-  const templateEnabled = ['1', 'true', 'enabled'].includes(
-    (process.env[WORKFLOW_TEMPLATES_FEATURE_FLAG] || '').toLowerCase()
-  );
+  const templateEnabled =
+    flagValue.length === 0
+      ? true
+      : ['1', 'true', 'enabled', 'on'].includes(flagValue);
 
   if (templateEnabled) {
     return executeWithTemplate(req);

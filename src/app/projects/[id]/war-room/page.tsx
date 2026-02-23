@@ -5,8 +5,8 @@ import { useResolvedParams } from '@/lib/utils';
 import Link from 'next/link';
 import {
     ArrowLeft, RefreshCw, Download, Shield, AlertTriangle, TrendingUp,
-    Clock, CheckCircle, ArrowRightCircle,
-    Bell, Activity, FileText, Scale, BarChart3, Target,
+    Clock, ArrowRightCircle,
+    Bell, Activity, FileText, Scale,
     ChevronDown, Filter, Loader2, AlertOctagon, Gavel,
     ShieldCheck, ShieldAlert,
 } from 'lucide-react';
@@ -74,26 +74,6 @@ interface TimelineEvent {
     linked_action: string | null;
     linked_decision: string | null;
     metadata?: Record<string, unknown>;
-}
-
-interface NegotiationDashboard {
-    total_actions: number;
-    by_status: Record<string, number>;
-    by_action_type: Record<string, number>;
-    by_workflow: Record<string, { count: number; accepted: number; pending: number }>;
-    economic_summary: {
-        total_proposed: number;
-        total_accepted: number;
-        total_rejected: number;
-        currency: string;
-    };
-    progress: {
-        resolution_rate: number;
-        acceptance_rate: number;
-        pending_count: number;
-        resolved_count: number;
-        avg_days_to_resolution: number;
-    };
 }
 
 interface SPAClause {
@@ -195,39 +175,6 @@ const COVERAGE_STATUS_CONFIG: Record<string, { label: string; bg: string; fg: st
     uncovered: { label: 'Sin cubrir', bg: 'hsl(0, 72%, 96%)', fg: 'hsl(0, 72%, 45%)' },
 };
 
-const ACTION_STATUS_LABELS: Record<string, string> = {
-    proposed: 'Propuesta',
-    accepted: 'Aceptada',
-    rejected: 'Rechazada',
-    counter: 'Contraoferta',
-    deferred: 'Diferida',
-    withdrawn: 'Retirada',
-};
-
-const ACTION_STATUS_COLORS: Record<string, string> = {
-    proposed: 'var(--status-info)',
-    accepted: 'var(--status-success)',
-    rejected: 'var(--status-error)',
-    counter: '#8B5CF6',
-    deferred: 'var(--status-warning)',
-    withdrawn: 'var(--g-text-muted)',
-};
-
-const ACTION_TYPE_LABELS: Record<string, string> = {
-    condition_precedent: 'Condicion Precedente',
-    indemnity: 'Indemnizacion',
-    price_adjustment: 'Ajuste de Precio',
-    warranty: 'Garantia',
-    covenant: 'Pacto',
-    escrow: 'Escrow',
-    cap_basket: 'Cap/Basket',
-    carve_out: 'Carve-out',
-    disclosure: 'Disclosure',
-    remediation: 'Remediacion',
-    insurance: 'Seguro R&W',
-    other: 'Otro',
-};
-
 const EVENT_TYPE_ICONS: Record<string, typeof Gavel> = {
     decision: Gavel,
     action_proposed: ArrowRightCircle,
@@ -290,12 +237,11 @@ function relativeTime(ts: string): string {
 /*  Tabs config                                                        */
 /* ------------------------------------------------------------------ */
 
-type TabKey = 'dashboard' | 'timeline' | 'negotiation' | 'spa' | 'resolutions';
+type TabKey = 'dashboard' | 'timeline' | 'spa' | 'resolutions';
 
 const TABS: { key: TabKey; label: string; icon: typeof Shield }[] = [
     { key: 'dashboard', label: 'Panel de Control', icon: Shield },
     { key: 'timeline', label: 'Cronologia', icon: Clock },
-    { key: 'negotiation', label: 'Negociacion', icon: BarChart3 },
     { key: 'spa', label: 'Cobertura SPA', icon: FileText },
     { key: 'resolutions', label: 'Resoluciones', icon: Scale },
 ];
@@ -320,9 +266,6 @@ export default function WarRoomPage({ params }: { params: Promise<{ id: string }
     const [timelineFilter, setTimelineFilter] = useState<string>('all');
     const [timelineLimit, setTimelineLimit] = useState(50);
     const [timelineLoading, setTimelineLoading] = useState(false);
-
-    // Negotiation state
-    const [negDashboard, setNegDashboard] = useState<NegotiationDashboard | null>(null);
 
     // SPA Mapping state
     const [spaMapping, setSpaMapping] = useState<SPAMappingData | null>(null);
@@ -376,16 +319,6 @@ export default function WarRoomPage({ params }: { params: Promise<{ id: string }
         setTimelineLoading(false);
     }, [projectId]);
 
-    const fetchNegotiationDashboard = useCallback(async () => {
-        try {
-            const res = await fetch(`/api/war-room/${projectId}/negotiation-dashboard`, { headers: authHeaders() });
-            const data = await res.json();
-            if (data.success) {
-                setNegDashboard(data.dashboard);
-            }
-        } catch { /* silent */ }
-    }, [projectId]);
-
     const fetchSPAMapping = useCallback(async () => {
         try {
             const res = await fetch(`/api/war-room/${projectId}/spa-mapping`, { headers: authHeaders() });
@@ -422,12 +355,11 @@ export default function WarRoomPage({ params }: { params: Promise<{ id: string }
             fetchDashboard(),
             fetchRedFlags(),
             fetchTimeline(timelineLimit, timelineFilter),
-            fetchNegotiationDashboard(),
             fetchSPAMapping(),
             fetchDecisionResolution(),
         ]);
         setLoading(false);
-    }, [fetchDashboard, fetchRedFlags, fetchTimeline, fetchNegotiationDashboard, fetchSPAMapping, fetchDecisionResolution, timelineLimit, timelineFilter]);
+    }, [fetchDashboard, fetchRedFlags, fetchTimeline, fetchSPAMapping, fetchDecisionResolution, timelineLimit, timelineFilter]);
 
     useEffect(() => {
         fetchAll();
@@ -650,9 +582,6 @@ export default function WarRoomPage({ params }: { params: Promise<{ id: string }
                         onLoadMore={() => setTimelineLimit(prev => prev + 50)}
                         loading={timelineLoading}
                     />
-                )}
-                {activeTab === 'negotiation' && (
-                    <NegotiationTab dashboard={negDashboard} />
                 )}
                 {activeTab === 'spa' && (
                     <SPAMappingTab data={spaMapping} />
@@ -1184,131 +1113,7 @@ function TimelineTab({
 }
 
 /* ================================================================== */
-/*  Tab 3: Negociacion (Negotiation Dashboard)                         */
-/* ================================================================== */
-
-function NegotiationTab({ dashboard }: { dashboard: NegotiationDashboard | null }) {
-    if (!dashboard) {
-        return <EmptyState message="Sin datos de negociacion disponibles" icon={<BarChart3 className="h-8 w-8" />} />;
-    }
-
-    const { progress, by_status, by_action_type, economic_summary } = dashboard;
-
-    // Calculate max for bar scaling
-    const maxStatusCount = Math.max(...Object.values(by_status), 1);
-    const maxTypeCount = Math.max(...Object.values(by_action_type).filter(v => v > 0), 1);
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-5)' }}>
-            {/* Progress metric cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--g-space-4)' }}>
-                <MetricCard label="Tasa de resolucion" value={`${progress.resolution_rate}%`} icon={<Target className="h-5 w-5" />} color="var(--g-brand-3308)" />
-                <MetricCard label="Tasa de aceptacion" value={`${progress.acceptance_rate}%`} icon={<CheckCircle className="h-5 w-5" />} color="var(--status-success)" />
-                <MetricCard label="Pendientes" value={String(progress.pending_count)} icon={<Clock className="h-5 w-5" />} color="var(--status-warning)" />
-                <MetricCard label="Resueltas" value={String(progress.resolved_count)} icon={<CheckCircle className="h-5 w-5" />} color="var(--status-info)" />
-                <MetricCard label="Media dias resolucion" value={`${progress.avg_days_to_resolution}d`} icon={<Activity className="h-5 w-5" />} color="var(--g-text-secondary)" />
-            </div>
-
-            {/* Economic summary */}
-            <div className="g-card" style={{ padding: 'var(--g-space-5)', borderRadius: 'var(--g-radius-lg)' }}>
-                <h3 style={{ fontSize: 'var(--g-text-h4)', fontWeight: 700, color: 'var(--g-text-primary)', marginBottom: 'var(--g-space-4)' }}>
-                    Resumen Economico
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--g-space-4)' }}>
-                    <div style={{ padding: 'var(--g-space-3)', borderRadius: 'var(--g-radius-md)', border: '1px solid var(--g-border-subtle)', textAlign: 'center' }}>
-                        <p style={{ fontSize: 'var(--g-text-caption)', color: 'var(--g-text-muted)', marginBottom: '4px' }}>Total propuesto</p>
-                        <p style={{ fontSize: 'var(--g-text-h3)', fontWeight: 700, color: 'var(--g-text-primary)' }}>
-                            {formatCurrency(economic_summary.total_proposed, economic_summary.currency)}
-                        </p>
-                    </div>
-                    <div style={{ padding: 'var(--g-space-3)', borderRadius: 'var(--g-radius-md)', border: '1px solid var(--g-border-subtle)', textAlign: 'center' }}>
-                        <p style={{ fontSize: 'var(--g-text-caption)', color: 'var(--g-text-muted)', marginBottom: '4px' }}>Total aceptado</p>
-                        <p style={{ fontSize: 'var(--g-text-h3)', fontWeight: 700, color: 'var(--status-success)' }}>
-                            {formatCurrency(economic_summary.total_accepted, economic_summary.currency)}
-                        </p>
-                    </div>
-                    <div style={{ padding: 'var(--g-space-3)', borderRadius: 'var(--g-radius-md)', border: '1px solid var(--g-border-subtle)', textAlign: 'center' }}>
-                        <p style={{ fontSize: 'var(--g-text-caption)', color: 'var(--g-text-muted)', marginBottom: '4px' }}>Total rechazado</p>
-                        <p style={{ fontSize: 'var(--g-text-h3)', fontWeight: 700, color: 'var(--status-error)' }}>
-                            {formatCurrency(economic_summary.total_rejected, economic_summary.currency)}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--g-space-4)' }}>
-                {/* Actions by status */}
-                <div className="g-card" style={{ padding: 'var(--g-space-5)', borderRadius: 'var(--g-radius-lg)' }}>
-                    <h3 style={{ fontSize: 'var(--g-text-h4)', fontWeight: 700, color: 'var(--g-text-primary)', marginBottom: 'var(--g-space-4)' }}>
-                        Acciones por Estado
-                    </h3>
-                    {Object.entries(by_status).length === 0 ? (
-                        <EmptyState message="Sin acciones" icon={<BarChart3 className="h-6 w-6" />} small />
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-2)' }}>
-                            {Object.entries(by_status).filter(([, count]) => count > 0).map(([status, count]) => (
-                                <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-3)' }}>
-                                    <span style={{ fontSize: 'var(--g-text-caption)', color: 'var(--g-text-secondary)', width: '80px', textAlign: 'right' }}>
-                                        {ACTION_STATUS_LABELS[status] || status}
-                                    </span>
-                                    <div style={{ flex: 1, height: '20px', backgroundColor: 'var(--g-surface-muted)', borderRadius: 'var(--g-radius-sm)', overflow: 'hidden' }}>
-                                        <div style={{
-                                            height: '100%',
-                                            width: `${(count / maxStatusCount) * 100}%`,
-                                            backgroundColor: ACTION_STATUS_COLORS[status] || 'var(--g-text-muted)',
-                                            borderRadius: 'var(--g-radius-sm)',
-                                            transition: 'width var(--g-transition-smooth)',
-                                            minWidth: count > 0 ? '4px' : '0',
-                                        }} />
-                                    </div>
-                                    <span style={{ fontSize: 'var(--g-text-small)', fontWeight: 600, color: 'var(--g-text-primary)', width: '30px' }}>
-                                        {count}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Actions by type */}
-                <div className="g-card" style={{ padding: 'var(--g-space-5)', borderRadius: 'var(--g-radius-lg)' }}>
-                    <h3 style={{ fontSize: 'var(--g-text-h4)', fontWeight: 700, color: 'var(--g-text-primary)', marginBottom: 'var(--g-space-4)' }}>
-                        Acciones por Tipo
-                    </h3>
-                    {Object.entries(by_action_type).filter(([, c]) => c > 0).length === 0 ? (
-                        <EmptyState message="Sin acciones" icon={<BarChart3 className="h-6 w-6" />} small />
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--g-space-2)' }}>
-                            {Object.entries(by_action_type).filter(([, count]) => count > 0).map(([type, count]) => (
-                                <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-3)' }}>
-                                    <span style={{ fontSize: 'var(--g-text-caption)', color: 'var(--g-text-secondary)', width: '120px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {ACTION_TYPE_LABELS[type] || type}
-                                    </span>
-                                    <div style={{ flex: 1, height: '20px', backgroundColor: 'var(--g-surface-muted)', borderRadius: 'var(--g-radius-sm)', overflow: 'hidden' }}>
-                                        <div style={{
-                                            height: '100%',
-                                            width: `${(count / maxTypeCount) * 100}%`,
-                                            backgroundColor: 'var(--g-brand-3308)',
-                                            borderRadius: 'var(--g-radius-sm)',
-                                            transition: 'width var(--g-transition-smooth)',
-                                            minWidth: count > 0 ? '4px' : '0',
-                                        }} />
-                                    </div>
-                                    <span style={{ fontSize: 'var(--g-text-small)', fontWeight: 600, color: 'var(--g-text-primary)', width: '30px' }}>
-                                        {count}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-/* ================================================================== */
-/*  Tab 4: Cobertura SPA (SPA Mapping)                                 */
+/*  Tab 3: Cobertura SPA (SPA Mapping)                                 */
 /* ================================================================== */
 
 function SPAMappingTab({ data }: { data: SPAMappingData | null }) {
@@ -1472,7 +1277,7 @@ function SPAMappingTab({ data }: { data: SPAMappingData | null }) {
 }
 
 /* ================================================================== */
-/*  Tab 5: Resoluciones (Decision Resolution)                          */
+/*  Tab 4: Resoluciones (Decision Resolution)                          */
 /* ================================================================== */
 
 function ResolutionsTab({ data }: { data: DecisionResolutionData | null }) {

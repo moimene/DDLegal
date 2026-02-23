@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/auth/require-permission';
+import {
+    buildDDReportsSelect,
+    getDDReportsColumnSet,
+    hasDDReportsColumns,
+} from '@/lib/reports/schema-compat';
 
 /**
  * POST /api/reports/[id]/freeze
@@ -36,10 +41,30 @@ export async function POST(
             );
         }
 
+        const reportColumns = await getDDReportsColumnSet();
+        const supportsFreeze = hasDDReportsColumns(reportColumns, ['is_frozen', 'frozen_at', 'frozen_by']);
+
+        if (!supportsFreeze) {
+            return NextResponse.json(
+                {
+                    error: 'El esquema actual de dd_reports no soporta congelacion de informes',
+                    code: 'freeze_not_supported',
+                    required_columns: ['is_frozen', 'frozen_at', 'frozen_by'],
+                },
+                { status: 409 }
+            );
+        }
+
+        const selectColumns = buildDDReportsSelect(
+            ['id', 'status'],
+            ['is_frozen', 'frozen_at', 'frozen_by', 'version_number'],
+            reportColumns,
+        );
+
         // Obtener estado actual del informe
         const { data: report, error: fetchError } = await supabaseAdmin
             .from('dd_reports')
-            .select('id, is_frozen, frozen_at, frozen_by, version_number, status')
+            .select(selectColumns)
             .eq('id', id)
             .single();
 
@@ -50,25 +75,28 @@ export async function POST(
             );
         }
 
+        const reportRow = report as unknown as Record<string, unknown>;
+        const isFrozen = Boolean(reportRow.is_frozen ?? false);
+
         if (action === 'freeze') {
             // Validar que no este ya congelado
-            if (report.is_frozen) {
+            if (isFrozen) {
                 return NextResponse.json(
                     {
                         error: 'Este informe ya esta congelado',
-                        frozen_at: report.frozen_at,
-                        frozen_by: report.frozen_by,
+                        frozen_at: reportRow.frozen_at ?? null,
+                        frozen_by: reportRow.frozen_by ?? null,
                     },
                     { status: 409 }
                 );
             }
 
             // Validar que el informe este en estado completado
-            if (report.status !== 'done') {
+            if (reportRow.status !== 'done') {
                 return NextResponse.json(
                     {
                         error: 'Solo se pueden congelar informes con estado "done"',
-                        current_status: report.status,
+                        current_status: reportRow.status,
                     },
                     { status: 400 }
                 );
@@ -102,7 +130,7 @@ export async function POST(
         }
 
         // action === 'unfreeze'
-        if (!report.is_frozen) {
+        if (!isFrozen) {
             return NextResponse.json(
                 { error: 'Este informe no esta congelado' },
                 { status: 409 }

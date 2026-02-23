@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
     ArrowLeft, RefreshCw, Play, Loader2, Download, FolderOpen,
     Search, Scale, FileText, Handshake, Zap, ArrowRight,
@@ -55,6 +56,31 @@ interface WorkflowInstance {
     initiated_by: string | null;
     created_at: string;
     updated_at: string;
+    latest_report?: {
+        id: string;
+        version_number: number;
+        created_at: string;
+    } | null;
+}
+
+interface WorkflowRunResponse {
+    success: boolean;
+    code?: 'information_required' | 'phase_gate_failed' | 'execution_error';
+    message?: string;
+    error?: string;
+    phase_advance?: {
+        next_phase?: string | null;
+    };
+    information_gate?: {
+        missing_inputs?: string[];
+    };
+    side_effects?: {
+        war_room_notifications?: number;
+        negotiation_actions_created?: number;
+        workflow_report_created?: boolean;
+        workflow_report_id?: string;
+        workflow_report_version?: number;
+    };
 }
 
 /* ------------------------------------------------------------------ */
@@ -152,6 +178,7 @@ function hasHitl(template: WorkflowTemplate): boolean {
 
 export default function WorkflowsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: projectId } = useResolvedParams(params);
+    const router = useRouter();
 
     const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
     const [instances, setInstances] = useState<WorkflowInstance[]>([]);
@@ -237,35 +264,66 @@ export default function WorkflowsPage({ params }: { params: Promise<{ id: string
     };
 
     const handleExecute = async (instance: WorkflowInstance) => {
-        // Find the matching legacy workflow key by looking at the template
-        const template = templates.find(t => t.id === instance.template_id);
-        const workflowKey = template?.template_key;
-
-        if (!workflowKey) {
-            toast.error('No se encontró la clave del workflow para ejecutar');
-            return;
-        }
-
         setExecuting(instance.id);
         try {
-            const res = await fetch('/api/workflows/execute', {
+            const res = await fetch(`/api/workflows/instances/${instance.id}/run`, {
                 method: 'POST',
                 headers: authHeaders(),
                 body: JSON.stringify({
-                    workflow_key: workflowKey,
-                    project_id: projectId,
-                    input: {},
+                    input: { project_id: projectId },
                 }),
             });
-            const data = await res.json();
+            const data = (await res.json()) as WorkflowRunResponse;
             if (data.success) {
-                const duration = data.telemetry?.duration_ms
-                    ? `${(data.telemetry.duration_ms / 1000).toFixed(1)}s`
-                    : '';
-                toast.success(`Workflow ejecutado correctamente${duration ? ` (${duration})` : ''}`);
+                const nextPhase = data.phase_advance?.next_phase as string | null | undefined;
+                const sideEffects = data.side_effects || {};
+                const reportId = sideEffects.workflow_report_id;
+                const reportVersion = sideEffects.workflow_report_version;
+                const warRoomCount = sideEffects.war_room_notifications || 0;
+                const negotiationCount = sideEffects.negotiation_actions_created || 0;
+
+                const details: string[] = [];
+                if (reportId) {
+                    details.push(`Informe${reportVersion ? ` v${reportVersion}` : ''} archivado`);
+                }
+                if (warRoomCount > 0) {
+                    details.push(`${warRoomCount} notificación(es) War Room`);
+                }
+                if (negotiationCount > 0) {
+                    details.push(`${negotiationCount} acción(es) de negociación`);
+                }
+
+                if (nextPhase) {
+                    const nextPhaseLabel = PHASE_CONFIG[nextPhase]?.label || nextPhase;
+                    toast.success(`Fase ejecutada. Avanza a: ${nextPhaseLabel}`, {
+                        description: details.length > 0 ? details.join(' · ') : undefined,
+                        action: reportId
+                            ? {
+                                label: 'Ver informe',
+                                onClick: () => router.push(`/reports/${reportId}`),
+                            }
+                            : undefined,
+                    });
+                } else {
+                    toast.success('Fase ejecutada y workflow completado', {
+                        description: details.length > 0 ? details.join(' · ') : undefined,
+                        action: reportId
+                            ? {
+                                label: 'Ver informe',
+                                onClick: () => router.push(`/reports/${reportId}`),
+                            }
+                            : undefined,
+                    });
+                }
                 fetchInstances();
+            } else if (data.code === 'information_required') {
+                const missing = (data.information_gate?.missing_inputs || []) as string[];
+                const detail = missing.length > 0 ? ` (${missing.join(', ')})` : '';
+                toast.error(`Falta información para avanzar${detail}`);
+            } else if (data.code === 'phase_gate_failed') {
+                toast.error('La fase se ejecutó, pero no cumplió DoR/DoD para avanzar');
             } else {
-                toast.error(data.error || 'Error al ejecutar workflow');
+                toast.error(data.error || data.message || 'Error al ejecutar workflow');
             }
         } catch {
             toast.error('Error de conexión al ejecutar workflow');
@@ -839,6 +897,19 @@ export default function WorkflowsPage({ params }: { params: Promise<{ id: string
                                     </th>
                                     <th
                                         style={{
+                                            textAlign: 'left',
+                                            padding: 'var(--g-space-3) var(--g-space-4)',
+                                            fontWeight: 600,
+                                            color: 'var(--g-text-secondary)',
+                                            fontSize: 'var(--g-text-caption)',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.04em',
+                                        }}
+                                    >
+                                        Informe
+                                    </th>
+                                    <th
+                                        style={{
                                             textAlign: 'right',
                                             padding: 'var(--g-space-3) var(--g-space-4)',
                                             fontWeight: 600,
@@ -959,6 +1030,34 @@ export default function WorkflowsPage({ params }: { params: Promise<{ id: string
                                                 }}
                                             >
                                                 {formatDate(instance.created_at)}
+                                            </td>
+
+                                            {/* Latest workflow report */}
+                                            <td
+                                                style={{
+                                                    padding: 'var(--g-space-3) var(--g-space-4)',
+                                                    fontSize: 'var(--g-text-caption)',
+                                                }}
+                                            >
+                                                {instance.latest_report?.id ? (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                        <Link
+                                                            href={`/reports/${instance.latest_report.id}`}
+                                                            style={{
+                                                                color: 'var(--g-link)',
+                                                                fontWeight: 600,
+                                                                textDecoration: 'none',
+                                                            }}
+                                                        >
+                                                            v{instance.latest_report.version_number}
+                                                        </Link>
+                                                        <span style={{ color: 'var(--g-text-muted)' }}>
+                                                            {formatDate(instance.latest_report.created_at)}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span style={{ color: 'var(--g-text-muted)' }}>Sin informe</span>
+                                                )}
                                             </td>
 
                                             {/* Actions */}

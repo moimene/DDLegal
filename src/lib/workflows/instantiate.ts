@@ -24,7 +24,10 @@ import { WORKFLOW_TEMPLATES_FEATURE_FLAG } from './template-types';
 
 function isFeatureFlagEnabled(): boolean {
   const value = process.env[WORKFLOW_TEMPLATES_FEATURE_FLAG];
-  return value === '1' || value === 'true' || value === 'enabled';
+  if (!value || value.trim().length === 0) {
+    return true;
+  }
+  return ['1', 'true', 'enabled', 'on'].includes(value.toLowerCase());
 }
 
 // ---------------------------------------------------------------------------
@@ -39,6 +42,16 @@ function buildInitialPhaseStatus(
     status[p.phase] = 'pending';
   }
   return status;
+}
+
+function normalizeInitiatedBy(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+
+  const uuidLike =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidLike.test(trimmed) ? trimmed : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,7 +107,7 @@ export async function instantiateWorkflow(
     current_phase: 'obtencion' as const,
     phase_status: buildInitialPhaseStatus(phases),
     project_overrides: request.overrides ?? {},
-    initiated_by: request.initiated_by ?? null,
+    initiated_by: normalizeInitiatedBy(request.initiated_by),
     phase_started_at: {},
     phase_completed_at: {},
     findings_count: 0,

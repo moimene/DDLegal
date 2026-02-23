@@ -99,7 +99,7 @@ export default function ClientProjectPage({ params }: { params: Promise<{ id: st
                         className="inline-flex items-center gap-1 text-sm mb-3"
                         style={{ color: 'var(--g-link)' }}
                     >
-                        <ArrowLeft className="h-4 w-4" /> Volver al cockpit interno
+                        <ArrowLeft className="h-4 w-4" /> Volver al proyecto
                     </Link>
                     <h1 className="font-bold" style={{ fontSize: 'var(--g-text-h1)', color: 'var(--g-text-primary)' }}>
                         Portal cliente
