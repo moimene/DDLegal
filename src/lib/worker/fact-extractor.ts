@@ -158,11 +158,99 @@ export interface AdministrativeFacts {
   }>;
 }
 
+export interface PIFacts {
+  registros: Array<{
+    tipo: 'marca' | 'patente' | 'diseno' | 'nombre_comercial' | 'otro';
+    numero_registro: string;
+    clases_niza: number[];
+    territorio: string;
+    fecha_concesion: string | null;
+    fecha_renovacion: string | null;
+    titular: string;
+    estado: 'vigente' | 'caducada' | 'en_tramite' | 'cancelada';
+  }>;
+  licencias: Array<{
+    tipo: 'inbound' | 'outbound';
+    licenciante: string;
+    licenciatario: string;
+    exclusiva: boolean;
+    territorio: string;
+    royalty_percent: number | null;
+    duracion: string | null;
+    objeto: string;
+  }>;
+  conflictos: Array<{
+    tipo: 'oposicion' | 'nulidad' | 'infraccion' | 'otro';
+    contraparte: string;
+    estado: string;
+    riesgo: 'alto' | 'medio' | 'bajo';
+  }>;
+}
+
+export interface LaboralFacts {
+  plantilla: {
+    total: number | null;
+    fijos: number | null;
+    temporales: number | null;
+    directivos: number | null;
+    fecha_datos: string | null;
+  };
+  convenio: {
+    vigente: boolean;
+    denominacion: string | null;
+    fecha_vencimiento: string | null;
+    ultraactividad: boolean;
+  };
+  litigios: Array<{
+    tipo: 'despido' | 'reclamacion_cantidad' | 'accidente' | 'acoso' | 'otro';
+    demandante: string;
+    cuantia: number | null;
+    estado: string;
+    provision: number | null;
+  }>;
+  alta_direccion: Array<{
+    nombre: string;
+    cargo: string;
+    blindaje_meses: number | null;
+    non_compete_meses: number | null;
+    retribucion_fija: number | null;
+    retribucion_variable: number | null;
+  }>;
+  ERE_ERTE: {
+    vigente: boolean;
+    tipo: 'ERE' | 'ERTE' | null;
+    afectados: number | null;
+    fecha_fin: string | null;
+  };
+}
+
+export interface FiscalFacts {
+  modelo: string | null;
+  ejercicio: string | null;
+  resultado_fiscal: number | null;
+  bases_imponibles_negativas: number | null;
+  creditos_fiscales: number | null;
+  provisiones_fiscales: number | null;
+  precios_transferencia: {
+    existe_documentacion: boolean;
+    entidades_vinculadas: string[];
+    riesgo_ajuste: 'alto' | 'medio' | 'bajo' | null;
+  };
+  inspecciones: {
+    abiertas: Array<{ impuesto: string; ejercicios: string; estado: string }>;
+    actas_firmadas: Array<{ impuesto: string; importe: number; conformidad: boolean }>;
+    recursos_pendientes: Array<{ organo: string; cuantia: number; estado: string }>;
+  };
+}
+
 // Extend DocumentFacts with optional area-specific fields
 export interface ExtendedDocumentFacts extends DocumentFacts {
   annual_accounts?: AnnualAccountsFacts;
   litigation?: LitigationFacts;
   administrative?: AdministrativeFacts;
+  pi?: PIFacts;
+  laboral?: LaboralFacts;
+  fiscal?: FiscalFacts;
 }
 
 export interface ExtractionResult {
@@ -289,6 +377,42 @@ const ADM_EXTRACTION_EXTENSION = `
    Add to response: "administrative": { ... }
 `;
 
+const PI_EXTRACTION_EXTENSION = `
+
+10. INTELLECTUAL PROPERTY (if area_codes includes PI)
+    Extract:
+    - registros: [{ tipo (marca/patente/diseno/nombre_comercial/otro), numero_registro, clases_niza[], territorio, fecha_concesion, fecha_renovacion, titular, estado }]
+    - licencias: [{ tipo (inbound/outbound), licenciante, licenciatario, exclusiva, territorio, royalty_percent, duracion, objeto }]
+    - conflictos: [{ tipo, contraparte, estado, riesgo }]
+
+    Add to response: "pi": { ... }
+`;
+
+const LAB_EXTRACTION_EXTENSION = `
+
+11. LABOR (if area_codes includes LAB)
+    Extract:
+    - plantilla: { total, fijos, temporales, directivos, fecha_datos }
+    - convenio: { vigente, denominacion, fecha_vencimiento, ultraactividad }
+    - litigios: [{ tipo, demandante, cuantia, estado, provision }]
+    - alta_direccion: [{ nombre, cargo, blindaje_meses, non_compete_meses, retribucion_fija, retribucion_variable }]
+    - ERE_ERTE: { vigente, tipo, afectados, fecha_fin }
+
+    Add to response: "laboral": { ... }
+`;
+
+const FISC_EXTRACTION_EXTENSION = `
+
+12. FISCAL (if area_codes includes FISC)
+    Extract:
+    - modelo, ejercicio, resultado_fiscal
+    - bases_imponibles_negativas, creditos_fiscales, provisiones_fiscales
+    - precios_transferencia: { existe_documentacion, entidades_vinculadas[], riesgo_ajuste }
+    - inspecciones: { abiertas[], actas_firmadas[], recursos_pendientes[] }
+
+    Add to response: "fiscal": { ... }
+`;
+
 /**
  * Builds area-specific extraction prompt extensions based on area codes and document type.
  * Used to augment the base EXTRACTION_PROMPT with additional extraction instructions.
@@ -314,6 +438,21 @@ export function getAreaExtensions(areaCodes: string[], docType: string): string 
   // ADM extraction
   if (areaCodes.includes('ADM')) {
     extensions.push(ADM_EXTRACTION_EXTENSION);
+  }
+
+  // PI extraction
+  if (areaCodes.includes('PI')) {
+    extensions.push(PI_EXTRACTION_EXTENSION);
+  }
+
+  // LAB extraction
+  if (areaCodes.includes('LAB')) {
+    extensions.push(LAB_EXTRACTION_EXTENSION);
+  }
+
+  // FISC extraction
+  if (areaCodes.includes('FISC')) {
+    extensions.push(FISC_EXTRACTION_EXTENSION);
   }
 
   return extensions.join('\n');
