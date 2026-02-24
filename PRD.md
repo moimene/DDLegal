@@ -515,7 +515,14 @@ El "hallazgo" (finding) se convierte en la **unidad mínima de gestión** del DD
 
 **Relevance Tiers:** Tier 1 (Decisorio), Tier 2 (Gestión), Tier 3 (Registro). Auto-calculated, overridable.
 
-**DB (8 migrations: 202602280004–011):** 3 tablas + finding_id FK en tablas existentes + RLS + 7 RPCs + CHECK constraints + backfill.
+**AI Summary (~200 chars, español):**
+- Generado inline en workflow via `buildFindingSummary()` en `rule-evaluator.ts`
+- Incluye severidad (traducida), área, título, criterios cumplidos
+- Batch endpoint para findings existentes: `POST /api/findings/batch-summary`
+- Fallback local si Harvey no disponible
+- UI: mostrado en tabla (bajo título) y panel de detalle
+
+**DB (9 migrations: 202602280004–011, 202602280035):** 3 tablas + finding_id FK en tablas existentes + RLS + 7 RPCs + CHECK constraints + backfill + summary column.
 
 **API (3 endpoints):**
 ```
@@ -532,8 +539,10 @@ PATCH  /api/findings/[id]
 3. 6 consumers con FINDINGS_FIRST switch y fallback.
 4. Backfill completo (21 findings, bidirectional FK).
 5. API CRUD con permisos granulares (4 permissions).
+6. AI summary generado inline en workflow Harvey (~200 chars, español).
+7. Batch endpoint para generar summaries de findings existentes.
 
-**Estado actual:** ✅ Fases A-E.2.5 completadas. FINDINGS_FIRST=on y FINDING_OBJECTIVES=on en producción. 54 Finding Objectives seeded (7 áreas). 36 E2E tests (`@fo` tag). Pendiente Fase E.3-E.4 (validar consumidores + cleanup legacy).
+**Estado actual:** ✅ Fases A-E.2.5 completadas + AI Summaries. FINDINGS_FIRST=on y FINDING_OBJECTIVES=on en producción. 54 Finding Objectives seeded (7 áreas). 37 findings con AI summary. 36 E2E tests (`@fo` tag). Crons activos cada 5 min (fo-analysis, worker-cycle). Pendiente Fase E.3-E.4 (validar consumidores + cleanup legacy).
 
 ### 4.C Pendiente (Horizonte 2/3)
 
@@ -741,11 +750,12 @@ GET  /api/war-room/[project_id]/negotiation-actions   -> { actions[] }
 PATCH  /api/tasks/[id]/status                 -> { success, task } (status validation: backlog/todo/in_progress/review/blocked/done/cancelled)
 ```
 
-#### Findings (3)
+#### Findings (4)
 ```
 GET    /api/findings?project_id=X&tier=1,2&status=...  -> { findings[], meta }
 GET    /api/findings/[id]                               -> { finding, evidence[], reports[] }
 PATCH  /api/findings/[id]                               -> { success, finding }
+POST   /api/findings/batch-summary                      -> { generated, errors, message }
 ```
 
 #### Report Export (2)
@@ -886,6 +896,7 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 13. **Synthetic Test Dataset v3**: 3 proyectos seed (Green/Amber/Red) con 342+ filas en 16 tablas, 16 usuarios auth, 47 project roles. CSVs fuente en `docs/output_v3/`. Consolidacion de workflows con prompt-builder enriquecido (sesion 2026-02-23, reporte en `docs/reports/`).
 14. **Incremental RAG + Two-Level Cache** ✅ — Content-hash L1, evidence-hash L2, multi-query retrieval (100+ SECTION_QUERY_MAP entries), analysis results UPSERT, 3 n8n workflows (ingest/orchestrator/render), PDF/MD export.
 15. **Finding-Centric Architecture** ✅ — dd_findings como unidad canónica, 10-state lifecycle, 3-tier relevance, dual-write, 6 consumers migrados, 21 findings backfilled, 54 Finding Objectives seeded, 36 E2E tests. Feature flags `FINDINGS_FIRST=on`, `FINDING_OBJECTIVES=on` en producción.
+16. **AI Summaries** ✅ — Resumen ejecutivo (~200 chars, español) generado inline en workflow Harvey via `buildFindingSummary()`. Batch endpoint para findings existentes. 37 findings con summary. Crons activos: fo-analysis (5 min), worker-cycle (5 min).
 
 ### P1 — Expansion Areas + Golden Path (Horizonte 2)
 1. ~~Publicar 6 workflows planned (WF-07 a WF-12)~~ ✅ Done.

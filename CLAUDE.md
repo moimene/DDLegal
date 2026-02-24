@@ -1,6 +1,6 @@
 # DD Legal PMO
 
-Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 17 workflow templates (6 fases DD + 1 CA, 17/17 published), 65 skills (57 base + 8 CA), 35 report templates, Evidence Pack, Kanban, VDR, War Room, Observabilidad, **Finding-Centric Architecture** (dd_findings como unidad canónica), **Worker Architecture v1.0** (loop autónomo SENSE→NORMALIZE→EVALUATE→CONCLUDE) e **Incremental RAG + Report Rendering + Two-Level Cache**. 125 API routes, 30 E2E suites, 62 migrations. 69 Finding Objectives (54 base + 15 CA), 39 expected documents across 7 areas. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
+Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 17 workflow templates (6 fases DD + 1 CA, 17/17 published), 65 skills (57 base + 8 CA), 35 report templates, Evidence Pack, Kanban, VDR, War Room, Observabilidad, **Finding-Centric Architecture** (dd_findings como unidad canónica con AI summaries), **Worker Architecture v1.0** (loop autónomo SENSE→NORMALIZE→EVALUATE→CONCLUDE) e **Incremental RAG + Report Rendering + Two-Level Cache**. 126 API routes, 30 E2E suites, 63 migrations. 69 Finding Objectives (54 base + 15 CA), 39 expected documents across 7 areas. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
 
 ## Stack
 
@@ -43,7 +43,7 @@ src/
         rag/query/          # S0: Vault RAG query endpoint
         vault/sync/         # S4→S0: VDR to Harvey Vault sync
       reports/              # Report generation: final, red-flags, workflow, pdf, md, compare, export, generate
-      findings/             # Finding CRUD: list, detail, PATCH (status/tier/link)
+      findings/             # Finding CRUD: list, detail, PATCH (status/tier/link), batch-summary
       scoring/              # H3: Deal Risk Score (POST/GET per project)
       war-room/             # S6: dashboard, decisions, red-flags, export, negotiation-actions, spa-mapping, timeline, negotiation-dashboard, decision-resolution
       tasks/                # [id]/status PATCH (authenticated task status update)
@@ -414,14 +414,18 @@ Sidebar → Findings → Header + Filters → Tabla
 - Link directo al documento en VDR: `/projects/[id]/vdr?doc={document_id}`
 
 **AI Summary (Harvey):**
-- Columna `summary` en `dd_findings` (~200 chars)
-- Generado automáticamente al crear finding via `persistFindings()`
-- Batch endpoint: `POST /api/findings/batch-summary` para findings existentes
-- Fallback local si Harvey no disponible
+- Columna `summary` en `dd_findings` (~200 chars, español)
+- **Generación inline en workflow:** `buildFindingSummary()` en `rule-evaluator.ts` genera resumen como parte del flujo Harvey
+- Incluye: severidad (traducida), área, título, criterios evaluados
+- Pasado via `WorkflowFinding.summary` → `persistFindings()`
+- Batch endpoint: `POST /api/findings/batch-summary` para findings existentes sin summary
+- Fallback local si Harvey no disponible (para findings manuales/import)
 - **Files:**
-  - `src/lib/findings/summary-generator.ts` — Harvey integration, batch processing
+  - `src/lib/findings/rule-evaluator.ts` — `buildFindingSummary()` inline generation
+  - `src/lib/findings/summary-generator.ts` — Harvey integration, batch processing (fallback)
   - `src/app/api/findings/batch-summary/route.ts` — Batch API (limit 10-50)
 - **UI:** Mostrado en tabla (bajo título) y panel de detalle (header, itálica)
+- **Migration:** `202602280035_add_finding_summary.sql` — columna + índice parcial
 
 **Permisos requeridos:**
 - `can_view_findings` — ver página y lista
