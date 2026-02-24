@@ -52,6 +52,12 @@ src/
       #   harvey, hitl, ip, negotiation, notifications, projects, qa,
       #   reports, skills, societario, system, tools
     login/                  # Login page with demo user selection + auto-fill
+    projects/[id]/
+      findings/             # Findings management page (table + detail + evidence)
+      hitl/                 # HITL review queue
+      kanban/               # Kanban board
+      vdr/                  # Virtual Data Room
+      workflows/            # Workflow instances
     (pages)/                # Next.js pages with App Router
   components/               # 13 component groups (dashboards, vdr, reports...)
   contexts/
@@ -355,6 +361,62 @@ Auto-calculated on insert (`tier_auto_calculated`), overridable via `relevance_t
 - `probability`: certain, alta, probable, media, possible, baja, remote
 
 **Events (3 new):** `finding_status_changed`, `finding_tier_changed`, `finding_updated` — emitted via event bus, persisted in `dd_event_log`, broadcast via Supabase Realtime.
+
+### Findings UI (Feb 2026)
+
+Página dedicada para gestión de findings en `/projects/[id]/findings`.
+
+**Archivo:** `src/app/projects/[id]/findings/page.tsx` (~800 líneas)
+
+**Componentes:**
+
+| Componente | Descripción |
+|------------|-------------|
+| Header + Summary Cards | 5 cards: critical, high, medium, low, total |
+| Filter Panel | Severidad, Estado, Tier, Área, Búsqueda libre |
+| Findings Table | Tabla ordenable con badges de severidad/estado/tier |
+| Detail Panel (40%) | Panel lateral con toda la info del finding |
+| Evidence Section | Chunks VDR vinculados con snippets y enlaces |
+| Actions Section | Botones de transición de estado + override de tier |
+
+**Flujo de navegación:**
+
+```
+Sidebar → Findings → Header + Filters → Tabla
+                                          ↓ click
+                                    Detail Panel
+                                          ↓
+                    ┌─────────────────────┼─────────────────────┐
+                    ↓                     ↓                     ↓
+              Ver Evidencia        Cambiar Estado         Cambiar Tier
+                    ↓                     ↓                     ↓
+               Link → VDR          State Machine          Justificación
+```
+
+**State Machine UI (transiciones válidas):**
+
+| Estado Actual | Transiciones Disponibles |
+|---------------|-------------------------|
+| identified | under_review, dismissed |
+| under_review | validated, contested, dismissed |
+| validated | accepted, contested |
+| contested | under_review, validated, dismissed |
+| accepted | mitigated, reported |
+| mitigated | reported, resolved |
+| reported | negotiated, resolved |
+| negotiated | resolved |
+| resolved/dismissed | (terminal) |
+
+**Evidence Display:**
+- Muestra chunks VDR vinculados via `dd_finding_evidence`
+- Cada item: título sección, tipo, página, similarity score, snippet
+- Link directo al documento en VDR: `/projects/[id]/vdr?doc={document_id}`
+
+**Permisos requeridos:**
+- `can_view_findings` — ver página y lista
+- `can_edit_findings` — cambiar estado (excepto resolved/dismissed)
+- `can_change_finding_tier` — override de tier con justificación
+- `can_resolve_findings` — transición a resolved/dismissed
 
 ### Fase C — Migrate Reads (COMPLETED)
 
