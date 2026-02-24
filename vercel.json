@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/audit-sync",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/fo-analysis",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/worker-cycle",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

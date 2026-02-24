@@ -11,6 +11,25 @@ import {
 import { loadWorkflowTemplate } from './template-loader';
 import { WORKFLOW_TEMPLATES_FEATURE_FLAG } from './template-types';
 import type { WorkflowTemplateWithVersion } from './template-types';
+
+// Feature flag for Finding Objectives v2.0
+export const FINDING_OBJECTIVES_FEATURE_FLAG = 'FINDING_OBJECTIVES';
+
+/**
+ * Check if Finding Objectives mode is enabled.
+ * Requires FINDINGS_FIRST to be true as well.
+ */
+export function isFindingObjectivesEnabled(): boolean {
+  const foFlag = process.env[FINDING_OBJECTIVES_FEATURE_FLAG] === 'true';
+  const ffFlag = process.env.FINDINGS_FIRST === 'true';
+
+  if (foFlag && !ffFlag) {
+    console.warn('[WorkflowEngine] FINDING_OBJECTIVES requires FINDINGS_FIRST=true');
+    return false;
+  }
+
+  return foFlag && ffFlag;
+}
 import type {
   WorkflowExecutionRequest,
   WorkflowExecutionResult,

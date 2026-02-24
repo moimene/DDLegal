@@ -13,7 +13,7 @@ import { isFindingsFirstEnabled, getFindingsForScoring } from '@/lib/findings';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { project_id, area_weights } = body as {
+    const { project_id, area_weights: requestAreaWeights } = body as {
       project_id?: string;
       area_weights?: Record<string, number>;
     };
@@ -32,6 +32,20 @@ export async function POST(req: NextRequest) {
       'can_edit_contingencies',
     );
     if (!authorized) return authError!;
+
+    // -----------------------------------------------------------------------
+    // 0. Load scoring config from DB (fallback to hardcoded defaults)
+    // -----------------------------------------------------------------------
+    const { data: configData } = await supabaseAdmin
+      .from('dd_scoring_config')
+      .select('*')
+      .eq('is_default', true)
+      .maybeSingle();
+
+    // Use request-provided weights, or DB config, or hardcoded defaults
+    const area_weights = requestAreaWeights ??
+      (configData?.area_weights as Record<string, number> | null) ??
+      { MERC: 1.0, CONT: 1.2, LAB: 0.8, FISC: 1.0, PI: 0.7, LIT: 1.1, ADM: 0.9, GENERAL: 0.5 };
 
     // -----------------------------------------------------------------------
     // 1. Load findings — FINDINGS_FIRST or legacy path

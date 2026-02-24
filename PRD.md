@@ -1,5 +1,5 @@
 # PRD - DD Legal PMO v3.0
-**Ultima actualizacion: 23 febrero 2026 — Desplegado en produccion: `dd-legal-pmo.vercel.a*p*p*`**
+**Ultima actualizacion: 24 febrero 2026 — Desplegado en produccion: `dd-legal-pmo.vercel.app`**
 
 ## 1. Contexto y problema
 
@@ -533,7 +533,7 @@ PATCH  /api/findings/[id]
 4. Backfill completo (21 findings, bidirectional FK).
 5. API CRUD con permisos granulares (4 permissions).
 
-**Estado actual:** ✅ Fases A-D completadas. Pendiente Fase E (activar FINDINGS_FIRST=on en producción).
+**Estado actual:** ✅ Fases A-E.2.5 completadas. FINDINGS_FIRST=on y FINDING_OBJECTIVES=on en producción. 54 Finding Objectives seeded (7 áreas). 36 E2E tests (`@fo` tag). Pendiente Fase E.3-E.4 (validar consumidores + cleanup legacy).
 
 ### 4.C Pendiente (Horizonte 2/3)
 
@@ -566,7 +566,7 @@ PATCH  /api/findings/[id]
 - **Orquestacion**: n8n Cloud (12 workflows, migracion progresiva a gateway).
 - **Deploy**: Vercel (production: `dd-legal-pmo.vercel.app`, auto-deploy desde main).
 - **Auth**: 16 usuarios Supabase Auth (1 admin + 8 demo + 4 project-specific + 3 seed).
-- **Tests**: Playwright E2E (32 suites, 257+ tests, 0 failures).
+- **Tests**: Playwright E2E (30 suites, 293+ tests, 0 failures).
 
 ### Diagrama E2E
 
@@ -880,12 +880,12 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 7. **S6**: War Room ✅ — dashboard, decisions, red-flags, severity notifications, export, **negotiation_actions API**, **SPA mapping**, **timeline**, **decision resolution**.
 8. **H3 Scoring** ✅ — Deal Risk Score engine (severity×probability×timing×area weighting), per-project scoring API.
 9. **Reporting** ✅ — Final report compiler, red flag report generator, workflow report engine.
-10. Tests E2E: 32 suites, 257+ tests (0 failures) covering all slices.
+10. Tests E2E: 30 suites, 293+ tests (0 failures) covering all slices.
 11. DB: 72+ tablas, 50 migrations, Postgres 17.6 Pro.
 12. **Deploy**: Vercel `dd-legal-pmo.vercel.app` ✅, 10 env vars, Supabase connected, n8n reachable, Cron audit-sync active.
 13. **Synthetic Test Dataset v3**: 3 proyectos seed (Green/Amber/Red) con 342+ filas en 16 tablas, 16 usuarios auth, 47 project roles. CSVs fuente en `docs/output_v3/`. Consolidacion de workflows con prompt-builder enriquecido (sesion 2026-02-23, reporte en `docs/reports/`).
 14. **Incremental RAG + Two-Level Cache** ✅ — Content-hash L1, evidence-hash L2, multi-query retrieval (100+ SECTION_QUERY_MAP entries), analysis results UPSERT, 3 n8n workflows (ingest/orchestrator/render), PDF/MD export.
-15. **Finding-Centric Architecture** ✅ — dd_findings como unidad canónica, 10-state lifecycle, 3-tier relevance, dual-write, 6 consumers migrados, 21 findings backfilled. Feature flag `FINDINGS_FIRST` (OFF, pending Fase E).
+15. **Finding-Centric Architecture** ✅ — dd_findings como unidad canónica, 10-state lifecycle, 3-tier relevance, dual-write, 6 consumers migrados, 21 findings backfilled, 54 Finding Objectives seeded, 36 E2E tests. Feature flags `FINDINGS_FIRST=on`, `FINDING_OBJECTIVES=on` en producción.
 
 ### P1 — Expansion Areas + Golden Path (Horizonte 2)
 1. ~~Publicar 6 workflows planned (WF-07 a WF-12)~~ ✅ Done.
@@ -897,7 +897,7 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 7. ~~Observability: Vercel Cron audit sync~~ ✅ Done. Pendiente: metricas por fase + alertas SLO→War Room.
 8. ~~RLS hardening: CI lint service_role_key~~ ✅ Done (`scripts/lint-service-role.sh` + migrations 6/11/12). Pendiente: matriz rol×endpoint E2E.
 9. ~~Retrieval hibrido BM25 + pgvector + chunking adaptativo~~ ✅ Done.
-10. **Fase E: FINDINGS_FIRST activation** — Set `FINDINGS_FIRST=on` in Vercel env, validate all 6 consumers, deprecate legacy JSONB paths.
+10. ~~**Fase E.1-E.2.5: FINDINGS_FIRST activation**~~ ✅ Done — `FINDINGS_FIRST=on`, `FINDING_OBJECTIVES=on` in Vercel, 54 FOs seeded, 36 E2E tests. Pendiente: Fase E.3-E.4 (validate consumers, deprecate legacy JSONB).
 11. **n8n credentials setup** — Configure Supabase HTTP Header Auth credentials in n8n for ingest/orchestrator workflows.
 
 ### P2 — Scoring + Reporting Comite (Horizonte 3)

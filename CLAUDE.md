@@ -1,6 +1,6 @@
 # DD Legal PMO
 
-Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 35 report templates, Evidence Pack, Kanban, VDR, War Room, Observabilidad, **Finding-Centric Architecture** (dd_findings como unidad canónica) e **Incremental RAG + Report Rendering + Two-Level Cache**. 120 API routes, 29 E2E suites, 50 migrations. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
+Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 35 report templates, Evidence Pack, Kanban, VDR, War Room, Observabilidad, **Finding-Centric Architecture** (dd_findings como unidad canónica), **Worker Architecture v1.0** (loop autónomo SENSE→NORMALIZE→EVALUATE→CONCLUDE) e **Incremental RAG + Report Rendering + Two-Level Cache**. 125 API routes, 30 E2E suites, 54 migrations. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
 
 ## Stack
 
@@ -8,14 +8,15 @@ Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n
 - **Backend**: Next.js API routes (120 endpoints), Supabase (Postgres + RLS + pgvector + BM25)
 - **AI**: Harvey AI gateway, OpenAI embeddings (text-embedding-3-small, 1536d)
 - **Infra**: Vercel (produccion: `dd-legal-pmo.vercel.app`), Supabase hosted, n8n workflows
-- **Tests**: Playwright E2E (29 suites, 257+ tests), Vitest unit tests
+- **Tests**: Playwright E2E (30 suites, 293+ tests), Vitest unit tests
 
 ## Commands
 
 - `npm run dev` — Dev server (localhost:3000)
 - `npm run build` — Production build
 - `npm run lint` — ESLint
-- `npm run test` / `npx playwright test` — E2E tests (all 29 suites)
+- `npm run test` / `npx playwright test` — E2E tests (all 30 suites)
+- `npx playwright test --grep @fo` — Finding Objectives tests (36 tests)
 - `npm run test:api` — API specs societario
 - `npm run test:page` — Page specs societario
 - `npm run test:ui` — Playwright UI mode
@@ -33,7 +34,8 @@ src/
       evidence/             # link-chunks, pack builder (Evidence Pack v2)
       gateway/              # Harvey AI proxy (whoami, health, completion)
       kanban/               # board, metrics, tasks CRUD + move + alerts
-      cron/                  # Vercel Cron: audit-sync (15-min telemetry flush)
+      cron/                  # Vercel Cron: audit-sync (15-min), fo-analysis (5-min), worker-cycle (5-min)
+      worker/               # DD Worker: start, status, pause, resume
       observability/        # SLO dashboard (workflow phases), telemetry ingestion, alerts
       vdr/                  # documents, folders, bulk, search, audit
         ingest/             # S4: async vectorization pipeline
@@ -64,6 +66,7 @@ src/
     war-room/               # Notifications, severity bridge
     scoring/                # Deal Risk Score engine (severity×probability×timing×area weighting)
     reporting/              # Report engine, evidence pack builder, red flag generator, final report compiler, analysis-results cache, templates (35), garrigues-schemas
+    worker/                 # DD Worker: controller, phases (sense, normalize, evaluate, conclude), fact-extractor, document-classifier
     workflows/              # Template-based engine + instantiation + phase advancement
       template-types.ts     # 6 phases, 9 categories, template/instance types
       template-loader.ts    # DB-backed loader with 5-min cache
@@ -256,6 +259,8 @@ Required in `.env.local` (never commit):
 - `CRON_SECRET` — Vercel Cron auth secret (protects `/api/cron/*` routes)
 - `HARVEY_API_KEY` — Harvey API key (legacy, used by some routes)
 - `FINDINGS_FIRST` — `true` | `false` (when true, reads shift to dd_findings as source of truth; default: false)
+- `FINDING_OBJECTIVES` — `true` | `false` (when true, uses FO-driven analysis; requires FINDINGS_FIRST=true)
+- `DD_WORKER` — `true` | `false` (when true, enables autonomous Worker loop and post-ingestion classification)
 
 ## Deployment
 
@@ -382,9 +387,160 @@ Migration `202602280011_backfill_findings_from_contingencies.sql` applied. Idemp
 
 Bidirectional FK: all 19 contingencies have `finding_id` set, all 19 findings have `contingency_id` set. Status mapping: `identified→identified`, `confirmed→validated`, `accepted→accepted`, `mitigated→mitigated`, `resolved→resolved`.
 
-### Pendiente (Fase E)
+### Fase E.1-E.2.5: Finding Objectives + Iterative Analysis (COMPLETED)
 
-- **Fase E (Contract)**: Set `FINDINGS_FIRST=on` in Vercel env, validate all consumers read correctly, deprecate legacy JSONB paths
+**New tables (7 migrations: 202602280012-202602280018):**
+
+| Tabla | Propósito |
+|-------|-----------|
+| `dd_finding_objectives` | Catálogo de 54 FOs por área legal |
+| `dd_scoring_config` | Pesos parametrizables por deal_type/jurisdiction |
+| `dd_rule_executions` | Audit trail completo de cada evaluación FO+documento |
+| `dd_fo_document_status` | Tracking iterativo N docs × M FOs |
+
+**New files:**
+
+| Archivo | Propósito |
+|---------|-----------|
+| `src/lib/findings/objective-types.ts` | TypeScript types para FOs |
+| `src/lib/findings/objective-resolver.ts` | Resolver de FOs aplicables por contexto |
+| `src/lib/findings/rule-evaluator.ts` | Evaluador de criterios con audit trail |
+| `src/lib/findings/fo-analysis-worker.ts` | Worker iterativo para procesar docs pendientes |
+| `src/app/api/finding-objectives/route.ts` | GET catálogo FOs |
+| `src/app/api/scoring/config/route.ts` | GET config scoring |
+| `src/app/api/cron/fo-analysis/route.ts` | Cron cada 5 min |
+| `src/app/api/fo/coverage/route.ts` | GET coverage stats por proyecto |
+
+**Triggers automáticos:**
+- `trg_vdr_doc_content_change`: Re-análisis cuando cambia content_hash
+- `trg_new_finding_objective`: Crear pending para docs existentes
+- `trg_vdr_doc_new`: Crear pending para FOs activos
+
+**Feature flag:** `FINDING_OBJECTIVES=true` (requires `FINDINGS_FIRST=true`)
+
+**APIs:**
+- `GET /api/finding-objectives?area_code=...&deal_type=...&jurisdiction=...`
+- `GET /api/scoring/config?deal_type=...&jurisdiction=...`
+- `GET /api/fo/coverage?project_id=...`
+- `GET /api/cron/fo-analysis` (protected by CRON_SECRET)
+
+### Pendiente (Fase E.3-E.4)
+
+- **Fase E.3 (Contract)**: Set `FINDINGS_FIRST=on` in Vercel env, validate all consumers read correctly
+- **Fase E.4 (Cleanup)**: Deprecate legacy JSONB paths, remove dual-write
+
+## Worker Architecture v1.0 (Fase F — Feb 2026)
+
+Worker autónomo de DD que ejecuta un loop continuo de 4 fases: **SENSE → NORMALIZE → EVALUATE → CONCLUDE**. Transforma el sistema de request/response a un worker que procesa documentos, evalúa Finding Objectives, y genera conclusiones automáticamente.
+
+### Migrations (4: 202602280019–202602280022)
+
+| Migration | Descripción |
+|-----------|-------------|
+| `202602280019_create_dd_document_facts.sql` | Tabla de hechos estructurados extraídos de documentos |
+| `202602280020_create_dd_worker_runs.sql` | State machine del worker + RPC helpers |
+| `202602280021_add_fo_depends_on.sql` | Columna depends_on para dependencias entre FOs |
+| `202602280022_create_dd_area_conclusions.sql` | Conclusiones por área con recommendations y patterns |
+
+### New Tables
+
+| Tabla | Propósito |
+|-------|-----------|
+| `dd_document_facts` | Hechos estructurados: parties, dates, amounts, clauses, obligations |
+| `dd_worker_runs` | Estado del worker: status, current_phase, work_queue, coverage_snapshot |
+| `dd_area_conclusions` | Conclusiones por área: narrative, risk_score, recommendations, patterns |
+
+### Worker Files
+
+| Archivo | Propósito |
+|---------|-----------|
+| `src/lib/worker/worker-controller.ts` | State machine + cycle orchestration |
+| `src/lib/worker/sense-phase.ts` | Detecta documentos pendientes, calcula cobertura, construye work queue |
+| `src/lib/worker/normalize-phase.ts` | Clasifica documentos + extrae hechos estructurados |
+| `src/lib/worker/evaluate-phase.ts` | Evalúa FOs con dependencias y hechos estructurados |
+| `src/lib/worker/conclude-phase.ts` | Genera conclusiones por área con narrativas AI |
+| `src/lib/worker/fact-extractor.ts` | Extracción AI via Harvey con cache por content_hash |
+| `src/lib/worker/document-classifier.ts` | Clasificación pattern-based + AI fallback |
+| `src/lib/worker/dependency-resolver.ts` | Resolución topológica de dependencias FO |
+| `src/lib/worker/index.ts` | Barrel export |
+
+### API Routes
+
+| Route | Método | Descripción |
+|-------|--------|-------------|
+| `/api/worker/start` | POST | Iniciar worker para proyecto |
+| `/api/worker/status` | GET | Estado actual del worker |
+| `/api/worker/pause` | POST | Pausar worker |
+| `/api/worker/resume` | POST | Reanudar worker pausado |
+| `/api/cron/worker-cycle` | GET | Cron cada 5 min (protected by CRON_SECRET) |
+
+### Worker State Machine
+
+```
+IDLE → SENSING → NORMALIZING → EVALUATING → CONCLUDING → COMPLETED
+  ↑                                              │
+  └────────────── feedback loop ─────────────────┘
+```
+
+Estados: `idle`, `sensing`, `normalizing`, `evaluating`, `concluding`, `paused`, `error`, `completed`
+
+### Execution Modes
+
+| Modo | Descripción |
+|------|-------------|
+| `continuous` | Loop indefinido (cron-triggered, 5 min) |
+| `targeted` | Un área o FO específico |
+| `full_sweep` | Reevaluar todo el proyecto |
+| `on_demand` | Trigger manual por usuario |
+
+### Feature Flag
+
+`DD_WORKER=true` — Habilita el Worker autónomo y post-ingestion classification hook en VDR.
+
+### Document Facts Schema
+
+```typescript
+interface DocumentFacts {
+  document_type: string;      // contrato_material, acta_junta, etc.
+  area_codes: string[];       // ['CONT', 'LAB']
+  jurisdiction: string;       // ES, UE, UK, US
+  parties: Party[];           // [{name, role, is_target, is_counterparty}]
+  key_dates: KeyDate[];       // [{type, date, description}]
+  amounts: Amount[];          // [{type, amount, currency, annualized}]
+  clauses: Clause[];          // [{clause_type, present, page, excerpt, confidence}]
+  obligations: Obligation[];  // [{type, description, party, deadline}]
+}
+```
+
+### Fase F.3: Enhanced Evaluation (COMPLETED)
+
+**New files:**
+
+| Archivo | Propósito |
+|---------|-----------|
+| `src/lib/worker/evaluate-phase.ts` | Orchestrates FO evaluation with dependency awareness |
+| `src/lib/worker/dependency-resolver.ts` | Topological sort of FOs into evaluation waves |
+
+**New columns:**
+- `dd_finding_objectives.depends_on TEXT[]` — FO dependency keys
+
+### Fase F.4: Conclusions Engine (COMPLETED)
+
+**New tables:**
+
+| Tabla | Propósito |
+|-------|-----------|
+| `dd_area_conclusions` | Area-level conclusions with risk scores, recommendations, patterns |
+
+**New files:**
+
+| Archivo | Propósito |
+|---------|-----------|
+| `src/lib/worker/conclude-phase.ts` | Generates area conclusions with AI-assisted narratives |
+
+### Pendiente (Fase F.5)
+
+- **Fase F.5 (Observability)**: Worker dashboard UI, coverage visualization, alerts
 
 ## Incremental RAG + Report Rendering + Two-Level Cache (Feb 2026)
 

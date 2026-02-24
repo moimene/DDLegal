@@ -4,6 +4,9 @@ import { chunkText } from './chunker';
 import { computeContentHash } from './content-hash';
 import type { Chunk } from './chunker';
 
+// Worker Architecture v1.0: Post-chunking classification hook
+const DD_WORKER_ENABLED = process.env.DD_WORKER === 'true';
+
 export async function startIngestion(documentId: string, versionId?: string): Promise<string> {
   const { data: job, error } = await supabaseAdmin
     .from('vdr_ingestion_jobs')
@@ -89,11 +92,80 @@ async function processIngestion(jobId: string, documentId: string, versionId?: s
     }).eq('id', documentId);
 
     await supabaseAdmin.from('vdr_ingestion_jobs').update({ status: 'completed', chunks_created: chunks.length, completed_at: new Date().toISOString() }).eq('id', jobId);
+
+    // Worker Architecture v1.0: Post-chunking classification hook
+    // Non-blocking: classify document after successful ingestion
+    if (DD_WORKER_ENABLED && doc.project_id) {
+      runPostIngestionClassification(documentId, doc.project_id).catch(err => {
+        console.error(`[ingest] Post-ingestion classification failed for ${documentId}:`, err);
+      });
+    }
   } catch (err) {
     // Mark embedding as stale on failure
     await supabaseAdmin.from('vdr_documents').update({
       embedding_status: 'stale',
     }).eq('id', documentId);
     await supabaseAdmin.from('vdr_ingestion_jobs').update({ status: 'failed', error_message: (err as Error).message, completed_at: new Date().toISOString() }).eq('id', jobId);
+  }
+}
+
+/**
+ * Worker Architecture v1.0: Post-ingestion classification hook
+ *
+ * Triggered after successful document ingestion when DD_WORKER is enabled.
+ * Runs classification (fast path) and optionally queues for full fact extraction.
+ */
+async function runPostIngestionClassification(documentId: string, projectId: string): Promise<void> {
+  try {
+    // Dynamic import to avoid circular dependencies
+    const { classifyDocument } = await import('@/lib/worker/document-classifier');
+
+    // Run fast classification (pattern-based, no AI unless needed)
+    const classification = await classifyDocument(documentId, { useAiFallback: false });
+
+    // Update document with classification results if confident
+    if (classification.confidence >= 0.7) {
+      const updateData: Record<string, unknown> = {};
+
+      // Update area_code if found and document doesn't have one
+      if (classification.area_codes.length > 0) {
+        updateData.area_code = classification.area_codes[0];
+      }
+
+      // Store classification metadata
+      updateData.metadata = {
+        classification: {
+          document_type: classification.document_type,
+          area_codes: classification.area_codes,
+          jurisdiction: classification.jurisdiction,
+          language: classification.language,
+          confidence: classification.confidence,
+          method: classification.method,
+          classified_at: new Date().toISOString(),
+        },
+      };
+
+      if (Object.keys(updateData).length > 0) {
+        await supabaseAdmin
+          .from('vdr_documents')
+          .update(updateData)
+          .eq('id', documentId);
+      }
+
+      console.log(`[ingest] Classified document ${documentId}: ${classification.document_type} (${classification.area_codes.join(', ')}) [${classification.method}, ${(classification.confidence * 100).toFixed(0)}%]`);
+    }
+
+    // Queue for full fact extraction if DD_WORKER is enabled
+    // This creates a pending entry in dd_fo_document_status for all applicable FOs
+    const { extractDocumentFacts } = await import('@/lib/worker/fact-extractor');
+
+    // Non-blocking: extract facts in background
+    extractDocumentFacts(documentId, projectId).catch(err => {
+      console.error(`[ingest] Fact extraction failed for ${documentId}:`, err);
+    });
+
+  } catch (err) {
+    console.error(`[ingest] Post-ingestion classification error for ${documentId}:`, err);
+    // Non-critical: don't fail the ingestion if classification fails
   }
 }
