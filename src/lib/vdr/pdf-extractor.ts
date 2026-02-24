@@ -74,31 +74,32 @@ export async function extractPdfText(
 
     console.log(`[ingest] Parsing PDF (${uint8Array.length} bytes)`);
 
-    // Create PDFParse instance with the data
+    // Create PDFParse instance with the data (pdf-parse v2 API)
     parser = new PDFParse({ data: uint8Array });
 
-    // Get document info including metadata
-    const info = await parser.getInfo();
+    // Get document info including metadata and page count
+    const infoResult = await parser.getInfo();
 
     // Extract text from all pages
     const textResult = await parser.getText();
 
-    const pageCount = info.total || 0;
+    // Access text, page count (numpages), and info directly from results
+    const pageCount = infoResult.total || 0;
     const fullText = textResult.text || '';
 
     console.log(`[ingest] PDF extracted: ${pageCount} pages, ${fullText.length} chars`);
 
-    // Extract metadata - info dictionary contains Title, Author, etc.
-    const infoDict = info.info as Record<string, unknown> | undefined;
-    const dateNode = info.getDateNode();
+    // Extract metadata from info object (Title, Author, CreationDate, ModDate, etc.)
+    const info = infoResult.info as Record<string, unknown> | undefined;
+    const dateNode = infoResult.getDateNode();
 
     return {
       success: true,
       text: fullText,
       pageCount,
       metadata: {
-        title: (infoDict?.Title as string) || null,
-        author: (infoDict?.Author as string) || null,
+        title: (info?.Title as string) || null,
+        author: (info?.Author as string) || null,
         creationDate: dateNode?.CreationDate || null,
         modificationDate: dateNode?.ModDate || null,
       },
