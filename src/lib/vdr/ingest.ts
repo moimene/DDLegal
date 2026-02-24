@@ -139,6 +139,12 @@ async function processIngestion(jobId: string, documentId: string, versionId?: s
       runPostIngestionClassification(documentId, doc.project_id).catch(err => {
         console.error(`[ingest] Post-ingestion classification failed for ${documentId}:`, err);
       });
+
+      // G-22: Trigger automatic SENSE phase after successful ingestion
+      // This ensures the Worker picks up new documents immediately
+      triggerWorkerSense(doc.project_id).catch(err => {
+        console.error(`[ingest] Failed to trigger SENSE for project ${doc.project_id}:`, err);
+      });
     }
   } catch (err) {
     // Mark embedding as stale on failure
@@ -207,5 +213,42 @@ async function runPostIngestionClassification(documentId: string, projectId: str
   } catch (err) {
     console.error(`[ingest] Post-ingestion classification error for ${documentId}:`, err);
     // Non-critical: don't fail the ingestion if classification fails
+  }
+}
+
+/**
+ * G-22: Trigger Worker SENSE phase for a project.
+ * Non-blocking: queues a SENSE cycle if not already running.
+ */
+async function triggerWorkerSense(projectId: string): Promise<void> {
+  try {
+    // Check if worker is already running
+    const { data: run } = await supabaseAdmin
+      .from('dd_worker_runs')
+      .select('id, status')
+      .eq('project_id', projectId)
+      .in('status', ['sensing', 'normalizing', 'evaluating', 'concluding'])
+      .single();
+
+    if (run) {
+      // Worker already active, skip trigger
+      console.log(`[ingest] Worker already active for ${projectId}, skipping SENSE trigger`);
+      return;
+    }
+
+    // Queue a SENSE cycle via internal API
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    await fetch(`${baseUrl}/api/worker/trigger`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cron-secret': process.env.CRON_SECRET || '',
+      },
+      body: JSON.stringify({ projectId }),
+    });
+
+    console.log(`[ingest] Triggered SENSE for project ${projectId}`);
+  } catch (err) {
+    console.error(`[ingest] Error triggering SENSE:`, err);
   }
 }

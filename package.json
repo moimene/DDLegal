@@ -20,6 +20,8 @@
     "@fontsource/montserrat": "^5.0.0",
     "@supabase/supabase-js": "^2.45.0",
     "@tanstack/react-table": "^8.20.0",
+    "bullmq": "^5.70.1",
+    "ioredis": "^5.9.3",
     "lucide-react": "^0.460.0",
     "next": "^14.2.0",
     "pdf-parse": "^2.4.5",
