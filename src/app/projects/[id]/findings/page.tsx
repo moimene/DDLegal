@@ -6,7 +6,7 @@ import {
   ArrowLeft, Loader2, Filter, ChevronDown, ChevronRight,
   AlertTriangle, AlertOctagon, AlertCircle, Info, CheckCircle2,
   XCircle, Clock, FileText, Shield, Scale, RefreshCw,
-  Eye, Edit3, Link2, X, ChevronUp,
+  Eye, Edit3, Link2, X, ChevronUp, FileSearch, ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useResolvedParams, formatDate, AREA_COLORS } from '@/lib/utils';
@@ -38,6 +38,30 @@ interface Finding {
   created_at: string;
   updated_at: string;
   objective_id: string | null;
+}
+
+interface Evidence {
+  id: string;
+  finding_id: string;
+  evidence_type: string | null;
+  vdr_chunk_id: string | null;
+  vdr_document_id: string | null;
+  external_url: string | null;
+  page_number: number | null;
+  section_title: string | null;
+  snippet: string | null;
+  similarity_score: number | null;
+  link_method: string | null;
+  linked_at: string | null;
+}
+
+interface FindingDetail {
+  finding: Finding;
+  evidence: Evidence[];
+  contingency: Record<string, unknown> | null;
+  negotiation_actions: Record<string, unknown>[];
+  hitl_decisions: Record<string, unknown>[];
+  war_room_decisions: Record<string, unknown>[];
 }
 
 interface FindingSummary {
@@ -122,6 +146,7 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
   const [summary, setSummary] = useState<FindingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
+  const [findingEvidence, setFindingEvidence] = useState<Evidence[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
   // Filters
@@ -189,12 +214,22 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
   // Load finding detail
   const loadFindingDetail = useCallback(async (finding: Finding) => {
     setSelectedFinding(finding);
+    setFindingEvidence([]);
     setDetailLoading(true);
     try {
       const res = await fetch(`/api/findings/${finding.id}`, { headers: getAuthHeader() });
       if (res.ok) {
         const data = await res.json();
-        setSelectedFinding(data.data || finding);
+        // API returns either FindingDetail structure or just the finding
+        if (data.data?.finding) {
+          // FindingDetail structure
+          setSelectedFinding(data.data.finding);
+          setFindingEvidence(data.data.evidence || []);
+        } else {
+          // Just the finding
+          setSelectedFinding(data.data || finding);
+          setFindingEvidence([]);
+        }
       }
     } catch {
       // Keep basic finding data
@@ -629,6 +664,63 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
                         </span>
                       )}
                     </div>
+
+                    {/* Evidence */}
+                    {findingEvidence.length > 0 && (
+                      <div className="pt-4 border-t border-[var(--g-border)]">
+                        <h4 className="text-xs font-medium text-[var(--g-text-secondary)] mb-3 flex items-center gap-2">
+                          <FileSearch size={14} />
+                          Evidencia ({findingEvidence.length})
+                        </h4>
+                        <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                          {findingEvidence.map((evidence) => (
+                            <div
+                              key={evidence.id}
+                              className="p-3 bg-[var(--g-bg)] rounded-lg border border-[var(--g-border)]"
+                            >
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex-1 min-w-0">
+                                  {evidence.section_title && (
+                                    <div className="text-xs font-medium text-[var(--g-text)] truncate">
+                                      {evidence.section_title}
+                                    </div>
+                                  )}
+                                  <div className="text-[10px] text-[var(--g-text-secondary)] flex items-center gap-2">
+                                    {evidence.evidence_type && (
+                                      <span className="px-1.5 py-0.5 bg-[var(--g-hover)] rounded">
+                                        {evidence.evidence_type}
+                                      </span>
+                                    )}
+                                    {evidence.page_number && (
+                                      <span>Pág. {evidence.page_number}</span>
+                                    )}
+                                    {evidence.similarity_score && (
+                                      <span title="Relevancia">
+                                        {(evidence.similarity_score * 100).toFixed(0)}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {evidence.vdr_document_id && (
+                                  <Link
+                                    href={`/projects/${projectId}/vdr?doc=${evidence.vdr_document_id}`}
+                                    className="p-1 rounded hover:bg-[var(--g-hover)]"
+                                    title="Ver documento"
+                                  >
+                                    <ExternalLink size={12} />
+                                  </Link>
+                                )}
+                              </div>
+                              {evidence.snippet && (
+                                <div className="text-xs text-[var(--g-text)] bg-[var(--g-card)] p-2 rounded border-l-2 border-[var(--g-brand-3308)] line-clamp-3">
+                                  "{evidence.snippet}"
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Actions */}
                     <div className="pt-4 border-t border-[var(--g-border)]">
