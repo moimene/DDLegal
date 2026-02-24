@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
@@ -18,9 +18,12 @@ export async function GET(
 
         // Permission check — GET requires can_view_all_areas
         const { authorized, error: authError } = await requirePermission(req, projectId, 'can_view_all_areas');
-        if (!authorized) return authError!;
+        if (!authorized) {
+            return authError!;
+        }
 
-        const { data: roles, error } = await supabaseAdmin
+        const supabase = getSupabaseAdmin();
+        const { data: roles, error } = await supabase
             .from('dd_project_user_roles')
             .select('*')
             .eq('project_id', projectId)
@@ -76,8 +79,10 @@ export async function POST(
             );
         }
 
+        const supabase = getSupabaseAdmin();
+
         // Check if this exact assignment already exists
-        const { data: existing } = await supabaseAdmin
+        const { data: existing } = await supabase
             .from('dd_project_user_roles')
             .select('id')
             .eq('project_id', projectId)
@@ -93,7 +98,7 @@ export async function POST(
             );
         }
 
-        const { data: newRole, error: insertError } = await supabaseAdmin
+        const { data: newRole, error: insertError } = await supabase
             .from('dd_project_user_roles')
             .insert({
                 project_id: projectId,
@@ -148,8 +153,10 @@ export async function DELETE(
             );
         }
 
+        const supabase = getSupabaseAdmin();
+
         // Soft-delete: set is_active = false
-        const { data: updatedRole, error: updateError } = await supabaseAdmin
+        const { data: updatedRole, error: updateError } = await supabase
             .from('dd_project_user_roles')
             .update({
                 is_active: false,

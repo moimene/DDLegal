@@ -65,56 +65,90 @@ export async function POST(req: NextRequest) {
 
         for (const testUser of TEST_USERS) {
             try {
-                // Check if user already exists by listing users
-                const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers({
-                    page: 1,
-                    perPage: 1000,
+                let userId: string | undefined;
+                let status: 'created' | 'existing' = 'created';
+
+                // Strategy: Try to create user first, handle "already exists" gracefully
+                const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+                    email: testUser.email,
+                    password: TEST_PASSWORD,
+                    email_confirm: true,
+                    user_metadata: {
+                        full_name: testUser.label,
+                        role: testUser.role,
+                        is_test_user: true,
+                    },
                 });
 
-                const existingUser = existingUsers?.users?.find(
-                    (u) => u.email === testUser.email
-                );
+                if (createError) {
+                    // Check if user already exists
+                    if (createError.message?.includes('already been registered') ||
+                        createError.message?.includes('already exists')) {
+                        // User exists - try to get their ID via login verification
+                        const { data: signInData } = await supabaseAdmin.auth.signInWithPassword({
+                            email: testUser.email,
+                            password: TEST_PASSWORD,
+                        });
 
-                let userId: string;
-
-                if (existingUser) {
-                    userId = existingUser.id;
-                    results.push({
-                        email: testUser.email,
-                        role: testUser.role,
-                        status: 'existing',
-                        user_id: userId,
-                    });
-                } else {
-                    // Create new user
-                    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-                        email: testUser.email,
-                        password: TEST_PASSWORD,
-                        email_confirm: true,
-                        user_metadata: {
-                            full_name: testUser.label,
-                            role: testUser.role,
-                            is_test_user: true,
-                        },
-                    });
-
-                    if (createError || !newUser.user) {
+                        if (signInData?.user) {
+                            userId = signInData.user.id;
+                            status = 'existing';
+                        } else {
+                            // User exists but password might be different - update it
+                            // Try listing users as fallback (may fail but worth trying)
+                            const { data: listData } = await supabaseAdmin.auth.admin.listUsers({
+                                page: 1,
+                                perPage: 1000,
+                            });
+                            const found = listData?.users?.find(u => u.email === testUser.email);
+                            if (found) {
+                                // Update password to ensure it matches
+                                await supabaseAdmin.auth.admin.updateUserById(found.id, {
+                                    password: TEST_PASSWORD,
+                                });
+                                userId = found.id;
+                                status = 'existing';
+                            } else {
+                                // Can't find user - report as existing anyway (it exists, we just can't get ID)
+                                results.push({
+                                    email: testUser.email,
+                                    role: testUser.role,
+                                    status: 'existing',
+                                    error: 'User exists but could not retrieve ID',
+                                });
+                                continue;
+                            }
+                        }
+                    } else {
+                        // Other error
                         results.push({
                             email: testUser.email,
                             role: testUser.role,
                             status: 'error',
-                            error: createError?.message || 'Failed to create user',
+                            error: createError.message || 'Failed to create user',
                         });
                         continue;
                     }
-
+                } else if (newUser?.user) {
                     userId = newUser.user.id;
+                    status = 'created';
+                }
+
+                if (userId) {
                     results.push({
                         email: testUser.email,
                         role: testUser.role,
-                        status: 'created',
+                        status,
                         user_id: userId,
                     });
+                } else {
+                    results.push({
+                        email: testUser.email,
+                        role: testUser.role,
+                        status: 'error',
+                        error: 'Could not create or find user',
+                    });
+                    continue;
                 }
 
                 // Assign project role if project_id provided

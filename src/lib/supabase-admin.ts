@@ -1,18 +1,35 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+/**
+ * Creates a fresh Supabase admin client for each request.
+ * This avoids potential caching/state issues with singleton clients.
+ */
+export function getSupabaseAdmin(): SupabaseClient {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error(
-        'Missing Supabase server env vars. Required: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY fallback).'
-    );
+    if (!url) {
+        throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable.');
+    }
+
+    if (!key) {
+        throw new Error(
+            'Missing SUPABASE_SERVICE_ROLE_KEY. This is required for server-side operations. ' +
+            'Add it to .env.local (get from Supabase Dashboard > Settings > API > service_role key).'
+        );
+    }
+
+    return createClient(url, key, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+        },
+    });
 }
 
-export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-    },
-});
+/**
+ * @deprecated Use getSupabaseAdmin() instead to get a fresh client per request.
+ * This singleton is kept for backwards compatibility but may have caching issues.
+ */
+export const supabaseAdmin = getSupabaseAdmin();
 

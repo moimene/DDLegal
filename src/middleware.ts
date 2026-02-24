@@ -24,6 +24,7 @@ export async function middleware(req: NextRequest) {
   }
 
   const authHeader = req.headers.get('authorization');
+
   if (!authHeader?.startsWith('Bearer ')) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -44,10 +45,16 @@ export async function middleware(req: NextRequest) {
     }
 
     // Forward user id in header for route handlers
-    const response = NextResponse.next();
-    response.headers.set('x-user-id', user.id);
-    response.headers.set('x-user-email', user.email || '');
-    return response;
+    // Use requestHeaders to pass data to route handlers (response.headers only affects client response)
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set('x-user-id', user.id);
+    requestHeaders.set('x-user-email', user.email || '');
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   } catch {
     return NextResponse.json({ success: false, error: 'Auth error' }, { status: 500 });
   }
