@@ -20,6 +20,7 @@ interface Finding {
   source_type: string;
   area_code: string;
   title: string;
+  summary: string | null;
   description: string | null;
   severity: string;
   probability: string;
@@ -523,9 +524,14 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
                         <SeverityBadge severity={finding.severity} />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-sm text-[var(--g-text)] line-clamp-2">
+                        <div className="font-medium text-sm text-[var(--g-text)] line-clamp-1">
                           {finding.title}
                         </div>
+                        {finding.summary && (
+                          <div className="text-xs text-[var(--g-text-secondary)] mt-0.5 line-clamp-2">
+                            {finding.summary}
+                          </div>
+                        )}
                         {finding.is_deal_breaker && (
                           <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] bg-red-100 text-red-700">
                             <AlertOctagon size={10} />
@@ -583,6 +589,11 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
                       <h3 className="font-semibold text-[var(--g-text)]">
                         {selectedFinding.title}
                       </h3>
+                      {selectedFinding.summary && (
+                        <p className="mt-2 text-sm text-[var(--g-text-secondary)] italic">
+                          {selectedFinding.summary}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => setSelectedFinding(null)}

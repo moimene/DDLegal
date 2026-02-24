@@ -12,6 +12,7 @@
 
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import type { WorkflowFinding } from '@/lib/workflows/types';
+import { generateFindingSummary } from './summary-generator';
 
 // ---------------------------------------------------------------------------
 // Feature flag
@@ -323,6 +324,9 @@ export async function persistFindings(
   // Create evidence links for findings with evidence_refs
   await linkEvidenceToFindings(insertedMap, inputsToInsert, externalRefs.filter(ref => !existingRefMap.has(ref)));
 
+  // Queue summary generation for new findings (fire-and-forget)
+  queueSummaryGeneration(insertedMap, inputsToInsert, externalRefs.filter(ref => !existingRefMap.has(ref)));
+
   return result;
 }
 
@@ -372,6 +376,59 @@ async function linkEvidenceToFindings(
       console.warn('[FindingsService] Evidence link batch error (non-fatal):', error.message);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Summary generation (fire-and-forget)
+// ---------------------------------------------------------------------------
+
+/**
+ * Queue summary generation for newly created findings.
+ * Runs asynchronously to avoid blocking the persist operation.
+ */
+function queueSummaryGeneration(
+  findingIdMap: Map<string, string>,
+  inputs: PersistFindingInput[],
+  insertedRefs: string[],
+): void {
+  // Fire-and-forget: don't await this
+  (async () => {
+    for (let i = 0; i < inputs.length; i++) {
+      const input = inputs[i];
+      const extRef = insertedRefs[i];
+      if (!extRef) continue;
+
+      const findingId = findingIdMap.get(extRef);
+      if (!findingId) continue;
+
+      try {
+        const summary = await generateFindingSummary({
+          title: input.finding.title,
+          description: input.finding.mitigation || null,
+          severity: input.finding.severity,
+          area_code: input.area_code || inferAreaCode(input.finding.title),
+          probability: input.finding.probability,
+          timing: input.finding.timing,
+          mitigation: input.finding.mitigation,
+        });
+
+        await supabaseAdmin
+          .from('dd_findings')
+          .update({ summary })
+          .eq('id', findingId);
+
+        console.log(`[FindingsService] Generated summary for finding ${findingId}`);
+      } catch (err) {
+        // Non-fatal: summary generation failure shouldn't break the persist flow
+        console.warn(`[FindingsService] Summary generation failed for ${findingId}:`, err);
+      }
+
+      // Small delay between summaries to avoid rate limiting
+      await new Promise(r => setTimeout(r, 300));
+    }
+  })().catch(err => {
+    console.error('[FindingsService] Summary generation queue error:', err);
+  });
 }
 
 // ---------------------------------------------------------------------------
