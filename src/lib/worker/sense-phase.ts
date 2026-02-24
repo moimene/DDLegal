@@ -35,7 +35,7 @@ interface PhaseResult {
 interface PendingDocument {
   document_id: string;
   document_name: string;
-  uploaded_at: string;
+  created_at: string;
   content_hash: string | null;
   has_facts: boolean;
 }
@@ -45,7 +45,6 @@ interface ApplicableFO {
   objective_key: string;
   area_code: string;
   severity_if_positive: string;
-  priority_order: number;
 }
 
 // Severity weights for priority calculation
@@ -142,13 +141,13 @@ export async function runSensePhase(
  * - Modified documents (content_hash changed since last extraction)
  */
 async function getPendingDocuments(projectId: string): Promise<PendingDocument[]> {
-  // Get all documents for project
+  // Get all documents for project (uploaded status = ready for processing)
   const { data: documents, error: docError } = await supabaseAdmin
     .from('vdr_documents')
-    .select('id, name, uploaded_at, content_hash')
+    .select('id, name, created_at, content_hash')
     .eq('project_id', projectId)
-    .eq('is_deleted', false)
-    .order('uploaded_at', { ascending: false });
+    .in('status', ['uploaded', 'indexed', 'processing'])
+    .order('created_at', { ascending: false });
 
   if (docError || !documents) {
     console.error('[sense-phase] Failed to fetch documents:', docError);
@@ -176,7 +175,7 @@ async function getPendingDocuments(projectId: string): Promise<PendingDocument[]
       return {
         document_id: doc.id,
         document_name: doc.name,
-        uploaded_at: doc.uploaded_at,
+        created_at: doc.created_at,
         content_hash: doc.content_hash,
         has_facts: !!existingHash,
       };
@@ -207,7 +206,7 @@ async function getApplicableFOs(
 
   let query = supabaseAdmin
     .from('dd_finding_objectives')
-    .select('id, objective_key, area_code, severity_if_positive, priority_order')
+    .select('id, objective_key, area_code, severity_if_positive')
     .eq('is_active', true);
 
   // Filter by target area if specified
@@ -220,7 +219,7 @@ async function getApplicableFOs(
     query = query.or(`applicable_deal_types.cs.{${project.deal_type}},applicable_deal_types.is.null`);
   }
 
-  const { data: objectives, error } = await query.order('priority_order', { ascending: true });
+  const { data: objectives, error } = await query.order('area_code', { ascending: true });
 
   if (error || !objectives) {
     console.error('[sense-phase] Failed to fetch objectives:', error);
@@ -288,7 +287,7 @@ function calculatePriority(
 
   // 3. Document age (0-20)
   const daysSinceUpload = Math.floor(
-    (Date.now() - new Date(doc.uploaded_at).getTime()) / (1000 * 60 * 60 * 24)
+    (Date.now() - new Date(doc.created_at).getTime()) / (1000 * 60 * 60 * 24)
   );
   score += Math.min(daysSinceUpload * 2, 20);
 

@@ -30,3 +30,4 @@ dataroom*/
 
 # Misc scratch files
 *.md.bak
+.env*.local
