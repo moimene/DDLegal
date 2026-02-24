@@ -1,11 +1,11 @@
 # DD Legal PMO
 
-Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room, Observabilidad y **Finding-Centric Architecture** (dd_findings como unidad canónica). 111 API routes, 29 E2E suites, 47 migrations. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
+Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 35 report templates, Evidence Pack, Kanban, VDR, War Room, Observabilidad, **Finding-Centric Architecture** (dd_findings como unidad canónica) e **Incremental RAG + Report Rendering + Two-Level Cache**. 120 API routes, 29 E2E suites, 50 migrations. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
 
 ## Stack
 
 - **Frontend**: Next.js 14 (App Router), React 18, Zustand, TanStack Table, Lucide icons, Montserrat (Garrigues)
-- **Backend**: Next.js API routes (109 endpoints), Supabase (Postgres + RLS + pgvector + BM25)
+- **Backend**: Next.js API routes (120 endpoints), Supabase (Postgres + RLS + pgvector + BM25)
 - **AI**: Harvey AI gateway, OpenAI embeddings (text-embedding-3-small, 1536d)
 - **Infra**: Vercel (produccion: `dd-legal-pmo.vercel.app`), Supabase hosted, n8n workflows
 - **Tests**: Playwright E2E (29 suites, 257+ tests), Vitest unit tests
@@ -25,7 +25,7 @@ Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n
 ```
 src/
   app/
-    api/                    # 111 API routes across 30+ groups
+    api/                    # 120 API routes across 30+ groups
       ai/                   # classify, suggest
       alerts/               # SLA alerts
       auth/                 # login, me, roles, setup-test-users
@@ -40,7 +40,8 @@ src/
         search/semantic/    # S4: pgvector semantic search
         rag/query/          # S0: Vault RAG query endpoint
         vault/sync/         # S4→S0: VDR to Harvey Vault sync
-      reports/              # Report generation: final, red-flags, workflow
+      reports/              # Report generation: final, red-flags, workflow, pdf, md, compare, export, generate
+      findings/             # Finding CRUD: list, detail, PATCH (status/tier/link)
       scoring/              # H3: Deal Risk Score (POST/GET per project)
       war-room/             # S6: dashboard, decisions, red-flags, export, negotiation-actions, spa-mapping, timeline, negotiation-dashboard, decision-resolution
       tasks/                # [id]/status PATCH (authenticated task status update)
@@ -59,10 +60,10 @@ src/
     embeddings/             # OpenAI embedding client (batch, retry)
     harvey/                 # Harvey AI gateway (circuit breaker + Retry-After + per-family rate limits) + factory
     observability/          # Telemetry writer
-    vdr/                    # Chunker, ingest pipeline, semantic search, hybrid search (BM25+pgvector), adaptive chunking
+    vdr/                    # Chunker, ingest pipeline, semantic search, hybrid search (BM25+pgvector), adaptive chunking, content-hash, multi-query-retrieval
     war-room/               # Notifications, severity bridge
     scoring/                # Deal Risk Score engine (severity×probability×timing×area weighting)
-    reporting/              # Report engine, evidence pack builder, red flag generator, final report compiler
+    reporting/              # Report engine, evidence pack builder, red flag generator, final report compiler, analysis-results cache, templates (35), garrigues-schemas
     workflows/              # Template-based engine + instantiation + phase advancement
       template-types.ts     # 6 phases, 9 categories, template/instance types
       template-loader.ts    # DB-backed loader with 5-min cache
@@ -77,7 +78,7 @@ src/
     tokens.css              # Garrigues design tokens (--g-* CSS variables)
   middleware.ts             # Auth + feature flag middleware
 supabase/
-  migrations/               # 47 SQL migrations (RLS, pgvector, seeds, kanban, workflows, observability, security hardening, BM25, H3 scoring, seed_v3_schema, findings)
+  migrations/               # 50 SQL migrations (RLS, pgvector, seeds, kanban, workflows, observability, security hardening, BM25, H3 scoring, seed_v3_schema, RAG cache, findings)
 e2e/                        # 29 Playwright test suites (257 passed, 0 failed)
 vercel.json                 # Vercel config: cron job (audit-sync every 15 min)
 scripts/
@@ -280,7 +281,7 @@ Required in `.env.local` (never commit):
 
 El "hallazgo" (finding) es la unidad mínima de gestión del DD. Implementado via Strangler Fig:
 
-### Tablas nuevas (7 migrations: 202602280004–202602280010)
+### Tablas nuevas (8 migrations: 202602280004–202602280011)
 
 | Tabla | Propósito |
 |-------|-----------|
@@ -385,6 +386,63 @@ Bidirectional FK: all 19 contingencies have `finding_id` set, all 19 findings ha
 
 - **Fase E (Contract)**: Set `FINDINGS_FIRST=on` in Vercel env, validate all consumers read correctly, deprecate legacy JSONB paths
 
+## Incremental RAG + Report Rendering + Two-Level Cache (Feb 2026)
+
+Pipeline incremental de ingesta, análisis y renderizado de informes con cache de dos niveles.
+
+### Migrations (3: 202602280001–202602280003)
+
+| Migration | Cambio |
+|-----------|--------|
+| `202602280001_vdr_cache_columns.sql` | Añade `content_hash`, `embedding_status`, `embedding_hash`, `last_embedded_at` a `vdr_documents` |
+| `202602280002_create_analysis_results.sql` | Crea tabla `dd_analysis_results` (UPSERT acumulativo) |
+| `202602280003_create_report_cache_versions.sql` | Crea tablas `dd_report_cache` y `dd_report_versions` |
+
+### Two-Level Cache
+
+| Nivel | Tabla | Clave | Propósito |
+|-------|-------|-------|-----------|
+| L1 — Documento | `vdr_documents.content_hash` | SHA-256 del contenido | Skip re-parsing si el documento no cambió |
+| L2 — Informe | `dd_report_cache.evidence_hash` | SHA-256 de content_hashes ordenados | Skip re-generación si la evidencia no cambió |
+
+TTL por cadencia de template: daily=24h, weekly=7d, monthly/on_demand=30d.
+
+### Multi-Query RAG
+
+`src/lib/vdr/multi-query-retrieval.ts` — SECTION_QUERY_MAP con 100+ entradas mapeando cada `required_section` de los 35 templates a queries semánticas específicas. `multiQueryRetrieval()` ejecuta una query pgvector por sección requerida del report_type.
+
+### Files
+
+| Archivo | Propósito |
+|---------|-----------|
+| `src/lib/vdr/content-hash.ts` | `computeContentHash()` y `computeEvidenceHash()` (SHA-256) |
+| `src/lib/vdr/multi-query-retrieval.ts` | SECTION_QUERY_MAP + `multiQueryRetrieval()` |
+| `src/lib/reporting/analysis-results.ts` | UPSERT acumulativo, cache check, store, invalidate |
+| `src/lib/reporting/report-engine.ts` | ReportTemplate interface, `has_dedicated_template` flag |
+| `src/lib/reporting/templates.ts` | 35 templates en 5 familias (7 con template HTML dedicado) |
+| `src/app/api/reports/pdf/route.ts` | PDF on-demand via Puppeteer (GET) |
+| `src/app/api/reports/md/route.ts` | Markdown download (GET) |
+
+### n8n Workflows (3)
+
+| Workflow | n8n ID | Webhook | Estado |
+|----------|--------|---------|--------|
+| dd_ingest_pipeline | `HeenX8fGJV8PyuJX` | `/webhook/dd-ingest-pipeline` | Inactivo (pendiente credenciales Supabase) |
+| dd_report_orchestrator | `9GZKI27F4bKQJMhC` | `/webhook/dd-report-orchestrator` | Inactivo (pendiente credenciales Supabase) |
+| dd_report_render | `lhHRkEuOpPR4V9YV` | `/webhook/dd-report-render` | Inactivo (sin credenciales necesarias) |
+
+Archivos JSON en `n8n/dd_ingest_pipeline.workflow.json`, `n8n/dd_report_orchestrator.workflow.json`, `n8n/dd_report_render.workflow.json`.
+
+### Report Templates (35, 5 familias)
+
+| Familia | Count | Con template HTML dedicado |
+|---------|-------|----------------------------|
+| Transactional | 15 | societario_standard |
+| PMO | 8 | pmo_estado |
+| Compliance | 7 | red_flags_digest, ip_report |
+| Negotiation | 4 | negotiation_summary |
+| Consolidated | 1 | deal_summary_executive, executive_digest |
+
 ## Architecture & Guidelines
 
 - [Architecture & Patterns](.claude/docs/architecture.md)
@@ -395,3 +453,5 @@ Bidirectional FK: all 19 contingencies have `finding_id` set, all 19 findings ha
 - [Testing](.claude/docs/testing.md)
 - [Refactor Plan (Strangler Fig)](.claude/docs/refactor-plan.md)
 - [Workflow Spec v1 Evolution Plan](docs/plans/2026-02-22-workflow-spec-v1-evolution.md)
+- [Incremental RAG + Render + Cache Design](docs/plans/2026-02-23-incremental-rag-render-cache-design.md)
+- [Incremental RAG + Render + Cache Plan](docs/plans/2026-02-23-incremental-rag-render-cache-plan.md)

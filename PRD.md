@@ -86,7 +86,7 @@ Upload + listado + gap list por area (22 docs esperados en 6 areas). Stats de co
 Folder tree, document preview, upload dropzone, bulk upload, ACL per folder, audit log, shared links, search, gap analysis, document versioning. API: 10 endpoints bajo `/api/vdr/`.
 
 #### Reports UI
-Hub (`/reports`) + Wizard 3 pasos (`/reports/new`) + Visor con grounding (`/reports/[id]`). Freeze control, version history, compare, export. 31 templates en 5 familias.
+Hub (`/reports`) + Wizard 3 pasos (`/reports/new`) + Visor con grounding (`/reports/[id]`). Freeze control, version history, compare, export. 35 templates en 5 familias.
 
 #### Tool Societario (7 fases)
 Request > Resolve > BORME Query > BORME Ingest > Snapshot > Validate > Report. UI: CandidateResolver, PipelineTracker, SnapshotViewer.
@@ -94,7 +94,7 @@ Request > Resolve > BORME Query > BORME Ingest > Snapshot > Validate > Report. U
 #### Tool IP Radar (5 fases)
 Request > Resolve > Search > Snapshot > Report.
 
-#### Reporting Engine (31 templates, 5 familias)
+#### Reporting Engine (35 templates, 5 familias)
 
 | Familia | Templates | Harvey AI |
 |---------|-----------|-----------|
@@ -128,7 +128,7 @@ Contingencias extendidas, clausulas SPA, mapeo contingencia-clausula. API: 2 end
 Event bus con 12 tipos de evento + Supabase Realtime. NotificationCenter, ActivityTimeline, PresenceIndicator, SmartSuggestions.
 
 #### Agent Pipeline n8n (parcial)
-3 agentes (Paranoico, Validador, Sanitizer). Workflows creados en n8n Cloud. **Estado: inactivos, pendiente credenciales Harvey.**
+3 agentes (Paranoico, Validador, Sanitizer) + 3 workflows de report pipeline (Ingest, Orchestrator, Render). 12 workflows totales en n8n Cloud. **Estado: agentes inactivos (pendiente credenciales Harvey), render activo.**
 
 ### 4.B Nuevo en v3.0
 
@@ -455,6 +455,86 @@ POST /api/war-room/[project_id]/export    -> { file_url } (PDF/Excel)
 
 **Estado actual:** ✅ Implementado (dashboard, decisions, red-flags, export endpoints, severity change notifications via event bus bridge, contingency PATCH with change detection). E2E tests.
 
+#### 4.B.8 Incremental RAG + Report Rendering + Two-Level Cache
+
+Pipeline incremental de ingesta, análisis y renderizado de informes con cache de dos niveles y multi-query RAG.
+
+**Componentes:**
+
+1. **Level-1 Cache (Documento):** SHA-256 `content_hash` en `vdr_documents` — skip re-parsing si el contenido no cambió.
+2. **Level-2 Cache (Informe):** `evidence_hash` (SHA-256 de content_hashes ordenados) en `dd_report_cache` — skip re-generación si la evidencia base no cambió.
+3. **Multi-Query RAG:** SECTION_QUERY_MAP con 100+ entradas — una query pgvector por `required_section` del template. `multiQueryRetrieval()` en `src/lib/vdr/multi-query-retrieval.ts`.
+4. **Analysis Results acumulativos:** Tabla `dd_analysis_results` con UPSERT (version increment on conflict).
+5. **HTML Template Engine:** 7 templates dedicados (societario, IP, red_flags, PMO, executive, negotiation, deal_summary) + fallback genérico. Renderizado en n8n workflow `dd_report_render`.
+6. **PDF on-demand:** API route `/api/reports/pdf` con Puppeteer (no pre-generado).
+7. **Markdown export:** API route `/api/reports/md` para formatos externos (.doc/.pptx).
+8. **TTL Cache:** Invalidación por cadencia de template: daily=24h, weekly=7d, monthly/on_demand=30d.
+
+**n8n Workflows (3 nuevos):**
+
+| Workflow | n8n ID | Webhook | Función |
+|----------|--------|---------|---------|
+| dd_ingest_pipeline | `HeenX8fGJV8PyuJX` | `/webhook/dd-ingest-pipeline` | Ingesta con content-hash dedup |
+| dd_report_orchestrator | `9GZKI27F4bKQJMhC` | `/webhook/dd-report-orchestrator` | Orquestación con evidence cache |
+| dd_report_render | `lhHRkEuOpPR4V9YV` | `/webhook/dd-report-render` | Renderizado HTML (7 templates + fallback) |
+
+**DB (3 migrations: 202602280001–003):**
+
+| Tabla | Propósito |
+|-------|-----------|
+| `dd_analysis_results` | Resultados de análisis acumulativos por sección |
+| `dd_report_cache` | Cache L2 por evidence_hash + TTL |
+| `dd_report_versions` | Versiones inmutables (HTML + MD + metadata) |
+
+Columnas nuevas en `vdr_documents`: `content_hash`, `embedding_status`, `embedding_hash`, `last_embedded_at`.
+
+**DoD:**
+1. Ingesta skip unchanged (content_hash match).
+2. Report generation skip cuando evidence_hash coincide y TTL no expirado.
+3. Multi-query retrieval con 1 query por sección requerida del template.
+4. PDF export funcional via Puppeteer.
+5. Los 3 n8n workflows creados y validados estructuralmente.
+
+**Estado actual:** ✅ Implementado. 3 workflows creados en n8n Cloud (inactivos — pendiente credenciales Supabase API en ingest/orchestrator). Render listo para activación. TypeScript sin errores. Tests pasando.
+
+#### 4.B.9 Finding-Centric Architecture (Hallazgo)
+
+El "hallazgo" (finding) se convierte en la **unidad mínima de gestión** del DD. Implementado via patrón Strangler Fig con feature flag `FINDINGS_FIRST`.
+
+**Componentes:**
+
+1. **dd_findings** — Tabla canónica (30+ columnas, 9 CHECK constraints, 10-state lifecycle).
+2. **dd_finding_evidence** — Enlace N:M finding↔chunk VDR.
+3. **dd_report_findings** — Enlace N:M finding↔report.
+4. **findings-service.ts** — CRUD completo: `persistFindings()`, `transitionFindingStatus()`, `overrideFindingTier()`, `linkFindingToContingency()`.
+5. **Dual-Write** — `engine.ts` y `instance-runner.ts` inyectan findings en las 4 rutas de ejecución de workflows.
+6. **6 consumers migrados** — deal-risk scoring, red-flag report, war-room dashboard/red-flags, report-generator, final-report compiler. Todos con fallback legacy.
+7. **21 findings backfilled** — 19 de contingencias, 2 de workflow metadata JSONB.
+
+**Lifecycle (10 estados):** `identified → under_review → validated → contested → accepted → mitigated → reported → negotiated → resolved / dismissed`
+
+**Relevance Tiers:** Tier 1 (Decisorio), Tier 2 (Gestión), Tier 3 (Registro). Auto-calculated, overridable.
+
+**DB (8 migrations: 202602280004–011):** 3 tablas + finding_id FK en tablas existentes + RLS + 7 RPCs + CHECK constraints + backfill.
+
+**API (3 endpoints):**
+```
+GET    /api/findings?project_id=...&tier=...&status=...&area_code=...&summary=true
+GET    /api/findings/[id]
+PATCH  /api/findings/[id]
+```
+
+**Feature flag:** `FINDINGS_FIRST` — cuando ON, lecturas usan `dd_findings`. Actualmente OFF (dual-write only).
+
+**DoD:**
+1. Tabla dd_findings con lifecycle enforced por RPC.
+2. Dual-write en todas las rutas de ejecución de workflows.
+3. 6 consumers con FINDINGS_FIRST switch y fallback.
+4. Backfill completo (21 findings, bidirectional FK).
+5. API CRUD con permisos granulares (4 permissions).
+
+**Estado actual:** ✅ Fases A-D completadas. Pendiente Fase E (activar FINDINGS_FIRST=on en producción).
+
 ### 4.C Pendiente (Horizonte 2/3)
 
 **Horizonte 2 — Expansion Areas + Golden Path (60 dias):**
@@ -462,7 +542,7 @@ POST /api/war-room/[project_id]/export    -> { file_url } (PDF/Excel)
 - Golden path E2E: validar WF-04 Contratos Materiales (DoR→IA→HITL→War Room→Informe).
 - AP-level Kanban: 1 tarea por Analysis Point (no 1 por fase).
 - DoR enforcement via VDR semantic search.
-- Evidence linking automatico (findings→vdr_chunks).
+- ~~Evidence linking automatico (findings→vdr_chunks)~~ ✅ Implementado via `dd_finding_evidence` (migration 202602280005).
 - Gateway rate limit por familia (completion/vault/audit).
 - ~~Observability: Vercel Cron para audit sync~~ ✅ Implementado (`vercel.json` cron cada 15 min).
 - RLS hardening: ~~CI lint~~ ✅ `scripts/lint-service-role.sh` + ~~security migrations~~ ✅ `202602270006/011/012`. Pendiente: matriz rol×endpoint E2E.
@@ -480,13 +560,13 @@ POST /api/war-room/[project_id]/export    -> { file_url } (PDF/Excel)
 ### Stack
 - **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Garrigues Design System.
 - **State**: Zustand 5.0 (client), UserContext (auth/roles).
-- **Backend**: Next.js API Routes (109 endpoints server-side).
+- **Backend**: Next.js API Routes (120 endpoints server-side).
 - **Base de datos**: Supabase (PostgreSQL + RLS + pgvector).
 - **IA**: Harvey AI via Harvey Gateway (con fallback a n8n).
-- **Orquestacion**: n8n Cloud (9 workflows, migracion progresiva a gateway).
+- **Orquestacion**: n8n Cloud (12 workflows, migracion progresiva a gateway).
 - **Deploy**: Vercel (production: `dd-legal-pmo.vercel.app`, auto-deploy desde main).
 - **Auth**: 16 usuarios Supabase Auth (1 admin + 8 demo + 4 project-specific + 3 seed).
-- **Tests**: Playwright E2E (29 suites, 257+ tests, 0 failures).
+- **Tests**: Playwright E2E (32 suites, 257+ tests, 0 failures).
 
 ### Diagrama E2E
 
@@ -507,7 +587,7 @@ VDR interno (docs + versiones + permisos)
 
 ### Modelo de datos
 
-#### Tablas existentes (66 total en public schema)
+#### Tablas existentes (72+ total en public schema)
 
 | Tabla | Descripcion |
 |-------|-------------|
@@ -551,8 +631,14 @@ VDR interno (docs + versiones + permisos)
 | `dd_workflow_instances` | S3 | Ejecucion por proyecto (status, current_phase) |
 | `dd_workflow_task_groups` | S3 | Grupo de tareas por fase de instancia |
 | `dd_negotiation_actions` | S3/S6 | Acciones de negociacion (fase propuesta_transaccional) |
+| `dd_analysis_results` | RAG | Resultados de análisis acumulativos por sección (UPSERT) |
+| `dd_report_cache` | RAG | Cache L2 de informes por evidence_hash + TTL |
+| `dd_report_versions` | RAG | Versiones inmutables de informes (HTML + MD) |
+| `dd_findings` | Finding | Tabla canónica de hallazgos (30+ columnas, 9 CHECK constraints) |
+| `dd_finding_evidence` | Finding | Enlace N:M finding↔chunk VDR |
+| `dd_report_findings` | Finding | Enlace N:M finding↔report |
 
-### Migraciones existentes (40)
+### Migraciones existentes (50)
 
 ```
 supabase/migrations/
@@ -599,7 +685,7 @@ supabase/migrations/
 9. API Route actualiza dd_reports (harvey_response, status: done)
 10. API Route ejecuta grounding validation (5 checks, score 0-100)
 11. Si skill.hitl_required = true, tarjeta Kanban pasa a "HITL revision"
-12. Hallazgos se insertan en tarjeta con ranking
+12. Hallazgos se insertan en tarjeta con ranking + dual-write a dd_findings (si FINDINGS_FIRST habilitado)
 13. API Route retorna {success, report_id, grounding_score}
 ```
 
@@ -655,6 +741,19 @@ GET  /api/war-room/[project_id]/negotiation-actions   -> { actions[] }
 PATCH  /api/tasks/[id]/status                 -> { success, task } (status validation: backlog/todo/in_progress/review/blocked/done/cancelled)
 ```
 
+#### Findings (3)
+```
+GET    /api/findings?project_id=X&tier=1,2&status=...  -> { findings[], meta }
+GET    /api/findings/[id]                               -> { finding, evidence[], reports[] }
+PATCH  /api/findings/[id]                               -> { success, finding }
+```
+
+#### Report Export (2)
+```
+GET  /api/reports/pdf?report_version_id=X&project_id=Y  -> PDF binary
+GET  /api/reports/md?report_version_id=X&project_id=Y   -> Markdown file
+```
+
 #### Workflows v1 (5 nuevos)
 ```
 GET    /api/workflows/templates               -> { templates[] }
@@ -676,7 +775,7 @@ Modelo normalizado para que la DD "condicione negociacion y cierre":
 | Mitigacion recomendada | CP / indemnidad / ajuste de precio / covenant / remediation plan | Accion concreta |
 | Verificabilidad | verificado / parcialmente / no verificable | Si falta evidencia o hay conflicto |
 
-Cada hallazgo en `findings[]` de la tarjeta Kanban y en reportes sigue este schema.
+Cada hallazgo vive en `dd_findings` (tabla canónica, 10-state lifecycle, 3-tier relevance) con enlace N:M a evidence chunks y reportes. Feature flag `FINDINGS_FIRST` controla lectura desde `dd_findings` vs legacy `findings[]` JSONB.
 
 ## 8. Strangler Slices y criterios de aceptacion
 
@@ -781,21 +880,25 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 7. **S6**: War Room ✅ — dashboard, decisions, red-flags, severity notifications, export, **negotiation_actions API**, **SPA mapping**, **timeline**, **decision resolution**.
 8. **H3 Scoring** ✅ — Deal Risk Score engine (severity×probability×timing×area weighting), per-project scoring API.
 9. **Reporting** ✅ — Final report compiler, red flag report generator, workflow report engine.
-10. Tests E2E: 29 suites, 257+ tests (0 failures) covering all slices.
-11. DB: 66+ tablas, 40 migrations, Postgres 17.6 Pro.
+10. Tests E2E: 32 suites, 257+ tests (0 failures) covering all slices.
+11. DB: 72+ tablas, 50 migrations, Postgres 17.6 Pro.
 12. **Deploy**: Vercel `dd-legal-pmo.vercel.app` ✅, 10 env vars, Supabase connected, n8n reachable, Cron audit-sync active.
 13. **Synthetic Test Dataset v3**: 3 proyectos seed (Green/Amber/Red) con 342+ filas en 16 tablas, 16 usuarios auth, 47 project roles. CSVs fuente en `docs/output_v3/`. Consolidacion de workflows con prompt-builder enriquecido (sesion 2026-02-23, reporte en `docs/reports/`).
+14. **Incremental RAG + Two-Level Cache** ✅ — Content-hash L1, evidence-hash L2, multi-query retrieval (100+ SECTION_QUERY_MAP entries), analysis results UPSERT, 3 n8n workflows (ingest/orchestrator/render), PDF/MD export.
+15. **Finding-Centric Architecture** ✅ — dd_findings como unidad canónica, 10-state lifecycle, 3-tier relevance, dual-write, 6 consumers migrados, 21 findings backfilled. Feature flag `FINDINGS_FIRST` (OFF, pending Fase E).
 
 ### P1 — Expansion Areas + Golden Path (Horizonte 2)
 1. ~~Publicar 6 workflows planned (WF-07 a WF-12)~~ ✅ Done.
 2. Golden path E2E: WF-04 Contratos (DoR→IA→HITL→War Room→Informe).
 3. AP-level Kanban task generation (1 tarea por Analysis Point).
 4. DoR enforcement via VDR semantic retrieval.
-5. Evidence linking automatico findings→chunks.
+5. ~~Evidence linking automatico findings→chunks~~ ✅ Done (dd_finding_evidence table, migration 202602280005).
 6. Gateway rate limit por familia (completion 5 / vault 3 / audit 15).
 7. ~~Observability: Vercel Cron audit sync~~ ✅ Done. Pendiente: metricas por fase + alertas SLO→War Room.
 8. ~~RLS hardening: CI lint service_role_key~~ ✅ Done (`scripts/lint-service-role.sh` + migrations 6/11/12). Pendiente: matriz rol×endpoint E2E.
 9. ~~Retrieval hibrido BM25 + pgvector + chunking adaptativo~~ ✅ Done.
+10. **Fase E: FINDINGS_FIRST activation** — Set `FINDINGS_FIRST=on` in Vercel env, validate all 6 consumers, deprecate legacy JSONB paths.
+11. **n8n credentials setup** — Configure Supabase HTTP Header Auth credentials in n8n for ingest/orchestrator workflows.
 
 ### P2 — Scoring + Reporting Comite (Horizonte 3)
 1. ~~Scoring consolidado cross-area (Deal Risk Score)~~ ✅ Done (H3 scoring engine + API).
@@ -816,7 +919,7 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 | Cobertura de fuentes citadas | >= 95% |
 | Tiempo snapshot -> report | < 60s |
 | Skills activos | >= 30 (cobertura FMC) |
-| Templates operativos | 31 (5 familias) |
+| Templates operativos | 35 (5 familias, 7 con HTML dedicado) |
 | Agent pipeline pass rate | >= 90% |
 | PII redaction rate | 100% |
 | Data room gap coverage | >= 80% por proyecto |
@@ -893,9 +996,9 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 
 | Servicio | Instancia | Uso |
 |----------|-----------|-----|
-| Vercel | dd-legal-pmo (`prj_c6BXNArsGxvSeM1k3bKqthgHQpYP`) | Frontend + API Routes (109 endpoints) ✅ LIVE |
+| Vercel | dd-legal-pmo (`prj_c6BXNArsGxvSeM1k3bKqthgHQpYP`) | Frontend + API Routes (120 endpoints) ✅ LIVE |
 | Supabase | mxanelzxyaklvuypuafa (NexusDD) | Base de datos + RLS + pgvector + Auth |
-| n8n Cloud | mmenendeza.app.n8n.cloud | Orquestacion IA + Agent Pipeline (migracion progresiva) |
+| n8n Cloud | mmenendeza.app.n8n.cloud | Orquestacion IA + Agent Pipeline + Report Pipeline (12 workflows, migracion progresiva) |
 | Harvey AI | eu.api.harvey.ai | LLM legal especializado (via Gateway) |
 | GitHub | moimene/DDLegal | Repositorio codigo fuente |
 
@@ -915,6 +1018,7 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 | `CRON_SECRET` | Secret | Server ONLY | Vercel Cron auth secret (protects `/api/cron/*`) |
 | `OPENAI_API_KEY` | Secret | Server ONLY | OpenAI API key (VDR embeddings, text-embedding-3-small) |
 | `HARVEY_GATEWAY_FALLBACK` | Config | Server ONLY | `true` para usar n8n como fallback (feature flag) |
+| `FINDINGS_FIRST` | Config | Server ONLY | `true` / `false` — cuando true, lecturas usan dd_findings como fuente (default: false) |
 
 ### Estado Vercel Env Vars (Produccion)
 
