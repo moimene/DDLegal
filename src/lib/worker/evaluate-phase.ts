@@ -221,6 +221,10 @@ async function evaluateWave(
   let errors = 0;
   let aiCalls = 0;
 
+  // Preload chunks for all documents in factsMap
+  const documentIds = Array.from(factsMap.keys());
+  const chunksMap = await loadDocumentChunks(documentIds);
+
   for (const fo of wave.objectives) {
     // Find documents applicable to this FO
     const applicableDocs = getApplicableDocuments(fo, factsMap);
@@ -232,8 +236,11 @@ async function evaluateWave(
       }
 
       try {
+        // Get chunks for this document
+        const chunks = chunksMap.get(docId) || [];
+
         // Convert facts to evaluation format
-        const evalFacts = buildEvaluationFacts(docId, facts);
+        const evalFacts = buildEvaluationFacts(docId, facts, chunks);
 
         // Evaluate the FO against this document
         const result = await evaluateObjective(fo, evalFacts, dealContext);
@@ -386,14 +393,54 @@ function getApplicableDocuments(
 }
 
 /**
+ * Load chunks from VDR for a set of documents.
+ */
+async function loadDocumentChunks(
+  documentIds: string[]
+): Promise<Map<string, Array<{ id: string; content: string; page?: number }>>> {
+  if (documentIds.length === 0) {
+    return new Map();
+  }
+
+  const { data: chunks, error } = await supabaseAdmin
+    .from('vdr_chunks')
+    .select('id, document_id, content, page_number')
+    .in('document_id', documentIds)
+    .order('chunk_index', { ascending: true });
+
+  if (error) {
+    console.error('[evaluate-phase] Failed to load chunks:', error);
+    return new Map();
+  }
+
+  const chunksMap = new Map<string, Array<{ id: string; content: string; page?: number }>>();
+
+  for (const chunk of chunks || []) {
+    const docChunks = chunksMap.get(chunk.document_id) || [];
+    docChunks.push({
+      id: chunk.id,
+      content: chunk.content,
+      page: chunk.page_number,
+    });
+    chunksMap.set(chunk.document_id, docChunks);
+  }
+
+  return chunksMap;
+}
+
+/**
  * Convert DocumentFacts to EvaluationFacts format.
  */
-function buildEvaluationFacts(documentId: string, facts: DocumentFacts): EvaluationFacts {
+function buildEvaluationFacts(
+  documentId: string,
+  facts: DocumentFacts,
+  chunks: Array<{ id: string; content: string; page?: number }>
+): EvaluationFacts {
   return {
     document_id: documentId,
     document_type: facts.document_type || 'unknown',
     content_hash: facts.source_content_hash || '',
-    chunks: [], // Would be populated from VDR if needed
+    chunks,
     extracted_data: {
       parties: facts.parties,
       key_dates: facts.key_dates,
