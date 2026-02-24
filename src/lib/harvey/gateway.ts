@@ -76,7 +76,8 @@ export class HarveyGateway {
             prompt: req.prompt,
           };
           if (req.system_prompt) requestBody.system_prompt = req.system_prompt;
-          if (req.client_matter_id) requestBody.client_matter_id = req.client_matter_id;
+          // Note: client_matter_id is stored for telemetry but not sent to Harvey API
+          // Harvey returns "Resource not found" when client_matter_id is included
           if (req.knowledge_sources) requestBody.knowledge_sources = req.knowledge_sources;
 
           const response = await fetch(this.config.endpoint, {
