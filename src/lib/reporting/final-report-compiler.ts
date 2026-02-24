@@ -8,6 +8,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { generateWorkflowReport } from './report-generator';
 import type { WorkflowReportOutput } from './report-generator';
+import { isFindingsFirstEnabled, getRedFlagsDigest } from '@/lib/findings';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -261,19 +262,36 @@ export async function compileFinalReport(
     decByType[dt] = (decByType[dt] ?? 0) + 1;
   }
 
-  // --- 8. Load red flags digest (contingencies critical + high) ---
-  const { data: critContingencies } = await supabaseAdmin
-    .from('dd_contingencies')
-    .select('id, severity, probability')
-    .eq('project_id', projectId)
-    .in('severity', ['critical', 'high']);
+  // --- 8. Load red flags digest ---
+  let rfDigest: { total: number; deal_breakers: number; critical: number };
 
-  const dealBreakers = (critContingencies ?? []).filter(
-    c => c.severity === 'critical' && c.probability === 'certain',
-  ).length;
-  const criticalRedFlags = (critContingencies ?? []).filter(
-    c => c.severity === 'critical',
-  ).length;
+  if (isFindingsFirstEnabled()) {
+    // FINDINGS_FIRST: read from dd_findings
+    rfDigest = await getRedFlagsDigest(projectId);
+  } else {
+    // LEGACY: read from dd_contingencies
+    const { data: critContingencies } = await supabaseAdmin
+      .from('dd_contingencies')
+      .select('id, severity, probability')
+      .eq('project_id', projectId)
+      .in('severity', ['critical', 'high']);
+
+    const legacyDealBreakers = (critContingencies ?? []).filter(
+      c => c.severity === 'critical' && c.probability === 'certain',
+    ).length;
+    const legacyCritical = (critContingencies ?? []).filter(
+      c => c.severity === 'critical',
+    ).length;
+
+    rfDigest = {
+      total: (critContingencies ?? []).length,
+      deal_breakers: legacyDealBreakers,
+      critical: legacyCritical,
+    };
+  }
+
+  const dealBreakers = rfDigest.deal_breakers;
+  const criticalRedFlags = rfDigest.critical;
 
   // --- 9. Build executive summary ---
   const totalInstances = (instances ?? []).length;
@@ -325,11 +343,7 @@ export async function compileFinalReport(
     total_high: totalHigh,
     overall_evidence_coverage_pct: overallEvidenceCoverage,
     overall_hitl_pending: totalHitlPending,
-    red_flags_digest: {
-      total: (critContingencies ?? []).length,
-      deal_breakers: dealBreakers,
-      critical: criticalRedFlags,
-    },
+    red_flags_digest: rfDigest,
     negotiation_actions_summary: {
       total: (negActions ?? []).length,
       by_status: negByStatus,

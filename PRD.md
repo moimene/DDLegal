@@ -1,5 +1,5 @@
 # PRD - DD Legal PMO v3.0
-**Ultima actualizacion: 23 febrero 2026 — Desplegado en produccion: `dd-legal-pmo.vercel.app`**
+**Ultima actualizacion: 23 febrero 2026 — Desplegado en produccion: `dd-legal-pmo.vercel.a*p*p*`**
 
 ## 1. Contexto y problema
 

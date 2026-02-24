@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { persistFindings, type PersistFindingInput } from '@/lib/findings/findings-service';
 import { generateWorkflowReport } from '@/lib/reporting/report-generator';
 import {
   getDDReportsColumnSet,
@@ -346,6 +347,62 @@ function inferNegotiationActionType(finding: WorkflowFinding): NegotiationAction
   return 'other';
 }
 
+/**
+ * Resolve dd_findings IDs for a set of findings using the external_ref pattern.
+ * Returns a map of finding_ref → dd_findings.id (for linking to negotiation actions).
+ */
+async function resolveFindingIds(
+  instanceId: string,
+  phase: string,
+  findings: WorkflowFinding[],
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  if (findings.length === 0) return result;
+
+  // Build the external_ref patterns that match how persistFindings generates them
+  const slugs = findings.map((f) => {
+    const titleSlug = f.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 64) || 'untitled';
+    return `${instanceId}:${phase}:${titleSlug}`;
+  });
+
+  const { data: rows } = await supabaseAdmin
+    .from('dd_findings')
+    .select('id, external_ref')
+    .in('external_ref', slugs);
+
+  if (rows) {
+    for (const row of rows) {
+      // Map finding_ref (instance:phase:severity:slug) → dd_findings.id
+      // We need to map via title slug which is shared between external_ref and finding_ref
+      const extRef = row.external_ref as string;
+      // external_ref = instance:phase:titleSlug
+      // finding_ref  = instance:phase:severity:titleSlug
+      // Match by finding any finding_ref that ends with the same titleSlug
+      const parts = extRef.split(':');
+      const titleSlug = parts.slice(2).join(':');
+      // Find the matching finding to get its severity for full finding_ref
+      const matchingFinding = findings.find((f) => {
+        const fSlug = f.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 64) || 'untitled';
+        return fSlug === titleSlug;
+      });
+      if (matchingFinding) {
+        const findingRef = buildFindingRef(instanceId, phase, matchingFinding);
+        result.set(findingRef, row.id as string);
+      }
+    }
+  }
+
+  return result;
+}
+
 async function createNegotiationActionsFromFindings(params: {
   projectId: string;
   workflowInstanceId: string;
@@ -354,14 +411,23 @@ async function createNegotiationActionsFromFindings(params: {
   findings: WorkflowFinding[];
 }): Promise<number> {
   try {
-    const candidates = params.findings
-      .filter(isHighPriorityFinding)
+    const highPriorityFindings = params.findings.filter(isHighPriorityFinding);
+
+    // Resolve dd_findings IDs for linking
+    const findingIdMap = await resolveFindingIds(
+      params.workflowInstanceId,
+      params.phase,
+      highPriorityFindings,
+    );
+
+    const candidates = highPriorityFindings
       .map((finding) => {
         const findingRef = buildFindingRef(params.workflowInstanceId, params.phase, finding);
         return {
           project_id: params.projectId,
           workflow_instance_id: params.workflowInstanceId,
           finding_ref: findingRef,
+          finding_id: findingIdMap.get(findingRef) || null,  // Link to dd_findings
           action_type: inferNegotiationActionType(finding),
           title: `[Auto] ${finding.title}`,
           description: finding.mitigation || `Hallazgo ${finding.severity} detectado en fase ${params.phase}.`,

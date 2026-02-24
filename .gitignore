@@ -21,3 +21,12 @@ node_modules/
 
 # git worktrees
 .worktrees/
+
+# Claude / AI workspace artifacts
+.claude/
+output/
+tmp/
+dataroom*/
+
+# Misc scratch files
+*.md.bak

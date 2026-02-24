@@ -30,7 +30,11 @@ export type DDEvent =
   | { type: 'hitl_decision_required'; payload: { task_id: string; project_id: string; confidence_score: number } }
   | { type: 'hitl_decision_made'; payload: { task_id: string; decision: string; decided_by: string } }
   | { type: 'contingency_updated'; payload: { contingency_id: string; project_id: string; field: string; old_value?: string; new_value?: string } }
-  | { type: 'project_milestone'; payload: { project_id: string; milestone: string; coverage_pct: number } };
+  | { type: 'project_milestone'; payload: { project_id: string; milestone: string; coverage_pct: number } }
+  // Finding-Centric Architecture events
+  | { type: 'finding_status_changed'; payload: { finding_id: string; project_id: string; old_status: string; new_status: string; transitioned_by?: string } }
+  | { type: 'finding_tier_changed'; payload: { finding_id: string; project_id: string; old_tier: number; new_tier: number; overridden_by?: string; justification?: string } }
+  | { type: 'finding_updated'; payload: { finding_id: string; project_id: string; updated_fields: string[] } };
 
 /** Serialized form stored in the DB and sent over SSE. */
 export interface DDEventRecord {
@@ -84,6 +88,12 @@ const EVENT_DESCRIPTIONS: Record<DDEvent['type'], (p: Record<string, unknown>) =
     `Contingencia actualizada (campo: ${p.field})`,
   project_milestone: (p) =>
     `Hito alcanzado: ${p.milestone} (${p.coverage_pct}%)`,
+  finding_status_changed: (p) =>
+    `Hallazgo: estado ${p.old_status} → ${p.new_status}`,
+  finding_tier_changed: (p) =>
+    `Hallazgo: tier ${p.old_tier} → ${p.new_tier}${p.justification ? ` (${p.justification})` : ''}`,
+  finding_updated: (p) =>
+    `Hallazgo actualizado (campos: ${Array.isArray(p.updated_fields) ? (p.updated_fields as string[]).join(', ') : 'desconocidos'})`,
 };
 
 /** Generate a human-readable description for an event. */
@@ -120,6 +130,9 @@ const EVENT_SEVERITY: Record<DDEvent['type'], EventSeverity> = {
   hitl_decision_made: 'success',
   contingency_updated: 'warning',
   project_milestone: 'success',
+  finding_status_changed: 'info',
+  finding_tier_changed: 'warning',
+  finding_updated: 'info',
 };
 
 export function getEventSeverity(eventType: string): EventSeverity {
@@ -144,6 +157,9 @@ const EVENT_ICONS: Record<DDEvent['type'], string> = {
   hitl_decision_made: 'UserCheck',
   contingency_updated: 'Shield',
   project_milestone: 'Flag',
+  finding_status_changed: 'ArrowRightLeft',
+  finding_tier_changed: 'Layers',
+  finding_updated: 'Pencil',
 };
 
 export function getEventIcon(eventType: string): string {

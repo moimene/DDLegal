@@ -181,7 +181,8 @@ export interface NegotiationAction {
   id: string;
   project_id: string;
   workflow_instance_id: string | null;
-  finding_ref: string | null;
+  finding_ref: string | null;        // legacy: 'instance:phase:slug' — deprecated, use finding_id
+  finding_id: string | null;          // FK to dd_findings (Finding-Centric Architecture)
   contingency_id: string | null;
   action_type: NegotiationActionType;
   title: string;

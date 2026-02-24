@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/auth/require-permission';
+import { isFindingsFirstEnabled, getRedFlagFindings } from '@/lib/findings';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ project_id: string }> }) {
   const { project_id } = await params;
@@ -10,13 +11,38 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ proj
   if (!authorized) return authError!;
 
   try {
-    const [alertsRes, blockersRes, tasksRes, decisionsRes, notifsRes] = await Promise.all([
-      supabaseAdmin.from('dd_negotiation_alerts').select('*').eq('project_id', project_id).in('severity', ['critical', 'high']).order('created_at', { ascending: false }).limit(20),
+    // Common queries (always needed regardless of FINDINGS_FIRST)
+    const [blockersRes, tasksRes, decisionsRes, notifsRes] = await Promise.all([
       supabaseAdmin.from('dd_kanban_tasks').select('id, title, area_code, state, entered_state_at, assigned_to').eq('project_id', project_id).eq('state', 'bloqueado').order('entered_state_at', { ascending: true }),
       supabaseAdmin.from('dd_kanban_tasks').select('area_code, state').eq('project_id', project_id),
       supabaseAdmin.from('dd_war_room_decisions').select('*').eq('project_id', project_id).order('decided_at', { ascending: false }).limit(20),
       supabaseAdmin.from('dd_war_room_notifications').select('*').eq('project_id', project_id).eq('is_read', false).order('created_at', { ascending: false }).limit(50),
     ]);
+
+    // Red flags: FINDINGS_FIRST or legacy
+    let redFlags: { id: string; title: string; severity: string; area_code: string; status: string; evidence: string[]; recommendation: string | null }[];
+
+    if (isFindingsFirstEnabled()) {
+      const findings = await getRedFlagFindings(project_id);
+      redFlags = findings
+        .filter((f) => f.severity === 'critical' || f.severity === 'high')
+        .slice(0, 20)
+        .map((f) => ({
+          id: f.id,
+          title: f.title,
+          severity: f.severity,
+          area_code: f.area_code,
+          status: f.status,
+          evidence: [],
+          recommendation: f.mitigation || null,
+        }));
+    } else {
+      const alertsRes = await supabaseAdmin.from('dd_negotiation_alerts').select('*').eq('project_id', project_id).in('severity', ['critical', 'high']).order('created_at', { ascending: false }).limit(20);
+      redFlags = (alertsRes.data || []).map(a => ({
+        id: a.id, title: a.titulo, severity: a.severity, area_code: a.area_code, status: a.status,
+        evidence: a.evidencia || [], recommendation: a.recomendacion,
+      }));
+    }
 
     const tasksByArea: Record<string, { total: number; completed: number; blocked: number }> = {};
     for (const task of tasksRes.data || []) {
@@ -33,8 +59,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ proj
 
     return NextResponse.json({
       success: true, project_id,
-      red_flags: (alertsRes.data || []).map(a => ({ id: a.id, title: a.titulo, severity: a.severity, area_code: a.area_code, status: a.status, evidence: a.evidencia || [], recommendation: a.recomendacion })),
+      red_flags: redFlags,
       blockers: blockersRes.data || [], progress, decisions: decisionsRes.data || [], notifications: notifsRes.data || [],
+      source: isFindingsFirstEnabled() ? 'dd_findings' : 'legacy',
     });
   } catch (err) {
     return NextResponse.json({ success: false, error: (err as Error).message }, { status: 500 });

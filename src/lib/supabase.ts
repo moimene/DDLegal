@@ -82,6 +82,7 @@ export interface DDContingency {
     project_id: string;
     area_id: string | null;
     task_id: string | null;
+    finding_id: string | null;  // FK to dd_findings (Finding-Centric Architecture)
     title: string;
     description: string | null;
     severity: 'critical' | 'high' | 'medium' | 'low';
@@ -766,6 +767,7 @@ export interface DDKanbanTask {
   legacy_task_id: string | null;
   workflow_key: string | null;
   skill_key: string | null;
+  finding_id: string | null;  // FK to dd_findings (Finding-Centric Architecture)
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -821,6 +823,7 @@ export interface DDWarRoomDecision {
   project_id: string;
   contingency_id: string | null;
   alert_id: string | null;
+  finding_id: string | null;  // FK to dd_findings (Finding-Centric Architecture)
   decision_type: WarRoomDecisionType;
   title: string;
   rationale: string | null;
@@ -848,4 +851,155 @@ export interface DDWarRoomNotification {
   read_by: string | null;
   read_at: string | null;
   created_at: string;
+}
+
+// ── Findings (Finding-Centric Architecture) ──────────────
+
+export type FindingSeverity = 'critical' | 'high' | 'medium' | 'low' | 'informational';
+
+export type FindingProbability =
+  | 'certain' | 'alta' | 'probable' | 'media' | 'possible' | 'baja' | 'remote';
+
+export type FindingTiming = 'blocking' | 'post_closing';
+
+export type FindingVerifiability = 'verified' | 'partially' | 'not_verifiable';
+
+export type FindingEconomicImpactType = 'contingency' | 'liability' | 'loss' | 'operational_cost';
+
+export type FindingSourceType = 'workflow_ai' | 'manual' | 'import' | 'tool_societario' | 'tool_ip';
+
+export type FindingStatus =
+  | 'identified' | 'under_review' | 'validated' | 'contested'
+  | 'accepted' | 'mitigated' | 'reported' | 'negotiated'
+  | 'resolved' | 'dismissed';
+
+export type FindingHitlDecision = 'approved' | 'corrected' | 'rejected';
+
+export type FindingRelevanceTier = 1 | 2 | 3;
+
+export interface DDFinding {
+  id: string;
+  project_id: string;
+  external_ref: string | null;
+
+  // Origin
+  source_type: FindingSourceType;
+  source_workflow_instance_id: string | null;
+  source_phase: string | null;
+  source_skill_key: string | null;
+
+  // Classification
+  area_code: string;
+  title: string;
+  description: string | null;
+
+  // 6 Dimensions (PRD section 7)
+  severity: FindingSeverity;
+  probability: FindingProbability;
+  economic_impact_amount: number | null;
+  economic_impact_currency: string;
+  economic_impact_type: FindingEconomicImpactType | null;
+  timing: FindingTiming | null;
+  mitigation_recommended: string | null;
+  verifiability: FindingVerifiability | null;
+
+  // Relevance Tier
+  relevance_tier: FindingRelevanceTier;
+  tier_override_by: string | null;
+  tier_override_reason: string | null;
+  tier_auto_calculated: FindingRelevanceTier | null;
+
+  // Lifecycle
+  status: FindingStatus;
+
+  // HITL
+  hitl_required: boolean;
+  hitl_decision: FindingHitlDecision | null;
+  hitl_reviewer_id: string | null;
+  hitl_rationale: string | null;
+  hitl_decided_at: string | null;
+
+  // Scoring
+  raw_score: number | null;
+  weighted_score: number | null;
+  is_deal_breaker: boolean;
+  is_red_flag: boolean;
+
+  // Links
+  contingency_id: string | null;
+
+  // Audit
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  metadata: Record<string, unknown>;
+
+  // Versioning
+  version: number;
+  previous_version_id: string | null;
+}
+
+export type FindingEvidenceType = 'vdr_chunk' | 'vdr_document' | 'external_url' | 'manual' | 'registry';
+
+export type FindingEvidenceLinkMethod =
+  | 'auto_semantic' | 'auto_keyword' | 'auto_hybrid' | 'manual' | 'hitl_correction';
+
+export interface DDFindingEvidence {
+  id: string;
+  finding_id: string;
+  evidence_type: FindingEvidenceType;
+  vdr_chunk_id: string | null;
+  vdr_document_id: string | null;
+  external_url: string | null;
+  page_number: number | null;
+  section_title: string | null;
+  snippet: string | null;
+  similarity_score: number | null;
+  link_method: FindingEvidenceLinkMethod;
+  linked_by_user_id: string | null;
+  linked_at: string;
+}
+
+export type ReportFindingInclusionReason =
+  | 'auto_tier' | 'auto_area' | 'auto_executive' | 'auto_red_flag'
+  | 'manual_add' | 'manual_exclude';
+
+export interface DDReportFinding {
+  report_id: string;
+  finding_id: string;
+  section_key: string;
+  display_order: number;
+  inclusion_reason: ReportFindingInclusionReason;
+  is_excluded: boolean;
+  included_at: string;
+  included_by: string | null;
+}
+
+export interface DDFindingsSummary {
+  total: number;
+  by_tier: { '1': number; '2': number; '3': number };
+  by_status: Record<FindingStatus, number>;
+  by_severity: Record<FindingSeverity, number>;
+  by_area: Record<string, number>;
+  deal_breakers_count: number;
+  red_flags_count: number;
+  total_economic_exposure: number;
+  pending_hitl: number;
+  active_count: number;
+}
+
+/** Full finding detail with all related entities (from get_finding_with_evidence RPC) */
+export interface DDFindingDetail {
+  finding: DDFinding;
+  evidence: DDFindingEvidence[];
+  contingency: DDContingency | null;
+  negotiation_actions: Array<Record<string, unknown>>;
+  hitl_decisions: Array<Record<string, unknown>>;
+  war_room_decisions: DDWarRoomDecision[];
+  reports: Array<{
+    report_id: string;
+    section_key: string;
+    inclusion_reason: ReportFindingInclusionReason;
+    included_at: string;
+  }>;
 }

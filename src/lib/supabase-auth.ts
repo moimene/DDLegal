@@ -81,6 +81,11 @@ export interface RolePermissions {
     can_view_all_areas: boolean;
     can_view_war_room: boolean;
     can_view_negotiation: boolean;
+    // Finding-Centric Architecture permissions
+    can_view_findings: boolean;
+    can_edit_findings: boolean;
+    can_change_finding_tier: boolean;
+    can_resolve_findings: boolean;
 }
 
 /**
@@ -109,6 +114,10 @@ export const ROLE_PERMISSIONS: Record<ProjectRole, RolePermissions> = {
         can_view_all_areas: true,
         can_view_war_room: true,
         can_view_negotiation: true,
+        can_view_findings: true,
+        can_edit_findings: true,
+        can_change_finding_tier: true,
+        can_resolve_findings: true,
     },
     pm_transaccion: {
         can_edit_tasks: true,
@@ -124,6 +133,10 @@ export const ROLE_PERMISSIONS: Record<ProjectRole, RolePermissions> = {
         can_view_all_areas: true,
         can_view_war_room: true,
         can_view_negotiation: false,
+        can_view_findings: true,
+        can_edit_findings: true,
+        can_change_finding_tier: true,
+        can_resolve_findings: true,
     },
     abogado_area: {
         can_edit_tasks: true,       // scoped to own area
@@ -139,6 +152,10 @@ export const ROLE_PERMISSIONS: Record<ProjectRole, RolePermissions> = {
         can_view_all_areas: false,  // only own area
         can_view_war_room: false,
         can_view_negotiation: false,
+        can_view_findings: true,
+        can_edit_findings: true,     // scoped to own area
+        can_change_finding_tier: true, // can promote 3→2 in own area (enforced in app)
+        can_resolve_findings: false,
     },
     deal_sponsor: {
         can_edit_tasks: false,
@@ -154,6 +171,10 @@ export const ROLE_PERMISSIONS: Record<ProjectRole, RolePermissions> = {
         can_view_all_areas: true,
         can_view_war_room: true,
         can_view_negotiation: true,
+        can_view_findings: true,
+        can_edit_findings: false,
+        can_change_finding_tier: false,
+        can_resolve_findings: false,
     },
     target_liaison: {
         can_edit_tasks: false,
@@ -169,6 +190,10 @@ export const ROLE_PERMISSIONS: Record<ProjectRole, RolePermissions> = {
         can_view_all_areas: false,
         can_view_war_room: false,
         can_view_negotiation: false,
+        can_view_findings: false,    // target liaison cannot see findings
+        can_edit_findings: false,
+        can_change_finding_tier: false,
+        can_resolve_findings: false,
     },
     stakeholder_negocio: {
         can_edit_tasks: false,
@@ -184,6 +209,10 @@ export const ROLE_PERMISSIONS: Record<ProjectRole, RolePermissions> = {
         can_view_all_areas: false,
         can_view_war_room: true,
         can_view_negotiation: false,
+        can_view_findings: true,
+        can_edit_findings: false,
+        can_change_finding_tier: false,
+        can_resolve_findings: false,
     },
     cliente_externo: {
         can_edit_tasks: false,
@@ -199,6 +228,10 @@ export const ROLE_PERMISSIONS: Record<ProjectRole, RolePermissions> = {
         can_view_all_areas: false,
         can_view_war_room: false,
         can_view_negotiation: false,
+        can_view_findings: true,     // can view reported findings only (filtered in app)
+        can_edit_findings: false,
+        can_change_finding_tier: false,
+        can_resolve_findings: false,
     },
 };
 

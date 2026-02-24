@@ -1,4 +1,5 @@
 import { getHarveyGateway } from '@/lib/harvey';
+import { persistFindings, type PersistFindingInput } from '@/lib/findings/findings-service';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { semanticSearch } from '@/lib/vdr/semantic-search';
 import { WORKFLOW_DEFINITIONS } from './constants';
@@ -63,6 +64,48 @@ function inferAreaCode(finding: WorkflowFinding): string {
     if (text.includes(hint)) return code;
   }
   return 'GENERAL';
+}
+
+// ---------------------------------------------------------------------------
+// Dual-write: persist findings to dd_findings table
+// ---------------------------------------------------------------------------
+
+async function dualWriteFindings(
+  projectId: string,
+  workflowKey: string,
+  phase: string | undefined,
+  findings: WorkflowFinding[],
+  workflowInstanceId?: string,
+): Promise<string[]> {
+  if (findings.length === 0) return [];
+
+  try {
+    const inputs: PersistFindingInput[] = findings.map((f) => ({
+      project_id: projectId,
+      workflow_instance_id: workflowInstanceId,
+      workflow_phase: phase || workflowKey,
+      workflow_key: workflowKey,
+      finding: f,
+      source_type: 'workflow_execution' as const,
+      area_code: inferAreaCode(f),
+    }));
+
+    const result = await persistFindings(inputs);
+
+    if (result.errors.length > 0) {
+      console.warn('[Engine] Dual-write findings partial errors:', result.errors);
+    }
+
+    console.log(
+      `[Engine] Dual-write: ${result.persisted} persisted, ${result.skipped} skipped for ${workflowKey}/${phase || '*'}`
+    );
+
+    return result.finding_ids;
+  } catch (err) {
+    // Dual-write is non-fatal — legacy flow continues
+    console.error('[Engine] Dual-write findings failed (non-fatal):', err);
+    return [];
+  }
 }
 
 type CatalogSkillRow = WorkflowSkillContext;
@@ -325,6 +368,9 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
 
     const n8nFindings = (data.findings || []) as WorkflowFinding[];
 
+    // Dual-write findings to dd_findings
+    await dualWriteFindings(req.project_id, req.workflow_key, req.phase, n8nFindings);
+
     // Post-execution: generate DD backlog for arranque_dd
     let backlogGenerated: number | undefined;
     if (req.workflow_key === 'arranque_dd') {
@@ -372,6 +418,9 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
 
   const gatewayFindings = (parsed.findings ||
     []) as WorkflowExecutionResult['findings'];
+
+  // Dual-write findings to dd_findings
+  await dualWriteFindings(req.project_id, req.workflow_key, req.phase, gatewayFindings);
 
   // Post-execution: generate DD backlog for arranque_dd
   let backlogGenerated: number | undefined;
@@ -455,6 +504,9 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
 
     const n8nFindings = (data.findings || []) as WorkflowFinding[];
 
+    // Dual-write findings to dd_findings
+    await dualWriteFindings(req.project_id, req.workflow_key, req.phase, n8nFindings);
+
     let backlogGenerated: number | undefined;
     if (req.workflow_key === 'arranque_dd') {
       backlogGenerated = await generateDDBacklog(req.project_id, n8nFindings);
@@ -500,6 +552,9 @@ mitigation, verifiability (verified/partially/not_verifiable), evidence_refs.`;
 
   const gatewayFindings = (parsed.findings ||
     []) as WorkflowExecutionResult['findings'];
+
+  // Dual-write findings to dd_findings
+  await dualWriteFindings(req.project_id, req.workflow_key, req.phase, gatewayFindings);
 
   let backlogGenerated: number | undefined;
   if (req.workflow_key === 'arranque_dd') {

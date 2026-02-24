@@ -1,6 +1,6 @@
 # DD Legal PMO
 
-Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room y Observabilidad. 109 API routes, 29 E2E suites, 40 migrations. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
+Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 31 report templates, Evidence Pack, Kanban, VDR, War Room, Observabilidad y **Finding-Centric Architecture** (dd_findings como unidad canónica). 111 API routes, 29 E2E suites, 47 migrations. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
 
 ## Stack
 
@@ -25,7 +25,7 @@ Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n
 ```
 src/
   app/
-    api/                    # 109 API routes across 30+ groups
+    api/                    # 111 API routes across 30+ groups
       ai/                   # classify, suggest
       alerts/               # SLA alerts
       auth/                 # login, me, roles, setup-test-users
@@ -54,7 +54,8 @@ src/
   contexts/
     UserContext.tsx          # Auth state, login/logout, role management
   lib/
-    auth/                   # require-permission middleware
+    auth/                   # require-permission middleware (18 permissions incl. findings)
+    findings/               # Finding-Centric Architecture: dual-write service, queries, types
     embeddings/             # OpenAI embedding client (batch, retry)
     harvey/                 # Harvey AI gateway (circuit breaker + Retry-After + per-family rate limits) + factory
     observability/          # Telemetry writer
@@ -76,7 +77,7 @@ src/
     tokens.css              # Garrigues design tokens (--g-* CSS variables)
   middleware.ts             # Auth + feature flag middleware
 supabase/
-  migrations/               # 40 SQL migrations (RLS, pgvector, seeds, kanban, workflows, observability, security hardening, BM25, H3 scoring, seed_v3_schema)
+  migrations/               # 47 SQL migrations (RLS, pgvector, seeds, kanban, workflows, observability, security hardening, BM25, H3 scoring, seed_v3_schema, findings)
 e2e/                        # 29 Playwright test suites (257 passed, 0 failed)
 vercel.json                 # Vercel config: cron job (audit-sync every 15 min)
 scripts/
@@ -229,7 +230,7 @@ Consolidated workflow engine with enriched iteration context for Harvey AI:
 - HITL is **mandatory** for CONT, LAB, FISC, LIT area outputs.
 - Path alias: `@/*` maps to `./src/*`.
 - Design system: Garrigues tokens in `src/styles/tokens.css` — use `--g-*` CSS variables, never hardcode colors. Brand: `--g-brand-3308: #004438`. Font: Montserrat.
-- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602270001_seed_demo_users.sql`). Next available: `202602270014`.
+- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602270001_seed_demo_users.sql`). Next available: `202602280012`.
 - **dd_deal_risk_scores JSON formats**: `top_risks` and `deal_breakers` must be arrays of `ScoredFinding` objects (`{id, title, raw_score, weighted_score, is_deal_breaker, area_code}`), NOT plain strings. `area_scores` must be `{score, finding_count, critical_count}` objects, NOT plain numbers.
 - **RLS + project access**: Users must have an active entry in `dd_project_user_roles` with appropriate role for their project. Admin user needs CLO role on each project. RLS function `user_has_permission(project_id, permission)` checks `auth.uid()` against `dd_project_user_roles`.
 - Next.js dynamic params use `{ params }: { params: Promise<{ id: string }> }` pattern.
@@ -253,6 +254,7 @@ Required in `.env.local` (never commit):
 - `OPENAI_API_KEY` — OpenAI API key (for embeddings in S4)
 - `CRON_SECRET` — Vercel Cron auth secret (protects `/api/cron/*` routes)
 - `HARVEY_API_KEY` — Harvey API key (legacy, used by some routes)
+- `FINDINGS_FIRST` — `true` | `false` (when true, reads shift to dd_findings as source of truth; default: false)
 
 ## Deployment
 
@@ -273,6 +275,115 @@ Required in `.env.local` (never commit):
 - **NEVER use `echo` to pipe env vars to `vercel env add`** — it adds trailing `\n`. Always use `printf '%s' "value" | npx vercel env add NAME production`.
 - TypeScript build: `[...new Set()]` fails without `downlevelIteration` — use `Array.from(new Set())` instead.
 - Vercel validates CRON_SECRET has no whitespace (used in HTTP headers).
+
+## Finding-Centric Architecture (Fase A+B — Feb 2026)
+
+El "hallazgo" (finding) es la unidad mínima de gestión del DD. Implementado via Strangler Fig:
+
+### Tablas nuevas (7 migrations: 202602280004–202602280010)
+
+| Tabla | Propósito |
+|-------|-----------|
+| `dd_findings` | Tabla canónica de hallazgos (30+ columnas, 9 CHECK constraints) |
+| `dd_finding_evidence` | Enlace N:M finding↔chunk VDR |
+| `dd_report_findings` | Enlace N:M finding↔report |
+
+RLS habilitado en las 3 tablas. 7 funciones RPC: `validate_finding_transition`, `get_finding_with_evidence`, `get_project_findings_summary`, `compute_finding_score`, `compute_finding_tier`, `compute_project_coverage`, `get_findings_by_area`.
+
+### Finding Status Lifecycle (10 estados)
+
+`identified → under_review → validated → contested → accepted → mitigated → reported → negotiated → resolved / dismissed`
+
+State machine enforced via `validate_finding_transition()` RPC. Transitions are strict (no arbitrary jumps).
+
+### Relevance Tier System
+
+| Tier | Nombre | Criterio |
+|------|--------|----------|
+| 1 | Decisorio | Critical severity OR blocking timing OR high+alta probability |
+| 2 | Gestión | High/medium with economic impact OR blocking timing |
+| 3 | Registro | Todo lo demás |
+
+Auto-calculated on insert (`tier_auto_calculated`), overridable via `relevance_tier` + `tier_override_by` + `tier_override_reason`.
+
+### Dual-Write Layer (Fase B)
+
+**Files:**
+- `src/lib/findings/findings-service.ts` — Core service: `persistFindings()`, `transitionFindingStatus()`, `overrideFindingTier()`, `linkFindingToContingency()`, queries
+- `src/lib/findings/index.ts` — Barrel export
+- `src/lib/workflows/engine.ts` — `dualWriteFindings()` injected in all 4 execution paths (template n8n, template gateway, legacy n8n, legacy gateway)
+- `src/lib/workflows/instance-runner.ts` — `resolveFindingIds()` maps finding_ref → dd_findings.id for negotiation actions
+
+**API Routes:**
+- `GET /api/findings?project_id=...&tier=1,2&status=...&area_code=...&summary=true` — List/summary
+- `GET /api/findings/[id]` — Detail via RPC
+- `PATCH /api/findings/[id]` — Status transition, tier override, contingency link, field updates
+
+**Permissions (added to RolePermissions):**
+- `can_view_findings` — clo, pm, abogado, deal_sponsor, stakeholder, cliente_externo
+- `can_edit_findings` — clo, pm, abogado (scoped)
+- `can_change_finding_tier` — clo, pm, abogado (3→2 own area)
+- `can_resolve_findings` — clo, pm only
+
+**Feature flag:** `FINDINGS_FIRST` — when enabled, reads shift to `dd_findings` as source of truth. Currently OFF (dual-write only).
+
+**CHECK constraint values (dd_findings):**
+- `source_type`: workflow_ai, manual, import, tool_societario, tool_ip, workflow_execution, manual_entry, ai_analysis, document_review, registry_scrape, backfill
+- `timing`: blocking, post_closing, pre_closing, pre-close, post-close, ongoing, immediate (or NULL)
+- `verifiability`: verified, partially, not_verifiable, documentable, verifiable, unverifiable (or NULL)
+- `economic_impact_type`: contingency, liability, loss, operational_cost, direct, indirect, reputational (or NULL)
+- `severity`: critical, high, medium, low, informational
+- `probability`: certain, alta, probable, media, possible, baja, remote
+
+**Events (3 new):** `finding_status_changed`, `finding_tier_changed`, `finding_updated` — emitted via event bus, persisted in `dd_event_log`, broadcast via Supabase Realtime.
+
+### Fase C — Migrate Reads (COMPLETED)
+
+All major read paths now support `FINDINGS_FIRST` feature flag. When OFF (default), legacy paths remain active. When ON, reads shift to `dd_findings`.
+
+**Migrated consumers:**
+
+| Consumer | File | Legacy Source | FINDINGS_FIRST Source |
+|----------|------|-------------|----------------------|
+| Deal Risk Scoring | `/api/scoring/deal-risk` POST | dd_contingencies + dd_negotiation_alerts + HITL filter | dd_findings (non-dismissed) |
+| Red Flag Report | `/lib/reporting/red-flag-report-generator.ts` | dd_contingencies(critical/high) + dd_negotiation_alerts | dd_findings (is_red_flag OR severity in critical/high) |
+| War Room Red Flags | `/api/war-room/[project_id]/red-flags` | dd_contingencies + dd_negotiation_alerts | dd_findings via getRedFlagFindings() |
+| War Room Dashboard | `/api/war-room/[project_id]` | dd_negotiation_alerts | dd_findings (critical/high) |
+| Workflow Report | `/lib/reporting/report-generator.ts` | metadata.phase_results_{phase}.findings (JSONB) | dd_findings by source_workflow_instance_id + source_phase |
+| Final Report | `/lib/reporting/final-report-compiler.ts` | dd_contingencies(critical/high) count | dd_findings via getRedFlagsDigest() |
+
+**New query helpers in findings-service.ts:**
+- `getFindingsForScoring(projectId)` — ScoringInput[] shape
+- `getRedFlagFindings(projectId)` — red flags with contingency link
+- `getFindingsByWorkflowInstance(instanceId, phase?)` — replaces JSONB reads
+- `getRedFlagsDigest(projectId)` — {total, deal_breakers, critical} counts
+
+All responses include `source: 'dd_findings' | 'legacy'` for observability.
+
+### Fase D — Backfill (COMPLETED)
+
+Migration `202602280011_backfill_findings_from_contingencies.sql` applied. Idempotent (uses `NOT EXISTS` on external_ref).
+
+| Source | Rows Backfilled | External Ref Pattern |
+|--------|----------------|---------------------|
+| dd_contingencies | 19 | `backfill:contingency:{contingency_id}` |
+| Workflow metadata JSONB | 2 | `{instance_id}:{phase}:{slugified_title}` |
+| **Total** | **21** | |
+
+**Per-project distribution:**
+
+| Project | Findings | Critical | Deal Breakers | Linked Contingencies |
+|---------|----------|----------|---------------|---------------------|
+| Proyecto Red | 7 | 3 | 4 | 7 |
+| Proyecto Amber | 7 | 0 | 1 | 7 |
+| Proyecto Green | 5 | 1 | 1 | 5 |
+| FMC Prototipo | 2 | 1 | 0 | 0 |
+
+Bidirectional FK: all 19 contingencies have `finding_id` set, all 19 findings have `contingency_id` set. Status mapping: `identified→identified`, `confirmed→validated`, `accepted→accepted`, `mitigated→mitigated`, `resolved→resolved`.
+
+### Pendiente (Fase E)
+
+- **Fase E (Contract)**: Set `FINDINGS_FIRST=on` in Vercel env, validate all consumers read correctly, deprecate legacy JSONB paths
 
 ## Architecture & Guidelines
 
