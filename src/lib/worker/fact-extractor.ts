@@ -74,6 +74,97 @@ export interface Obligation {
   consequence?: string;
 }
 
+// ============================================================================
+// Area-Specific Extraction Interfaces
+// ============================================================================
+
+export interface AnnualAccountsFacts {
+  ejercicio: string;
+  fecha_formulacion: string | null;
+  fecha_aprobacion: string | null;
+  fecha_deposito: string | null;
+  estado_deposito: 'depositado' | 'pendiente' | 'defectuoso' | 'no_depositado';
+  patrimonio_neto: number | null;
+  capital_social: number | null;
+  reserva_legal: number | null;
+  reservas_indisponibles: number | null;
+  resultado_ejercicio: number | null;
+  audit: {
+    existe: boolean;
+    tipo_opinion: 'favorable' | 'salvedades' | 'desfavorable' | 'denegada' | null;
+    going_concern: boolean;
+    KAM_count: number;
+    enfasis_count: number;
+  };
+  distribution: {
+    dividendos_aprobados: number | null;
+    dividendos_a_cuenta: number | null;
+    aplicacion_resultado: Record<string, number>;
+  };
+  related_parties: {
+    operaciones_vinculadas: Array<{ parte: string; importe: number; tipo: string }>;
+    saldos_vinculadas: number | null;
+  };
+  contingencies: {
+    garantias_otorgadas: number | null;
+    litigios_revelados: string[];
+    compromisos_fuera_balance: number | null;
+  };
+  treasury_shares: {
+    existencia: boolean;
+    importe: number | null;
+  };
+}
+
+export interface LitigationFacts {
+  procedimientos: Array<{
+    juzgado: string;
+    numero_autos: string;
+    tipo: string;
+    demandante: string;
+    demandado: string;
+    cuantia: number | null;
+    estado_procesal: string;
+  }>;
+  provision_NIC37: {
+    probable: boolean;
+    importe_estimado: number | null;
+  };
+  compliance: {
+    programa_existe: boolean;
+    canal_denuncias: boolean;
+    ultima_revision: string | null;
+  };
+}
+
+export interface AdministrativeFacts {
+  licencias: Array<{
+    tipo: string;
+    autoridad: string;
+    numero: string;
+    fecha_concesion: string | null;
+    fecha_vencimiento: string | null;
+  }>;
+  subvenciones: Array<{
+    organismo: string;
+    importe: number;
+    estado: string;
+    obligaciones_pendientes: string[];
+  }>;
+  contratos_publicos: Array<{
+    licitador: string;
+    importe: number;
+    plazo: string;
+  }>;
+}
+
+// Extend DocumentFacts with optional area-specific fields
+export interface ExtendedDocumentFacts extends DocumentFacts {
+  annual_accounts?: AnnualAccountsFacts;
+  litigation?: LitigationFacts;
+  administrative?: AdministrativeFacts;
+}
+
 export interface ExtractionResult {
   factId: string;
   documentId: string;
@@ -156,6 +247,77 @@ RESPONSE FORMAT: JSON object with the exact structure:
 }
 
 IMPORTANT: Return ONLY valid JSON, no markdown, no explanations.`;
+
+// ============================================================================
+// Area-Specific Extraction Prompt Extensions
+// ============================================================================
+
+const CA_EXTRACTION_EXTENSION = `
+
+7. ANNUAL ACCOUNTS (if document is cuentas_anuales or informe_auditoria)
+   Extract:
+   - ejercicio, fecha_formulacion, fecha_aprobacion, fecha_deposito, estado_deposito
+   - patrimonio_neto, capital_social, reserva_legal, reservas_indisponibles, resultado_ejercicio
+   - audit: { existe, tipo_opinion, going_concern, KAM_count, enfasis_count }
+   - distribution: { dividendos_aprobados, dividendos_a_cuenta, aplicacion_resultado }
+   - related_parties: { operaciones_vinculadas[], saldos_vinculadas }
+   - contingencies: { garantias_otorgadas, litigios_revelados[], compromisos_fuera_balance }
+   - treasury_shares: { existencia, importe }
+
+   Add to response: "annual_accounts": { ... }
+`;
+
+const LIT_EXTRACTION_EXTENSION = `
+
+8. LITIGATION (if area_codes includes LIT)
+   Extract:
+   - procedimientos: [{ juzgado, numero_autos, tipo, demandante, demandado, cuantia, estado_procesal }]
+   - provision_NIC37: { probable, importe_estimado }
+   - compliance: { programa_existe, canal_denuncias, ultima_revision }
+
+   Add to response: "litigation": { ... }
+`;
+
+const ADM_EXTRACTION_EXTENSION = `
+
+9. ADMINISTRATIVE (if area_codes includes ADM)
+   Extract:
+   - licencias: [{ tipo, autoridad, numero, fecha_concesion, fecha_vencimiento }]
+   - subvenciones: [{ organismo, importe, estado, obligaciones_pendientes }]
+   - contratos_publicos: [{ licitador, importe, plazo }]
+
+   Add to response: "administrative": { ... }
+`;
+
+/**
+ * Builds area-specific extraction prompt extensions based on area codes and document type.
+ * Used to augment the base EXTRACTION_PROMPT with additional extraction instructions.
+ *
+ * @param areaCodes - Array of area codes (MERC, LIT, ADM, etc.)
+ * @param docType - Document type (cuentas_anuales, informe_auditoria, etc.)
+ * @returns Additional prompt text to append to the base extraction prompt
+ */
+export function getAreaExtensions(areaCodes: string[], docType: string): string {
+  const extensions: string[] = [];
+
+  // CA extraction for annual accounts documents
+  const caDocTypes = ['cuentas_anuales', 'informe_auditoria', 'certificado_rm', 'einf'];
+  if (areaCodes.includes('MERC') && caDocTypes.includes(docType)) {
+    extensions.push(CA_EXTRACTION_EXTENSION);
+  }
+
+  // LIT extraction
+  if (areaCodes.includes('LIT')) {
+    extensions.push(LIT_EXTRACTION_EXTENSION);
+  }
+
+  // ADM extraction
+  if (areaCodes.includes('ADM')) {
+    extensions.push(ADM_EXTRACTION_EXTENSION);
+  }
+
+  return extensions.join('\n');
+}
 
 // ============================================================================
 // Main Extraction Function
