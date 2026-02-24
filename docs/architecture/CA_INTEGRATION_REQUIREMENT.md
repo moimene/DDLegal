@@ -13,7 +13,7 @@ This document specifies the integration requirements for 15 new Finding Objectiv
 
 **Scope:** FO-MERC-CA-001 through FO-MERC-CA-014 + FO-MERC-CA-PatNeto-002
 **Area:** MERC (Societario/Mercantil) — sub-category `CA`
-**Seed file:** `CA_CATALOG_SEED.sql`
+**Seed file:** `docs/migrations/CA_CATALOG_SEED.sql`
 **Total FO count after integration:** 54 + 15 = **69 FOs**
 
 ---
