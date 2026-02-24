@@ -43,6 +43,23 @@ export type DocumentType =
   | 'poliza_seguro'
   | 'permiso_administrativo'
   | 'resolucion_judicial'
+  // CA types (Cuentas Anuales)
+  | 'cuentas_anuales'
+  | 'informe_auditoria'
+  | 'certificado_rm'
+  | 'einf'
+  | 'politica_retributiva'
+  // LIT types (Litigios)
+  | 'demanda'
+  | 'informe_compliance'
+  | 'programa_compliance'
+  // ADM types (Administrativo)
+  | 'licencia_actividad'
+  | 'subvencion'
+  | 'fdi_screening'
+  // LAB types (Laboral)
+  | 'plan_igualdad'
+  | 'ere_erte'
   | 'otro';
 
 export type AreaCode = 'MERC' | 'CONT' | 'FISC' | 'LAB' | 'PI' | 'LIT' | 'ADM';
@@ -225,6 +242,199 @@ const CLASSIFICATION_PATTERNS: ClassificationPattern[] = [
     ],
     document_type: 'poliza_seguro',
     area_codes: ['ADM'],
+    confidence: 0.9,
+  },
+
+  // ============================================================================
+  // New Classification Patterns (CA, LIT, ADM, LAB)
+  // ============================================================================
+
+  // MERC/CA - Cuentas Anuales (8 patterns)
+  {
+    patterns: [
+      /cuentas\s+anuales/i,
+      /annual\s+accounts/i,
+      /estados\s+financieros\s+anuales/i,
+    ],
+    document_type: 'cuentas_anuales',
+    area_codes: ['MERC'],
+    confidence: 0.9,
+  },
+  {
+    patterns: [
+      /balance\s+(de\s+)?situación/i,
+      /balance\s+sheet/i,
+      /estado\s+(de\s+)?situación\s+financiera/i,
+    ],
+    document_type: 'cuentas_anuales',
+    area_codes: ['MERC'],
+    confidence: 0.88,
+  },
+  {
+    patterns: [
+      /cuenta\s+(de\s+)?pérdidas\s+y\s+ganancias/i,
+      /income\s+statement/i,
+      /profit\s+and\s+loss/i,
+      /p&l\s+statement/i,
+    ],
+    document_type: 'cuentas_anuales',
+    area_codes: ['MERC'],
+    confidence: 0.88,
+  },
+  {
+    patterns: [
+      /memoria\s+(anual|de\s+cuentas)/i,
+      /notes\s+to\s+(the\s+)?(financial\s+)?statements/i,
+    ],
+    document_type: 'cuentas_anuales',
+    area_codes: ['MERC'],
+    confidence: 0.85,
+  },
+  {
+    patterns: [
+      /informe\s+(de\s+)?auditoría/i,
+      /audit\s+report/i,
+      /auditor('s)?\s+report/i,
+      /opinión\s+(del\s+)?auditor/i,
+    ],
+    document_type: 'informe_auditoria',
+    area_codes: ['MERC'],
+    confidence: 0.92,
+  },
+  {
+    patterns: [
+      /certificado\s+(del\s+)?registro\s+mercantil/i,
+      /certificación\s+registral/i,
+      /nota\s+simple\s+(del\s+)?registro\s+mercantil/i,
+      /commercial\s+registry\s+certificate/i,
+    ],
+    document_type: 'certificado_rm',
+    area_codes: ['MERC'],
+    confidence: 0.9,
+  },
+  {
+    patterns: [
+      /estado\s+(de\s+)?información\s+no\s+financiera/i,
+      /einf/i,
+      /non-?financial\s+(information\s+)?statement/i,
+      /informe\s+(de\s+)?sostenibilidad/i,
+    ],
+    document_type: 'einf',
+    area_codes: ['MERC'],
+    confidence: 0.88,
+  },
+  {
+    patterns: [
+      /política\s+(de\s+)?retribuciones/i,
+      /política\s+retributiva/i,
+      /remuneration\s+policy/i,
+      /informe\s+(anual\s+)?(de\s+)?remuneraciones/i,
+    ],
+    document_type: 'politica_retributiva',
+    area_codes: ['MERC'],
+    confidence: 0.88,
+  },
+
+  // LIT - Litigios (4 patterns)
+  {
+    patterns: [
+      /demanda/i,
+      /escrito\s+(de\s+)?demanda/i,
+      /complaint/i,
+      /statement\s+of\s+claim/i,
+    ],
+    document_type: 'demanda',
+    area_codes: ['LIT'],
+    confidence: 0.88,
+  },
+  {
+    patterns: [
+      /auto\s+(de\s+)?admisión/i,
+      /auto\s+(de\s+)?admisión\s+(a\s+)?trámite/i,
+      /order\s+of\s+admission/i,
+    ],
+    document_type: 'resolucion_judicial',
+    area_codes: ['LIT'],
+    confidence: 0.87,
+  },
+  {
+    patterns: [
+      /informe\s+(de\s+)?compliance/i,
+      /compliance\s+report/i,
+      /informe\s+(de\s+)?cumplimiento\s+normativo/i,
+    ],
+    document_type: 'informe_compliance',
+    area_codes: ['LIT'],
+    confidence: 0.88,
+  },
+  {
+    patterns: [
+      /programa\s+(de\s+)?compliance/i,
+      /compliance\s+program/i,
+      /programa\s+(de\s+)?cumplimiento/i,
+      /modelo\s+(de\s+)?prevención\s+(de\s+)?delitos/i,
+    ],
+    document_type: 'programa_compliance',
+    area_codes: ['LIT'],
+    confidence: 0.9,
+  },
+
+  // ADM - Administrativo (3 patterns)
+  {
+    patterns: [
+      /licencia\s+(de\s+)?actividad/i,
+      /licencia\s+(de\s+)?apertura/i,
+      /activity\s+license/i,
+      /operating\s+(permit|license)/i,
+    ],
+    document_type: 'licencia_actividad',
+    area_codes: ['ADM'],
+    confidence: 0.88,
+  },
+  {
+    patterns: [
+      /subvención/i,
+      /ayuda\s+pública/i,
+      /grant\s+(agreement|award)/i,
+      /resolución\s+(de\s+)?concesión\s+(de\s+)?subvención/i,
+    ],
+    document_type: 'subvencion',
+    area_codes: ['ADM'],
+    confidence: 0.87,
+  },
+  {
+    patterns: [
+      /fdi\s+screening/i,
+      /inversiones\s+extranjeras\s+directas/i,
+      /foreign\s+direct\s+investment/i,
+      /control\s+(de\s+)?inversiones\s+extranjeras/i,
+    ],
+    document_type: 'fdi_screening',
+    area_codes: ['ADM'],
+    confidence: 0.9,
+  },
+
+  // LAB - Laboral (2 patterns)
+  {
+    patterns: [
+      /plan\s+(de\s+)?igualdad/i,
+      /equality\s+plan/i,
+      /gender\s+equality\s+plan/i,
+      /plan\s+(de\s+)?igualdad\s+(entre\s+)?mujeres\s+y\s+hombres/i,
+    ],
+    document_type: 'plan_igualdad',
+    area_codes: ['LAB'],
+    confidence: 0.9,
+  },
+  {
+    patterns: [
+      /ere|erte/i,
+      /expediente\s+(de\s+)?regulación\s+(de\s+)?empleo/i,
+      /expediente\s+temporal/i,
+      /collective\s+(redundancy|layoff)/i,
+    ],
+    document_type: 'ere_erte',
+    area_codes: ['LAB'],
     confidence: 0.9,
   },
 ];
@@ -469,7 +679,7 @@ Content excerpt:
 
 Return ONLY a JSON object:
 {
-  "document_type": "contrato_material|contrato_menor|acta_junta|escritura_constitucion|certificado_registro|informe_fiscal|nomina|convenio_colectivo|patente|marca|licencia|poliza_seguro|permiso_administrativo|resolucion_judicial|otro",
+  "document_type": "contrato_material|contrato_menor|acta_junta|escritura_constitucion|certificado_registro|informe_fiscal|nomina|convenio_colectivo|patente|marca|licencia|poliza_seguro|permiso_administrativo|resolucion_judicial|cuentas_anuales|informe_auditoria|certificado_rm|einf|politica_retributiva|demanda|informe_compliance|programa_compliance|licencia_actividad|subvencion|fdi_screening|plan_igualdad|ere_erte|otro",
   "document_subtype": "more specific type or null",
   "area_codes": ["MERC"|"CONT"|"FISC"|"LAB"|"PI"|"LIT"|"ADM"],
   "jurisdiction": "ES|UE|UK|US|otro|null",
@@ -518,7 +728,16 @@ const VALID_DOC_TYPES: DocumentType[] = [
   'contrato_material', 'contrato_menor', 'acta_junta', 'escritura_constitucion',
   'certificado_registro', 'informe_fiscal', 'nomina', 'convenio_colectivo',
   'patente', 'marca', 'licencia', 'poliza_seguro', 'permiso_administrativo',
-  'resolucion_judicial', 'otro'
+  'resolucion_judicial',
+  // CA types
+  'cuentas_anuales', 'informe_auditoria', 'certificado_rm', 'einf', 'politica_retributiva',
+  // LIT types
+  'demanda', 'informe_compliance', 'programa_compliance',
+  // ADM types
+  'licencia_actividad', 'subvencion', 'fdi_screening',
+  // LAB types
+  'plan_igualdad', 'ere_erte',
+  'otro'
 ];
 
 function validateDocType(value: unknown): DocumentType {
