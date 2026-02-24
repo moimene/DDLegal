@@ -309,13 +309,13 @@ export async function normalizeDocumentsBatch(
  */
 export async function getPendingNormalization(
   projectId: string
-): Promise<Array<{ document_id: string; name: string; uploaded_at: string }>> {
+): Promise<Array<{ document_id: string; name: string; created_at: string }>> {
   // Get documents without facts or with stale facts
   const { data: documents } = await supabaseAdmin
     .from('vdr_documents')
-    .select('id, name, uploaded_at, content_hash')
+    .select('id, name, created_at, content_hash')
     .eq('project_id', projectId)
-    .eq('is_deleted', false);
+    .in('status', ['uploaded', 'indexed', 'processing']);
 
   if (!documents) return [];
 
@@ -336,6 +336,6 @@ export async function getPendingNormalization(
     .map(doc => ({
       document_id: doc.id,
       name: doc.name,
-      uploaded_at: doc.uploaded_at,
+      created_at: doc.created_at,
     }));
 }

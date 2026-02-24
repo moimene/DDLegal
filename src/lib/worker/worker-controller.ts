@@ -600,14 +600,55 @@ async function executeConcludePhase(
 }
 
 async function computeProjectCoverage(projectId: string): Promise<CoverageSnapshot> {
-  // Query coverage from dd_fo_document_status
-  const { data, error } = await supabaseAdmin
-    .rpc('compute_project_coverage', { p_project_id: projectId });
+  // Query coverage stats from dd_fo_document_status
+  const { data: statusData, error } = await supabaseAdmin
+    .from('dd_fo_document_status')
+    .select(`
+      status,
+      dd_finding_objectives!inner(area_code)
+    `)
+    .eq('project_id', projectId);
 
-  if (error || !data) {
-    console.error('[worker-controller] Failed to compute coverage:', error);
+  if (error || !statusData || statusData.length === 0) {
+    if (error) {
+      console.error('[worker-controller] Failed to compute coverage:', error);
+    }
     return { by_area: {}, overall: 0 };
   }
 
-  return data as CoverageSnapshot;
+  // Calculate by area
+  const areaStats: Record<string, { total: number; analyzed: number }> = {};
+  let totalItems = 0;
+  let analyzedItems = 0;
+
+  for (const row of statusData) {
+    // Handle both array and object forms from Supabase join
+    const foData = row.dd_finding_objectives;
+    const areaCode = Array.isArray(foData)
+      ? (foData[0] as { area_code: string })?.area_code
+      : (foData as { area_code: string })?.area_code;
+
+    if (!areaCode) continue;
+
+    if (!areaStats[areaCode]) {
+      areaStats[areaCode] = { total: 0, analyzed: 0 };
+    }
+    areaStats[areaCode].total++;
+    totalItems++;
+
+    if (row.status === 'analyzed') {
+      areaStats[areaCode].analyzed++;
+      analyzedItems++;
+    }
+  }
+
+  const byArea: Record<string, number> = {};
+  for (const [area, stats] of Object.entries(areaStats)) {
+    byArea[area] = stats.total > 0 ? Math.round((stats.analyzed / stats.total) * 100) : 0;
+  }
+
+  return {
+    by_area: byArea,
+    overall: totalItems > 0 ? Math.round((analyzedItems / totalItems) * 100) : 0,
+  };
 }
