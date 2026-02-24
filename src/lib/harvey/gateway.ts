@@ -129,7 +129,14 @@ export class HarveyGateway {
             );
           }
 
-          const data = await response.json() as HarveyCompletionResponse;
+          const rawData = await response.json();
+          // Harvey API returns {response: "..."} but our interface expects {text: "..."}
+          const data: HarveyCompletionResponse = {
+            id: rawData.id || requestId,
+            text: rawData.response || rawData.text || '',
+            model: rawData.model || 'harvey-legal-v1',
+            usage: rawData.usage,
+          };
           return data;
         } catch (err) {
           if (err instanceof HarveyGatewayError) throw err;
