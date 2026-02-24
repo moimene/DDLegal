@@ -34,6 +34,8 @@ export interface WorkflowExecutionResult {
 
 export interface WorkflowFinding {
   title: string;
+  /** AI-generated executive summary (~200 chars, Spanish) */
+  summary?: string;
   severity: 'critical' | 'high' | 'medium' | 'low' | 'informational';
   probability: 'alta' | 'media' | 'baja';
   economic_impact?: {

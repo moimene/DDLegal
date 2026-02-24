@@ -268,6 +268,7 @@ export async function persistFindings(
       project_id: input.project_id,
       external_ref: extRef,
       title: f.title,
+      summary: f.summary || null, // AI-generated summary from workflow
       description: f.mitigation || null,
       severity: f.severity,
       probability: f.probability,
@@ -324,8 +325,15 @@ export async function persistFindings(
   // Create evidence links for findings with evidence_refs
   await linkEvidenceToFindings(insertedMap, inputsToInsert, externalRefs.filter(ref => !existingRefMap.has(ref)));
 
-  // Queue summary generation for new findings (fire-and-forget)
-  queueSummaryGeneration(insertedMap, inputsToInsert, externalRefs.filter(ref => !existingRefMap.has(ref)));
+  // Queue summary generation only for findings that don't have one (fallback for manual/import)
+  const findingsWithoutSummary = inputsToInsert.filter(input => !input.finding.summary);
+  if (findingsWithoutSummary.length > 0) {
+    const refsWithoutSummary = findingsWithoutSummary.map(input => {
+      const idx = inputsToInsert.indexOf(input);
+      return externalRefs.filter(ref => !existingRefMap.has(ref))[idx];
+    }).filter(Boolean);
+    queueSummaryGeneration(insertedMap, findingsWithoutSummary, refsWithoutSummary);
+  }
 
   return result;
 }

@@ -34,6 +34,7 @@ export interface RuleEvaluationResult {
   finding_generated: boolean;
   finding_data?: {
     title: string;
+    summary: string;
     description: string;
     evidence_refs: string[];
   };
@@ -108,6 +109,7 @@ export async function evaluateObjective(
     finding_generated: findingGenerated,
     finding_data: findingGenerated ? {
       title: `[${fo.objective_key}] ${fo.title}`,
+      summary: buildFindingSummary(fo, severityComputed, criteriaResults),
       description: buildFindingDescription(fo, criteriaResults),
       evidence_refs: criteriaResults
         .filter(cr => cr.evidence)
@@ -200,6 +202,42 @@ function buildFindingDescription(fo: FindingObjective, results: CriterionResult[
     .join('\n');
 
   return `${fo.description}\n\nCriterios evaluados:\n${criteriaText}`;
+}
+
+/**
+ * Build a concise executive summary (~200 chars) for the finding.
+ * Generated inline without external AI call.
+ */
+function buildFindingSummary(
+  fo: FindingObjective,
+  severity: string,
+  results: CriterionResult[]
+): string {
+  const severityMap: Record<string, string> = {
+    critical: 'crítico',
+    high: 'alto',
+    medium: 'medio',
+    low: 'bajo',
+    informational: 'informativo',
+  };
+
+  const passedCount = results.filter(r => r.result).length;
+  const totalCount = results.length;
+  const sev = severityMap[severity] || severity;
+
+  // Build a concise summary
+  let summary = `Riesgo ${sev} identificado en ${fo.area_code}: ${fo.title}`;
+
+  if (passedCount > 0) {
+    summary += `. ${passedCount}/${totalCount} criterios cumplidos.`;
+  }
+
+  // Truncate to ~200 chars
+  if (summary.length > 200) {
+    summary = summary.slice(0, 197) + '...';
+  }
+
+  return summary;
 }
 
 /**

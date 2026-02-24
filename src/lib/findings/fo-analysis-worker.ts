@@ -183,6 +183,7 @@ export async function runFOAnalysisWorker(
       if (evalResult.finding_generated && evalResult.finding_data) {
         const workflowFinding: WorkflowFinding = {
           title: evalResult.finding_data.title,
+          summary: evalResult.finding_data.summary,
           severity: evalResult.severity_computed as 'critical' | 'high' | 'medium' | 'low' | 'informational',
           probability: 'media', // Default
           timing: 'post_closing', // Default
