@@ -72,18 +72,20 @@ export class HarveyGateway {
         const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs);
 
         try {
-          const formData = new FormData();
-          formData.append('prompt', req.prompt);
-          if (req.system_prompt) formData.append('system_prompt', req.system_prompt);
-          if (req.client_matter_id) formData.append('client_matter_id', req.client_matter_id);
-          if (req.knowledge_sources) {
-            formData.append('knowledge_sources', JSON.stringify(req.knowledge_sources));
-          }
+          const requestBody: Record<string, unknown> = {
+            prompt: req.prompt,
+          };
+          if (req.system_prompt) requestBody.system_prompt = req.system_prompt;
+          if (req.client_matter_id) requestBody.client_matter_id = req.client_matter_id;
+          if (req.knowledge_sources) requestBody.knowledge_sources = req.knowledge_sources;
 
           const response = await fetch(this.config.endpoint, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${this.config.token}` },
-            body: formData,
+            headers: {
+              'Authorization': `Bearer ${this.config.token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
             signal: controller.signal,
           });
 
