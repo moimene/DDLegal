@@ -418,7 +418,7 @@ async function updateFODocumentStatus(
   objectiveId: string,
   status: 'analyzed' | 'skipped' | 'error'
 ): Promise<void> {
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from('dd_fo_document_status')
     .upsert(
       {
@@ -426,10 +426,14 @@ async function updateFODocumentStatus(
         document_id: documentId,
         objective_id: objectiveId,
         status,
-        evaluated_at: new Date().toISOString(),
+        analyzed_at: new Date().toISOString(),
       },
-      { onConflict: 'document_id,objective_id,project_id' }
+      { onConflict: 'project_id,objective_id,document_id' }
     );
+
+  if (error) {
+    console.error('[evaluate-phase] Failed to update FO document status:', error);
+  }
 }
 
 /**
