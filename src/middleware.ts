@@ -8,6 +8,7 @@ const PUBLIC_ROUTES = [
   '/api/gateway/whoami',
   '/api/gateway/health',
   '/api/cron/',           // Cron routes use CRON_SECRET, not Bearer auth
+  '/api/worker/trigger',  // Internal trigger uses x-cron-secret, not Bearer auth
 ];
 
 export async function middleware(req: NextRequest) {
