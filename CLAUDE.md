@@ -253,7 +253,7 @@ Consolidated workflow engine with enriched iteration context for Harvey AI:
 - HITL is **mandatory** for CONT, LAB, FISC, LIT area outputs.
 - Path alias: `@/*` maps to `./src/*`.
 - Design system: Garrigues tokens in `src/styles/tokens.css` — use `--g-*` CSS variables, never hardcode colors. Brand: `--g-brand-3308: #004438`. Font: Montserrat.
-- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602270001_seed_demo_users.sql`). Next available: `202602280012`.
+- Migration naming: `YYYYMMDDNNNN_snake_case.sql` (e.g., `202602270001_seed_demo_users.sql`). Next available: `202602280036`.
 - **dd_deal_risk_scores JSON formats**: `top_risks` and `deal_breakers` must be arrays of `ScoredFinding` objects (`{id, title, raw_score, weighted_score, is_deal_breaker, area_code}`), NOT plain strings. `area_scores` must be `{score, finding_count, critical_count}` objects, NOT plain numbers.
 - **RLS + project access**: Users must have an active entry in `dd_project_user_roles` with appropriate role for their project. Admin user needs CLO role on each project. RLS function `user_has_permission(project_id, permission)` checks `auth.uid()` against `dd_project_user_roles`.
 - Next.js dynamic params use `{ params }: { params: Promise<{ id: string }> }` pattern.
@@ -343,6 +343,7 @@ Auto-calculated on insert (`tier_auto_calculated`), overridable via `relevance_t
 - `GET /api/findings?project_id=...&tier=1,2&status=...&area_code=...&summary=true` — List/summary
 - `GET /api/findings/[id]` — Detail via RPC
 - `PATCH /api/findings/[id]` — Status transition, tier override, contingency link, field updates
+- `POST /api/findings/batch-summary` — Generate AI summaries for findings without one (limit 10-50)
 
 **Permissions (added to RolePermissions):**
 - `can_view_findings` — clo, pm, abogado, deal_sponsor, stakeholder, cliente_externo
@@ -411,6 +412,16 @@ Sidebar → Findings → Header + Filters → Tabla
 - Muestra chunks VDR vinculados via `dd_finding_evidence`
 - Cada item: título sección, tipo, página, similarity score, snippet
 - Link directo al documento en VDR: `/projects/[id]/vdr?doc={document_id}`
+
+**AI Summary (Harvey):**
+- Columna `summary` en `dd_findings` (~200 chars)
+- Generado automáticamente al crear finding via `persistFindings()`
+- Batch endpoint: `POST /api/findings/batch-summary` para findings existentes
+- Fallback local si Harvey no disponible
+- **Files:**
+  - `src/lib/findings/summary-generator.ts` — Harvey integration, batch processing
+  - `src/app/api/findings/batch-summary/route.ts` — Batch API (limit 10-50)
+- **UI:** Mostrado en tabla (bajo título) y panel de detalle (header, itálica)
 
 **Permisos requeridos:**
 - `can_view_findings` — ver página y lista
