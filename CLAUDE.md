@@ -1,6 +1,6 @@
 # DD Legal PMO
 
-Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 16 workflow templates (6 fases DD, 16/16 published), 57 skills, 35 report templates, Evidence Pack, Kanban, VDR, War Room, Observabilidad, **Finding-Centric Architecture** (dd_findings como unidad canónica), **Worker Architecture v1.0** (loop autónomo SENSE→NORMALIZE→EVALUATE→CONCLUDE) e **Incremental RAG + Report Rendering + Two-Level Cache**. 125 API routes, 30 E2E suites, 54 migrations. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
+Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 17 workflow templates (6 fases DD + 1 CA, 17/17 published), 65 skills (57 base + 8 CA), 35 report templates, Evidence Pack, Kanban, VDR, War Room, Observabilidad, **Finding-Centric Architecture** (dd_findings como unidad canónica), **Worker Architecture v1.0** (loop autónomo SENSE→NORMALIZE→EVALUATE→CONCLUDE) e **Incremental RAG + Report Rendering + Two-Level Cache**. 125 API routes, 30 E2E suites, 62 migrations. 69 Finding Objectives (54 base + 15 CA), 39 expected documents across 7 areas. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
 
 ## Stack
 
@@ -184,6 +184,19 @@ All seed data originates from `docs/output_v3/*.csv` (17 files). Schema mapping 
 | PI | `ef610832-083e-4512-8b7d-ad723f106ee6` |
 | ADM | `2493fc84-226f-4efb-955e-f89c88989562` |
 | LIT | `68bf73da-cfd7-4ab8-b990-b2e6132c2f43` |
+
+### Expected Documents per Area
+
+| Area | Count | Mandatory |
+|------|-------|-----------|
+| MERC | 13 | 8 |
+| CONT | 5 | 4 |
+| FISC | 4 | 3 |
+| LAB | 5 | 4 |
+| PI | 2 | 2 |
+| LIT | 5 | 2 |
+| ADM | 5 | 2 |
+| **Total** | **39** | **25** |
 
 ## Workflow Consolidation (2026-02-23)
 
