@@ -93,3 +93,13 @@ export {
   type AlertSeverity,
   type AlertCheckResult,
 } from './alerts';
+
+// G-19: Completeness Validator (Facts vs FO.data_required)
+export {
+  validateFactsCompleteness,
+  batchValidateCompleteness,
+  getDocumentCompleteness,
+  getFOCompleteness,
+  type DataRequirement,
+  type CompletenessResult,
+} from './completeness-validator';
