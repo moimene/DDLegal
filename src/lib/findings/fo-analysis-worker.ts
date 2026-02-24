@@ -77,11 +77,15 @@ export async function runFOAnalysisWorker(
 
   let aiCallsMade = 0;
 
+  console.log(`[FOWorker] Processing ${pendingItems.length} pending items for project ${cfg.projectId}`);
+
   for (const item of pendingItems) {
     if (aiCallsMade >= cfg.maxAiCallsPerRun) {
       console.log('[FOWorker] Reached AI call limit, stopping batch');
       break;
     }
+
+    console.log(`[FOWorker] Processing item ${item.id}, document ${item.document_id}`);
 
     try {
       // Mark as analyzing
@@ -106,20 +110,32 @@ export async function runFOAnalysisWorker(
       const fo = foData as FindingObjective;
 
       // Load document with chunks
-      const { data: docData } = await supabaseAdmin
+      // Note: vdr_documents uses 'category' not 'document_type'
+      const { data: docData, error: docError } = await supabaseAdmin
         .from('vdr_documents')
-        .select('id, content_hash, document_type, project_id')
+        .select('id, content_hash, category, project_id')
         .eq('id', item.document_id)
         .single();
 
+      if (docError) {
+        console.error(`[FOWorker] Document query error for ${item.document_id}:`, docError.message, docError.code);
+        await markAsError(item.id, `Document query error: ${docError.message}`);
+        result.errors++;
+        continue;
+      }
+
       if (!docData) {
+        console.error(`[FOWorker] Document not found: ${item.document_id}`);
         await markAsError(item.id, 'Document not found');
         result.errors++;
         continue;
       }
 
       // Check if content_hash unchanged (skip if already analyzed with same hash)
-      if (item.content_hash_at_analysis === docData.content_hash) {
+      // Only skip if we have a previous analysis hash AND it matches the current document hash
+      if (item.content_hash_at_analysis &&
+          docData.content_hash &&
+          item.content_hash_at_analysis === docData.content_hash) {
         await markAsSkipped(item.id);
         result.skipped++;
         continue;
@@ -134,7 +150,7 @@ export async function runFOAnalysisWorker(
 
       const facts: EvaluationFacts = {
         document_id: item.document_id,
-        document_type: docData.document_type ?? 'unknown',
+        document_type: docData.category ?? 'unknown',
         content_hash: docData.content_hash ?? '',
         chunks: (chunks ?? []).map(c => ({
           id: c.id,

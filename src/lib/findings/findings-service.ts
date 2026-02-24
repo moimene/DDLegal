@@ -350,9 +350,9 @@ async function linkEvidenceToFindings(
     for (const sourceId of refs) {
       evidenceRows.push({
         finding_id: findingId,
-        chunk_id: sourceId,
+        vdr_chunk_id: sourceId,
         link_method: 'workflow_output',
-        relevance_label: 'primary',
+        evidence_type: 'vdr_chunk',
       });
     }
   }
