@@ -101,10 +101,11 @@ function buildProjectGroups(projectId: string): NavGroup[] {
             items: [
                 { label: 'Kanban', icon: FolderKanban, path: `${base}/kanban` },
                 { label: 'Workflows', icon: Workflow, path: `${base}/workflows` },
+                { label: 'Findings', icon: ListChecks, path: `${base}/findings` },
                 { label: 'HITL Review', icon: UserCheck, path: `${base}/hitl` },
                 { label: 'Scoring', icon: Target, path: `${base}/scoring` },
             ],
-            separator: { label: 'Areas activas', afterIndex: 3 },
+            separator: { label: 'Areas activas', afterIndex: 4 },
         },
         {
             id: 'decision',
