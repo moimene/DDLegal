@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { generateEmbeddings } from '@/lib/embeddings';
 import { chunkText } from './chunker';
 import { computeContentHash } from './content-hash';
+import { extractPdfFromDocument, isPdfFile } from './pdf-extractor';
 import type { Chunk } from './chunker';
 
 // Worker Architecture v1.0: Post-chunking classification hook
@@ -28,11 +29,50 @@ async function processIngestion(jobId: string, documentId: string, versionId?: s
     const { data: doc } = await supabaseAdmin.from('vdr_documents').select('id, name, description, category, area_code, project_id').eq('id', documentId).single();
     if (!doc) throw new Error('Document not found');
 
+    // Check if document has a PDF version and attempt extraction
     let textContent = doc.description || doc.name;
+    let pdfExtracted = false;
+
+    // Fetch version metadata to check if it's a PDF
+    const { data: latestVersion } = await supabaseAdmin
+      .from('vdr_document_versions')
+      .select('id, file_name, mime_type, storage_path')
+      .eq('document_id', documentId)
+      .order('version_number', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (latestVersion && isPdfFile(latestVersion.file_name, latestVersion.mime_type)) {
+      console.log(`[ingest] Document ${documentId} is a PDF, attempting text extraction`);
+
+      const pdfResult = await extractPdfFromDocument(documentId);
+
+      if (pdfResult.success && pdfResult.text.trim().length > 0) {
+        console.log(`[ingest] PDF extraction successful: ${pdfResult.pageCount} pages, ${pdfResult.text.length} chars`);
+        textContent = pdfResult.text;
+        pdfExtracted = true;
+
+        // Log metadata if available
+        if (pdfResult.metadata.title) {
+          console.log(`[ingest] PDF title: ${pdfResult.metadata.title}`);
+        }
+        if (pdfResult.metadata.author) {
+          console.log(`[ingest] PDF author: ${pdfResult.metadata.author}`);
+        }
+      } else {
+        console.log(`[ingest] PDF extraction failed or empty, falling back to description: ${pdfResult.error || 'empty text'}`);
+      }
+    }
+
+    // Append version change notes if provided (for both PDF and non-PDF)
     if (versionId) {
       const { data: version } = await supabaseAdmin.from('vdr_document_versions').select('change_notes').eq('id', versionId).single();
-      if (version?.change_notes) textContent = version.change_notes + '\n\n' + textContent;
+      if (version?.change_notes) {
+        textContent = version.change_notes + '\n\n' + textContent;
+      }
     }
+
+    console.log(`[ingest] Processing document ${documentId}: ${pdfExtracted ? 'PDF extracted' : 'using description'}, ${textContent.length} chars`);
 
     // Level-1 cache: compute content hash for deduplication
     const contentHash = computeContentHash(textContent);
