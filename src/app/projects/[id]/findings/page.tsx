@@ -36,6 +36,7 @@ interface Finding {
   economic_impact_amount: number | null;
   economic_impact_currency: string | null;
   mitigation_recommended: string | null;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
   objective_id: string | null;
@@ -172,6 +173,7 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
     setLoading(true);
     try {
       const params = new URLSearchParams({ project_id: projectId });
+      params.append('include_inactive', 'true');
       if (filterSeverity !== 'all') params.append('severity', filterSeverity);
       if (filterStatus !== 'all') params.append('status', filterStatus);
       if (filterTier !== 'all') params.append('tier', filterTier);
@@ -527,15 +529,24 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
                         <div className="font-medium text-sm text-[var(--g-text)] line-clamp-1">
                           {finding.title}
                         </div>
-                        {finding.summary && (
+                        {finding.summary ? (
                           <div className="text-xs text-[var(--g-text-secondary)] mt-0.5 line-clamp-2">
                             {finding.summary}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-[var(--g-text-secondary)] mt-0.5 italic">
+                            Resumen Harvey en generación
                           </div>
                         )}
                         {finding.is_deal_breaker && (
                           <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] bg-red-100 text-red-700">
                             <AlertOctagon size={10} />
                             Deal Breaker
+                          </span>
+                        )}
+                        {!finding.is_active && (
+                          <span className="inline-flex items-center gap-1 mt-1 ml-1 px-1.5 py-0.5 rounded text-[10px] bg-gray-200 text-gray-700">
+                            Archivado
                           </span>
                         )}
                       </td>
@@ -589,9 +600,13 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
                       <h3 className="font-semibold text-[var(--g-text)]">
                         {selectedFinding.title}
                       </h3>
-                      {selectedFinding.summary && (
+                      {selectedFinding.summary ? (
                         <p className="mt-2 text-sm text-[var(--g-text-secondary)] italic">
                           {selectedFinding.summary}
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm text-[var(--g-text-secondary)] italic">
+                          Resumen Harvey en generación
                         </p>
                       )}
                     </div>
@@ -674,6 +689,11 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
                           HITL Requerido
                         </span>
                       )}
+                      {!selectedFinding.is_active && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-200 text-gray-700">
+                          Archivado
+                        </span>
+                      )}
                     </div>
 
                     {/* Evidence */}
@@ -712,15 +732,28 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
                                     )}
                                   </div>
                                 </div>
-                                {evidence.vdr_document_id && (
-                                  <Link
-                                    href={`/projects/${projectId}/vdr?doc=${evidence.vdr_document_id}`}
-                                    className="p-1 rounded hover:bg-[var(--g-hover)]"
-                                    title="Ver documento"
-                                  >
-                                    <ExternalLink size={12} />
-                                  </Link>
-                                )}
+                                <div className="flex items-center gap-1">
+                                  {evidence.vdr_document_id && (
+                                    <Link
+                                      href={`/projects/${projectId}/vdr?doc=${evidence.vdr_document_id}${evidence.page_number ? `&page=${evidence.page_number}` : ''}`}
+                                      className="p-1 rounded hover:bg-[var(--g-hover)]"
+                                      title="Ver documento fuente"
+                                    >
+                                      <ExternalLink size={12} />
+                                    </Link>
+                                  )}
+                                  {evidence.external_url && (
+                                    <a
+                                      href={evidence.external_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="p-1 rounded hover:bg-[var(--g-hover)]"
+                                      title="Ver fuente externa"
+                                    >
+                                      <Link2 size={12} />
+                                    </a>
+                                  )}
+                                </div>
                               </div>
                               {evidence.snippet && (
                                 <div className="text-xs text-[var(--g-text)] bg-[var(--g-card)] p-2 rounded border-l-2 border-[var(--g-brand-3308)] line-clamp-3">
@@ -736,56 +769,63 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
                     {/* Actions */}
                     <div className="pt-4 border-t border-[var(--g-border)]">
                       <h4 className="text-xs font-medium text-[var(--g-text-secondary)] mb-3">Acciones</h4>
-
-                      {/* Status Transitions */}
-                      <div className="mb-3">
-                        <div className="text-xs text-[var(--g-text-secondary)] mb-2">Cambiar Estado</div>
-                        <div className="flex flex-wrap gap-2">
-                          {VALID_TRANSITIONS[selectedFinding.status]?.map(nextStatus => (
-                            <button
-                              key={nextStatus}
-                              onClick={() => updateStatus(selectedFinding.id, nextStatus)}
-                              disabled={actionLoading}
-                              className="px-3 py-1.5 rounded text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
-                              style={{
-                                backgroundColor: `${STATUS_CONFIG[nextStatus]?.color}20`,
-                                color: STATUS_CONFIG[nextStatus]?.color,
-                              }}
-                            >
-                              → {STATUS_CONFIG[nextStatus]?.label}
-                            </button>
-                          ))}
-                          {(!VALID_TRANSITIONS[selectedFinding.status] || VALID_TRANSITIONS[selectedFinding.status].length === 0) && (
-                            <span className="text-xs text-[var(--g-text-secondary)]">Estado final - sin transiciones disponibles</span>
-                          )}
+                      {!selectedFinding.is_active ? (
+                        <div className="text-xs text-[var(--g-text-secondary)]">
+                          Finding archivado. Solo lectura para mantener trazabilidad histórica.
                         </div>
-                      </div>
+                      ) : (
+                        <>
+                          {/* Status Transitions */}
+                          <div className="mb-3">
+                            <div className="text-xs text-[var(--g-text-secondary)] mb-2">Cambiar Estado</div>
+                            <div className="flex flex-wrap gap-2">
+                              {VALID_TRANSITIONS[selectedFinding.status]?.map(nextStatus => (
+                                <button
+                                  key={nextStatus}
+                                  onClick={() => updateStatus(selectedFinding.id, nextStatus)}
+                                  disabled={actionLoading}
+                                  className="px-3 py-1.5 rounded text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
+                                  style={{
+                                    backgroundColor: `${STATUS_CONFIG[nextStatus]?.color}20`,
+                                    color: STATUS_CONFIG[nextStatus]?.color,
+                                  }}
+                                >
+                                  → {STATUS_CONFIG[nextStatus]?.label}
+                                </button>
+                              ))}
+                              {(!VALID_TRANSITIONS[selectedFinding.status] || VALID_TRANSITIONS[selectedFinding.status].length === 0) && (
+                                <span className="text-xs text-[var(--g-text-secondary)]">Estado final - sin transiciones disponibles</span>
+                              )}
+                            </div>
+                          </div>
 
-                      {/* Tier Override */}
-                      <div>
-                        <div className="text-xs text-[var(--g-text-secondary)] mb-2">Cambiar Tier</div>
-                        <div className="flex gap-2">
-                          {[1, 2, 3].map(tier => (
-                            <button
-                              key={tier}
-                              onClick={() => {
-                                const justification = prompt(`Justificación para cambiar a Tier ${tier}:`);
-                                if (justification) {
-                                  updateTier(selectedFinding.id, tier, justification);
-                                }
-                              }}
-                              disabled={actionLoading || selectedFinding.relevance_tier === tier}
-                              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50 ${
-                                selectedFinding.relevance_tier === tier
-                                  ? 'bg-[var(--g-brand-3308)] text-white'
-                                  : 'bg-[var(--g-bg)] hover:bg-[var(--g-hover)]'
-                              }`}
-                            >
-                              Tier {tier}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                          {/* Tier Override */}
+                          <div>
+                            <div className="text-xs text-[var(--g-text-secondary)] mb-2">Cambiar Tier</div>
+                            <div className="flex gap-2">
+                              {[1, 2, 3].map(tier => (
+                                <button
+                                  key={tier}
+                                  onClick={() => {
+                                    const justification = prompt(`Justificación para cambiar a Tier ${tier}:`);
+                                    if (justification) {
+                                      updateTier(selectedFinding.id, tier, justification);
+                                    }
+                                  }}
+                                  disabled={actionLoading || selectedFinding.relevance_tier === tier}
+                                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50 ${
+                                    selectedFinding.relevance_tier === tier
+                                      ? 'bg-[var(--g-brand-3308)] text-white'
+                                      : 'bg-[var(--g-bg)] hover:bg-[var(--g-hover)]'
+                                  }`}
+                                >
+                                  Tier {tier}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Source Info */}

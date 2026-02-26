@@ -591,7 +591,9 @@ export async function getProjectFindings(
   options?: {
     status?: FindingStatus[];
     tier?: number[];
+    severity?: string[];
     area_code?: string;
+    include_inactive?: boolean;
     limit?: number;
     offset?: number;
   },
@@ -602,11 +604,18 @@ export async function getProjectFindings(
     .eq('project_id', projectId)
     .order('raw_score', { ascending: false });
 
+  if (!options?.include_inactive) {
+    query = query.eq('is_active', true);
+  }
+
   if (options?.status && options.status.length > 0) {
     query = query.in('status', options.status);
   }
   if (options?.tier && options.tier.length > 0) {
     query = query.in('relevance_tier', options.tier);
+  }
+  if (options?.severity && options.severity.length > 0) {
+    query = query.in('severity', options.severity);
   }
   if (options?.area_code) {
     query = query.eq('area_code', options.area_code);

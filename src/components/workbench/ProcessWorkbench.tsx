@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     FileCheck, AlertTriangle, Shield, Upload, ChevronRight,
     CheckCircle2, Eye, Plus, FileText, TrendingDown,
@@ -24,7 +24,7 @@ interface ChecklistItem {
 
 interface Finding {
     id: string;
-    severity: 'critical' | 'high' | 'medium' | 'low';
+    severity: 'critical' | 'high' | 'medium' | 'low' | 'informational';
     title: string;
     description: string;
     groundingScore: number;
@@ -72,45 +72,6 @@ const MOCK_CHECKLIST: ChecklistItem[] = [
     { id: 'doc-8', name: 'Protocolo de desconexion digital', received: false, status: 'waived' },
     { id: 'doc-9', name: 'Certificados de Seguridad Social', received: true, status: 'received' },
     { id: 'doc-10', name: 'Litigios laborales pendientes', received: false, status: 'requested' },
-];
-
-const MOCK_FINDINGS: Finding[] = [
-    {
-        id: 'find-1',
-        severity: 'critical',
-        title: 'Incumplimiento plan de igualdad',
-        description: 'La empresa no ha actualizado el plan de igualdad conforme a las modificaciones del RD 901/2020. Se detectan deficiencias en el diagnostico de situacion y medidas correctoras obsoletas.',
-        groundingScore: 92,
-        skillName: 'analizar-plan-igualdad',
-        createdAt: '2026-02-18',
-    },
-    {
-        id: 'find-2',
-        severity: 'high',
-        title: 'Contratos temporales sin causa justificada',
-        description: 'Se identifican 14 contratos temporales que carecen de causa de temporalidad conforme al art. 15 ET tras la reforma laboral 2021. Riesgo de conversion a indefinidos.',
-        groundingScore: 87,
-        skillName: 'verificar-contratos-temporales',
-        createdAt: '2026-02-19',
-    },
-    {
-        id: 'find-3',
-        severity: 'medium',
-        title: 'Registro horario incompleto',
-        description: 'El sistema de registro de jornada presenta lagunas en 3 de los 8 centros de trabajo revisados. Potencial infraccion grave conforme al art. 7.5 LISOS.',
-        groundingScore: 74,
-        skillName: 'verificar-registro-jornada',
-        createdAt: '2026-02-20',
-    },
-    {
-        id: 'find-4',
-        severity: 'low',
-        title: 'Clausula de no competencia atipica',
-        description: 'Se detectan pactos de no competencia post-contractual en 3 directivos cuya compensacion economica podria ser insuficiente segun jurisprudencia reciente del TS.',
-        groundingScore: 65,
-        skillName: 'analizar-pactos-no-competencia',
-        createdAt: '2026-02-20',
-    },
 ];
 
 const MOCK_CONTINGENCIES: Contingency[] = [
@@ -164,8 +125,42 @@ function getGroundingColor(score: number): string {
 
 export default function ProcessWorkbench({ projectId, areaCode, areaName }: ProcessWorkbenchProps) {
     const [checklist, setChecklist] = useState<ChecklistItem[]>(MOCK_CHECKLIST);
-    const findings = MOCK_FINDINGS;
+    const [findings, setFindings] = useState<Finding[]>([]);
     const contingencies = MOCK_CONTINGENCIES;
+
+    const authHeaders = useCallback((): Record<string, string> => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('dd_session_token') : null;
+        return token ? { Authorization: `Bearer ${token}` } : {};
+    }, []);
+
+    const loadFindings = useCallback(async () => {
+        if (!projectId) return;
+        const params = new URLSearchParams({
+            project_id: projectId,
+            area_code: areaCode,
+        });
+        const res = await fetch(`/api/findings?${params.toString()}`, { headers: authHeaders() });
+        if (!res.ok) return;
+
+        const json = await res.json();
+        const rows = Array.isArray(json.data) ? json.data : [];
+        const mapped: Finding[] = rows.map((row: Record<string, unknown>) => ({
+            id: String(row.id || ''),
+            severity: (row.severity as Finding['severity']) || 'low',
+            title: String(row.title || 'Sin titulo'),
+            description: String(row.summary || row.description || 'Sin descripcion'),
+            groundingScore: Number(row.raw_score || 0),
+            skillName: String(row.source_type || 'manual_entry'),
+            createdAt: typeof row.created_at === 'string'
+                ? new Date(row.created_at).toLocaleDateString('es-ES')
+                : '—',
+        }));
+        setFindings(mapped);
+    }, [areaCode, authHeaders, projectId]);
+
+    useEffect(() => {
+        loadFindings().catch(() => {});
+    }, [loadFindings]);
 
     const receivedCount = checklist.filter(d => d.received).length;
     const totalCount = checklist.length;
@@ -184,9 +179,6 @@ export default function ProcessWorkbench({ projectId, areaCode, areaName }: Proc
             ),
         );
     };
-
-    // Suppress unused var warning — projectId will be used for API calls
-    void projectId;
 
     return (
         <div
@@ -603,7 +595,8 @@ export default function ProcessWorkbench({ projectId, areaCode, areaName }: Proc
                             }}
                         >
                             {findings.map((finding) => {
-                                const sevCfg = SEVERITY_CONFIG[finding.severity];
+                                const sevCfg = SEVERITY_CONFIG[finding.severity as keyof typeof SEVERITY_CONFIG]
+                                    || { label: 'Info', color: 'var(--g-text-muted)' };
                                 const groundingColor = getGroundingColor(finding.groundingScore);
                                 return (
                                     <div

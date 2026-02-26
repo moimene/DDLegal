@@ -69,6 +69,7 @@ const NAV_SECTION_CONFIGURACION: NavSection = {
         { label: 'Gestion Herramientas', icon: Wrench, path: '/configuracion/herramientas' },
         { label: 'Gestion Skills', icon: BookOpen, path: '/configuracion/skills' },
         { label: 'Plantillas', icon: FileText, path: '/configuracion/templates' },
+        { label: 'Findings ABM', icon: ListChecks, path: '/configuracion/findings' },
         { label: 'Dominios', icon: ListChecks, path: '/configuracion/dominios' },
         { label: 'Seguridad', icon: ShieldCheck, path: '/configuracion/seguridad' },
         { label: 'Observabilidad', icon: Activity, path: '/observability' },

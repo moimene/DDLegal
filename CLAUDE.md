@@ -1,11 +1,11 @@
 # DD Legal PMO
 
-Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 17 workflow templates (6 fases DD + 1 CA, 17/17 published), 65 skills (57 base + 8 CA), 35 report templates, Evidence Pack, Kanban, VDR, War Room, Observabilidad, **Finding-Centric Architecture** (dd_findings como unidad canónica con AI summaries), **Worker Architecture v1.0** (loop autónomo SENSE→NORMALIZE→EVALUATE→CONCLUDE) e **Incremental RAG + Report Rendering + Two-Level Cache**. 126 API routes, 30 E2E suites, 63 migrations. 69 Finding Objectives (54 base + 15 CA), 39 expected documents across 7 areas. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
+Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n8n. Gestiona proyectos DD end-to-end con 17 workflow templates (6 fases DD + 1 CA, 17/17 published), 65 skills (57 base + 8 CA), 35 report templates, Evidence Pack, Kanban, VDR, War Room, Observabilidad, **Finding-Centric Architecture** (dd_findings como unidad canónica con AI summaries + ABM sin hardcodes), **Worker Architecture v1.0** (loop autónomo SENSE→NORMALIZE→EVALUATE→CONCLUDE) e **Incremental RAG + Report Rendering + Two-Level Cache**. 134 API routes, 30 E2E suites, 75 migrations. 69 Finding Objectives (54 base + 15 CA), 39 expected documents across 7 areas. 3 proyectos sinteticos (GREEN/AMBER/RED) con datos completos para demo. **Desplegado en produccion**: `dd-legal-pmo.vercel.app`.
 
 ## Stack
 
 - **Frontend**: Next.js 14 (App Router), React 18, Zustand, TanStack Table, Lucide icons, Montserrat (Garrigues)
-- **Backend**: Next.js API routes (120 endpoints), Supabase (Postgres + RLS + pgvector + BM25)
+- **Backend**: Next.js API routes (134 endpoints), Supabase (Postgres + RLS + pgvector + BM25)
 - **AI**: Harvey AI gateway, OpenAI embeddings (text-embedding-3-small, 1536d)
 - **Infra**: Vercel (produccion: `dd-legal-pmo.vercel.app`), Supabase hosted, n8n workflows
 - **Tests**: Playwright E2E (30 suites, 293+ tests), Vitest unit tests
@@ -26,7 +26,7 @@ Plataforma interna de Due Diligence legal: Next.js 14 + Supabase + Harvey AI + n
 ```
 src/
   app/
-    api/                    # 120 API routes across 30+ groups
+    api/                    # 134 API routes across 30+ groups
       ai/                   # classify, suggest
       alerts/               # SLA alerts
       auth/                 # login, me, roles, setup-test-users
@@ -43,7 +43,7 @@ src/
         rag/query/          # S0: Vault RAG query endpoint
         vault/sync/         # S4→S0: VDR to Harvey Vault sync
       reports/              # Report generation: final, red-flags, workflow, pdf, md, compare, export, generate
-      findings/             # Finding CRUD: list, detail, PATCH (status/tier/link), batch-summary
+      findings/             # Finding ABM: list (+include_inactive), create manual, detail, PATCH, soft-delete, batch-summary
       scoring/              # H3: Deal Risk Score (POST/GET per project)
       war-room/             # S6: dashboard, decisions, red-flags, export, negotiation-actions, spa-mapping, timeline, negotiation-dashboard, decision-resolution
       tasks/                # [id]/status PATCH (authenticated task status update)
@@ -87,7 +87,7 @@ src/
     tokens.css              # Garrigues design tokens (--g-* CSS variables)
   middleware.ts             # Auth + feature flag middleware
 supabase/
-  migrations/               # 50 SQL migrations (RLS, pgvector, seeds, kanban, workflows, observability, security hardening, BM25, H3 scoring, seed_v3_schema, RAG cache, findings)
+  migrations/               # 75 SQL migrations (RLS, pgvector, seeds, kanban, workflows, observability, security hardening, BM25, H3 scoring, seed_v3_schema, RAG cache, findings)
 e2e/                        # 29 Playwright test suites (257 passed, 0 failed)
 vercel.json                 # Vercel config: cron job (audit-sync every 15 min)
 scripts/
@@ -315,6 +315,10 @@ El "hallazgo" (finding) es la unidad mínima de gestión del DD. Implementado vi
 
 RLS habilitado en las 3 tablas. 7 funciones RPC: `validate_finding_transition`, `get_finding_with_evidence`, `get_project_findings_summary`, `compute_finding_score`, `compute_finding_tier`, `compute_project_coverage`, `get_findings_by_area`.
 
+**Evolución de esquema Findings (2 migrations adicionales):**
+- `202602280035_add_finding_summary.sql` — columna `summary` + índice parcial
+- `202602280036_add_findings_soft_delete.sql` — `is_active`, `archived_at`, `archived_by`, `archive_reason` + índice `(project_id, is_active, updated_at DESC)`
+
 ### Finding Status Lifecycle (10 estados)
 
 `identified → under_review → validated → contested → accepted → mitigated → reported → negotiated → resolved / dismissed`
@@ -340,9 +344,11 @@ Auto-calculated on insert (`tier_auto_calculated`), overridable via `relevance_t
 - `src/lib/workflows/instance-runner.ts` — `resolveFindingIds()` maps finding_ref → dd_findings.id for negotiation actions
 
 **API Routes:**
-- `GET /api/findings?project_id=...&tier=1,2&status=...&area_code=...&summary=true` — List/summary
+- `GET /api/findings?project_id=...&tier=1,2&status=...&area_code=...&summary=true&include_inactive=true|false` — List/summary
+- `POST /api/findings` — Create manual finding (project-scoped)
 - `GET /api/findings/[id]` — Detail via RPC
 - `PATCH /api/findings/[id]` — Status transition, tier override, contingency link, field updates
+- `DELETE /api/findings/[id]` — Soft-delete (archive) with traceability fields
 - `POST /api/findings/batch-summary` — Generate AI summaries for findings without one (limit 10-50)
 
 **Permissions (added to RolePermissions):**
@@ -361,7 +367,7 @@ Auto-calculated on insert (`tier_auto_calculated`), overridable via `relevance_t
 - `severity`: critical, high, medium, low, informational
 - `probability`: certain, alta, probable, media, possible, baja, remote
 
-**Events (3 new):** `finding_status_changed`, `finding_tier_changed`, `finding_updated` — emitted via event bus, persisted in `dd_event_log`, broadcast via Supabase Realtime.
+**Events (5 new):** `finding_created`, `finding_archived`, `finding_status_changed`, `finding_tier_changed`, `finding_updated` — emitted via event bus, persisted in `dd_event_log`, broadcast via Supabase Realtime.
 
 ### Findings UI (Feb 2026)
 
@@ -433,6 +439,14 @@ Sidebar → Findings → Header + Filters → Tabla
 - `can_change_finding_tier` — override de tier con justificación
 - `can_resolve_findings` — transición a resolved/dismissed
 
+### Findings Admin Console (ABM, sin hardcodes)
+
+- Nueva consola en `/configuracion/findings` con dos pestañas:
+  - `Catálogo de Findings` (global): alta, edición, desactivación lógica de `dd_finding_objectives`
+  - `Findings por Proyecto` (operativo): alta manual, edición y baja lógica en `dd_findings`
+- Navegación integrada en sidebar: `Configuracion -> Findings ABM`
+- `ProcessWorkbench` dejó de depender de findings mockeados en runtime; carga findings por `GET /api/findings`
+
 ### Fase C — Migrate Reads (COMPLETED)
 
 All major read paths now support `FINDINGS_FIRST` feature flag. When OFF (default), legacy paths remain active. When ON, reads shift to `dd_findings`.
@@ -496,7 +510,7 @@ Bidirectional FK: all 19 contingencies have `finding_id` set, all 19 findings ha
 | `src/lib/findings/objective-resolver.ts` | Resolver de FOs aplicables por contexto |
 | `src/lib/findings/rule-evaluator.ts` | Evaluador de criterios con audit trail |
 | `src/lib/findings/fo-analysis-worker.ts` | Worker iterativo para procesar docs pendientes |
-| `src/app/api/finding-objectives/route.ts` | GET catálogo FOs |
+| `src/app/api/finding-objectives/route.ts` | CRUD catálogo FOs (GET/POST/PATCH/DELETE) |
 | `src/app/api/scoring/config/route.ts` | GET config scoring |
 | `src/app/api/cron/fo-analysis/route.ts` | Cron cada 5 min |
 | `src/app/api/fo/coverage/route.ts` | GET coverage stats por proyecto |
@@ -509,7 +523,10 @@ Bidirectional FK: all 19 contingencies have `finding_id` set, all 19 findings ha
 **Feature flag:** `FINDING_OBJECTIVES=true` (requires `FINDINGS_FIRST=true`)
 
 **APIs:**
-- `GET /api/finding-objectives?area_code=...&deal_type=...&jurisdiction=...`
+- `GET /api/finding-objectives?area_code=...&deal_type=...&jurisdiction=...&include_inactive=true|false`
+- `POST /api/finding-objectives`
+- `PATCH /api/finding-objectives`
+- `DELETE /api/finding-objectives` (soft-delete `is_active=false`)
 - `GET /api/scoring/config?deal_type=...&jurisdiction=...`
 - `GET /api/fo/coverage?project_id=...`
 - `GET /api/cron/fo-analysis` (protected by CRON_SECRET)

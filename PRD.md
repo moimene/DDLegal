@@ -1,5 +1,5 @@
 # PRD - DD Legal PMO v3.0
-**Ultima actualizacion: 24 febrero 2026 — Desplegado en produccion: `dd-legal-pmo.vercel.app`**
+**Ultima actualizacion: 26 febrero 2026 — Desplegado en produccion: `dd-legal-pmo.vercel.app`**
 
 ## 1. Contexto y problema
 
@@ -506,10 +506,11 @@ El "hallazgo" (finding) se convierte en la **unidad mínima de gestión** del DD
 1. **dd_findings** — Tabla canónica (30+ columnas, 9 CHECK constraints, 10-state lifecycle).
 2. **dd_finding_evidence** — Enlace N:M finding↔chunk VDR.
 3. **dd_report_findings** — Enlace N:M finding↔report.
-4. **findings-service.ts** — CRUD completo: `persistFindings()`, `transitionFindingStatus()`, `overrideFindingTier()`, `linkFindingToContingency()`.
+4. **findings-service.ts** — Capa central de persistencia y consultas: `persistFindings()`, `transitionFindingStatus()`, `overrideFindingTier()`, `linkFindingToContingency()`, `getProjectFindings()`.
 5. **Dual-Write** — `engine.ts` y `instance-runner.ts` inyectan findings en las 4 rutas de ejecución de workflows.
 6. **6 consumers migrados** — deal-risk scoring, red-flag report, war-room dashboard/red-flags, report-generator, final-report compiler. Todos con fallback legacy.
 7. **21 findings backfilled** — 19 de contingencias, 2 de workflow metadata JSONB.
+8. **Consola ABM Findings** — `/configuracion/findings` con doble nivel: catalogo global de objetivos + findings operativos por proyecto.
 
 **Lifecycle (10 estados):** `identified → under_review → validated → contested → accepted → mitigated → reported → negotiated → resolved / dismissed`
 
@@ -522,13 +523,24 @@ El "hallazgo" (finding) se convierte en la **unidad mínima de gestión** del DD
 - Fallback local si Harvey no disponible
 - UI: mostrado en tabla (bajo título) y panel de detalle
 
-**DB (9 migrations: 202602280004–011, 202602280035):** 3 tablas + finding_id FK en tablas existentes + RLS + 7 RPCs + CHECK constraints + backfill + summary column.
+**DB (10 migrations findings: 202602280004–011, 202602280035, 202602280036):** 3 tablas + finding_id FK en tablas existentes + RLS + 7 RPCs + CHECK constraints + backfill + summary column + soft-delete (`is_active`, `archived_at`, `archived_by`, `archive_reason`).
 
-**API (3 endpoints):**
+**API findings (6 endpoints):**
 ```
-GET    /api/findings?project_id=...&tier=...&status=...&area_code=...&summary=true
+GET    /api/findings?project_id=...&tier=...&status=...&area_code=...&summary=true&include_inactive=true|false
+POST   /api/findings
 GET    /api/findings/[id]
 PATCH  /api/findings/[id]
+DELETE /api/findings/[id]   # baja logica (is_active=false)
+POST   /api/findings/batch-summary
+```
+
+**API catalogo objetivos (4 endpoints):**
+```
+GET    /api/finding-objectives?area_code=...&deal_type=...&jurisdiction=...&include_inactive=true|false
+POST   /api/finding-objectives
+PATCH  /api/finding-objectives
+DELETE /api/finding-objectives   # soft-delete (is_active=false)
 ```
 
 **Feature flag:** `FINDINGS_FIRST` — cuando ON, lecturas usan `dd_findings`. Actualmente OFF (dual-write only).
@@ -538,11 +550,11 @@ PATCH  /api/findings/[id]
 2. Dual-write en todas las rutas de ejecución de workflows.
 3. 6 consumers con FINDINGS_FIRST switch y fallback.
 4. Backfill completo (21 findings, bidirectional FK).
-5. API CRUD con permisos granulares (4 permissions).
+5. API ABM findings + catalogo de objetivos sin hardcodes runtime, con permisos granulares y baja logica trazable.
 6. AI summary generado inline en workflow Harvey (~200 chars, español).
 7. Batch endpoint para generar summaries de findings existentes.
 
-**Estado actual:** ✅ Fases A-E.2.5 completadas + AI Summaries. FINDINGS_FIRST=on y FINDING_OBJECTIVES=on en producción. 54 Finding Objectives seeded (7 áreas). 37 findings con AI summary. 36 E2E tests (`@fo` tag). Crons activos cada 5 min (fo-analysis, worker-cycle). Pendiente Fase E.3-E.4 (validar consumidores + cleanup legacy).
+**Estado actual:** ✅ Fases A-E.2.5 completadas + AI Summaries + ABM Findings. FINDINGS_FIRST=on y FINDING_OBJECTIVES=on en producción. 54 Finding Objectives seeded (7 áreas). 37 findings con AI summary. Consola `/configuracion/findings` operativa para alta/edicion/baja logica de objetivos y findings por proyecto. 36 E2E tests (`@fo` tag). Crons activos cada 5 min (fo-analysis, worker-cycle). Pendiente Fase E.3-E.4 (validar consumidores + cleanup legacy).
 
 ### 4.C Pendiente (Horizonte 2/3)
 
@@ -569,7 +581,7 @@ PATCH  /api/findings/[id]
 ### Stack
 - **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Garrigues Design System.
 - **State**: Zustand 5.0 (client), UserContext (auth/roles).
-- **Backend**: Next.js API Routes (120 endpoints server-side).
+- **Backend**: Next.js API Routes (134 endpoints server-side).
 - **Base de datos**: Supabase (PostgreSQL + RLS + pgvector).
 - **IA**: Harvey AI via Harvey Gateway (con fallback a n8n).
 - **Orquestacion**: n8n Cloud (12 workflows, migracion progresiva a gateway).
@@ -750,12 +762,22 @@ GET  /api/war-room/[project_id]/negotiation-actions   -> { actions[] }
 PATCH  /api/tasks/[id]/status                 -> { success, task } (status validation: backlog/todo/in_progress/review/blocked/done/cancelled)
 ```
 
-#### Findings (4)
+#### Findings (6)
 ```
-GET    /api/findings?project_id=X&tier=1,2&status=...  -> { findings[], meta }
+GET    /api/findings?project_id=X&tier=1,2&status=...&include_inactive=false  -> { findings[], meta }
+POST   /api/findings                                            -> { success, data }
 GET    /api/findings/[id]                               -> { finding, evidence[], reports[] }
 PATCH  /api/findings/[id]                               -> { success, finding }
+DELETE /api/findings/[id]                               -> { success, finding } (soft delete)
 POST   /api/findings/batch-summary                      -> { generated, errors, message }
+```
+
+#### Finding Objectives (4)
+```
+GET    /api/finding-objectives?area_code=...&include_inactive=false  -> { objectives[], count }
+POST   /api/finding-objectives                                        -> { success, objective }
+PATCH  /api/finding-objectives                                        -> { success, objective }
+DELETE /api/finding-objectives                                        -> { success, objective } (is_active=false)
 ```
 
 #### Report Export (2)
@@ -1007,7 +1029,7 @@ Semana 6-10: S6 (War Room) — cuando S2 + S3 tienen datos
 
 | Servicio | Instancia | Uso |
 |----------|-----------|-----|
-| Vercel | dd-legal-pmo (`prj_c6BXNArsGxvSeM1k3bKqthgHQpYP`) | Frontend + API Routes (120 endpoints) ✅ LIVE |
+| Vercel | dd-legal-pmo (`prj_c6BXNArsGxvSeM1k3bKqthgHQpYP`) | Frontend + API Routes (134 endpoints) ✅ LIVE |
 | Supabase | mxanelzxyaklvuypuafa (NexusDD) | Base de datos + RLS + pgvector + Auth |
 | n8n Cloud | mmenendeza.app.n8n.cloud | Orquestacion IA + Agent Pipeline + Report Pipeline (12 workflows, migracion progresiva) |
 | Harvey AI | eu.api.harvey.ai | LLM legal especializado (via Gateway) |

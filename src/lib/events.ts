@@ -32,6 +32,8 @@ export type DDEvent =
   | { type: 'contingency_updated'; payload: { contingency_id: string; project_id: string; field: string; old_value?: string; new_value?: string } }
   | { type: 'project_milestone'; payload: { project_id: string; milestone: string; coverage_pct: number } }
   // Finding-Centric Architecture events
+  | { type: 'finding_created'; payload: { finding_id: string; project_id: string; area_code: string; source_type: string; created_by?: string } }
+  | { type: 'finding_archived'; payload: { finding_id: string; project_id: string; archived_by?: string; archive_reason?: string | null; already_inactive?: boolean } }
   | { type: 'finding_status_changed'; payload: { finding_id: string; project_id: string; old_status: string; new_status: string; transitioned_by?: string } }
   | { type: 'finding_tier_changed'; payload: { finding_id: string; project_id: string; old_tier: number; new_tier: number; overridden_by?: string; justification?: string } }
   | { type: 'finding_updated'; payload: { finding_id: string; project_id: string; updated_fields: string[] } };
@@ -88,6 +90,10 @@ const EVENT_DESCRIPTIONS: Record<DDEvent['type'], (p: Record<string, unknown>) =
     `Contingencia actualizada (campo: ${p.field})`,
   project_milestone: (p) =>
     `Hito alcanzado: ${p.milestone} (${p.coverage_pct}%)`,
+  finding_created: (p) =>
+    `Hallazgo creado en area ${p.area_code}`,
+  finding_archived: (p) =>
+    `Hallazgo archivado${p.archive_reason ? ` (${p.archive_reason})` : ''}`,
   finding_status_changed: (p) =>
     `Hallazgo: estado ${p.old_status} → ${p.new_status}`,
   finding_tier_changed: (p) =>
@@ -130,6 +136,8 @@ const EVENT_SEVERITY: Record<DDEvent['type'], EventSeverity> = {
   hitl_decision_made: 'success',
   contingency_updated: 'warning',
   project_milestone: 'success',
+  finding_created: 'success',
+  finding_archived: 'warning',
   finding_status_changed: 'info',
   finding_tier_changed: 'warning',
   finding_updated: 'info',
@@ -157,6 +165,8 @@ const EVENT_ICONS: Record<DDEvent['type'], string> = {
   hitl_decision_made: 'UserCheck',
   contingency_updated: 'Shield',
   project_milestone: 'Flag',
+  finding_created: 'Sparkles',
+  finding_archived: 'Archive',
   finding_status_changed: 'ArrowRightLeft',
   finding_tier_changed: 'Layers',
   finding_updated: 'Pencil',
