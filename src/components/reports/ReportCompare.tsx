@@ -63,9 +63,9 @@ function truncateValue(val: unknown, maxLen: number = 150): string {
 }
 
 const CHANGE_TYPE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: typeof Plus }> = {
-    added: { label: 'Anadido', color: 'var(--status-success)', bg: 'rgba(22, 163, 74, 0.08)', icon: Plus },
-    removed: { label: 'Eliminado', color: 'var(--status-error)', bg: 'rgba(220, 38, 38, 0.08)', icon: Minus },
-    modified: { label: 'Modificado', color: 'var(--status-warning)', bg: 'rgba(202, 138, 4, 0.08)', icon: Pencil },
+    added: { label: 'Anadido', color: 'var(--status-success)', bg: 'var(--g-source-bg)', icon: Plus },
+    removed: { label: 'Eliminado', color: 'var(--status-error)', bg: 'var(--g-priority-p0-bg)', icon: Minus },
+    modified: { label: 'Modificado', color: 'var(--status-warning)', bg: 'var(--g-priority-p2-bg)', icon: Pencil },
 };
 
 function ScoreBadge({ score }: { score: number }) {
@@ -472,7 +472,7 @@ export default function ReportCompare({
                                                         fontFamily: 'monospace',
                                                         padding: '4px 6px',
                                                         borderRadius: 'var(--g-radius-sm)',
-                                                        backgroundColor: 'rgba(220, 38, 38, 0.05)',
+                                                        backgroundColor: 'hsla(0, 72%, 51%, 0.05)',
                                                         wordBreak: 'break-word',
                                                     }}
                                                 >
@@ -491,7 +491,7 @@ export default function ReportCompare({
                                                         fontFamily: 'monospace',
                                                         padding: '4px 6px',
                                                         borderRadius: 'var(--g-radius-sm)',
-                                                        backgroundColor: 'rgba(22, 163, 74, 0.05)',
+                                                        backgroundColor: 'hsla(160, 60%, 35%, 0.05)',
                                                         wordBreak: 'break-word',
                                                     }}
                                                 >
@@ -510,7 +510,7 @@ export default function ReportCompare({
                                                 fontFamily: 'monospace',
                                                 padding: '4px 6px',
                                                 borderRadius: 'var(--g-radius-sm)',
-                                                backgroundColor: 'rgba(22, 163, 74, 0.05)',
+                                                backgroundColor: 'hsla(160, 60%, 35%, 0.05)',
                                                 wordBreak: 'break-word',
                                             }}
                                         >
@@ -527,7 +527,7 @@ export default function ReportCompare({
                                                 fontFamily: 'monospace',
                                                 padding: '4px 6px',
                                                 borderRadius: 'var(--g-radius-sm)',
-                                                backgroundColor: 'rgba(220, 38, 38, 0.05)',
+                                                backgroundColor: 'hsla(0, 72%, 51%, 0.05)',
                                                 wordBreak: 'break-word',
                                                 textDecoration: 'line-through',
                                             }}

@@ -111,17 +111,17 @@ function formatTime(iso: string): string {
 }
 
 function statusColor(code: number): string {
-    if (code >= 200 && code < 300) return '#009a77';
-    if (code === 429) return '#e6a817';
-    if (code >= 400) return '#dc2626';
+    if (code >= 200 && code < 300) return 'var(--status-success)';
+    if (code === 429) return 'var(--status-warning)';
+    if (code >= 400) return 'var(--status-error)';
     return 'var(--g-text-secondary)';
 }
 
 function healthColor(status: string): string {
     const s = status?.toLowerCase();
-    if (s === 'healthy' || s === 'ok') return '#009a77';
-    if (s === 'degraded') return '#e6a817';
-    return '#dc2626';
+    if (s === 'healthy' || s === 'ok') return 'var(--status-success)';
+    if (s === 'degraded') return 'var(--status-warning)';
+    return 'var(--status-error)';
 }
 
 /* ------------------------------------------------------------------ */
@@ -628,19 +628,19 @@ export default function ObservabilityPage() {
                         label="Tasa 429 (Rate Limit)"
                         value={formatPct(slo?.rate_429_pct)}
                         icon={AlertTriangle}
-                        accent={slo && slo.rate_429_pct > 5 ? '#dc2626' : slo && slo.rate_429_pct > 1 ? '#e6a817' : '#009a77'}
+                        accent={slo && slo.rate_429_pct > 5 ? 'var(--status-error)' : slo && slo.rate_429_pct > 1 ? 'var(--status-warning)' : 'var(--status-success)'}
                     />
                     <MetricCard
                         label="Tasa de Error"
                         value={formatPct(slo?.error_rate_pct)}
                         icon={XCircle}
-                        accent={slo && slo.error_rate_pct > 5 ? '#dc2626' : slo && slo.error_rate_pct > 1 ? '#e6a817' : '#009a77'}
+                        accent={slo && slo.error_rate_pct > 5 ? 'var(--status-error)' : slo && slo.error_rate_pct > 1 ? 'var(--status-warning)' : 'var(--status-success)'}
                     />
                     <MetricCard
                         label="Tasa de Reintentos"
                         value={formatPct(slo?.retry_rate_pct)}
                         icon={RefreshCw}
-                        accent={slo && slo.retry_rate_pct > 10 ? '#dc2626' : slo && slo.retry_rate_pct > 3 ? '#e6a817' : '#009a77'}
+                        accent={slo && slo.retry_rate_pct > 10 ? 'var(--status-error)' : slo && slo.retry_rate_pct > 3 ? 'var(--status-warning)' : 'var(--status-success)'}
                     />
                     <MetricCard
                         label="Total Peticiones"
@@ -861,7 +861,7 @@ export default function ObservabilityPage() {
                                                 style={{
                                                     padding: '10px 16px',
                                                     whiteSpace: 'nowrap',
-                                                    color: entry.retries > 0 ? '#e6a817' : 'var(--g-text-muted)',
+                                                    color: entry.retries > 0 ? 'var(--status-warning)' : 'var(--g-text-muted)',
                                                     fontSize: 'var(--g-text-small)',
                                                     fontWeight: entry.retries > 0 ? 600 : 400,
                                                 }}

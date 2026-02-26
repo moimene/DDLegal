@@ -884,7 +884,7 @@ export default function NewProjectPage() {
                                                     fontWeight: 600,
                                                     borderRadius: 'var(--g-radius-sm)',
                                                     backgroundColor: area.color,
-                                                    color: '#fff',
+                                                    color: 'var(--g-text-inverse)',
                                                 }}
                                             >
                                                 {area.code}

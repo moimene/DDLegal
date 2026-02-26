@@ -356,7 +356,7 @@ function InlineDocForm({
                         type="checkbox"
                         checked={form.is_mandatory}
                         onChange={e => setForm(f => ({ ...f, is_mandatory: e.target.checked }))}
-                        style={{ accentColor: 'hsl(var(--g-brand-3308))' }}
+                        style={{ accentColor: 'var(--g-brand-3308)' }}
                     />
                     Obligatorio
                 </label>
@@ -1114,7 +1114,7 @@ export default function TemplatesPage() {
                                                                     display: 'inline-flex', alignItems: 'center',
                                                                     padding: '2px 6px', fontSize: '9px', fontWeight: 700,
                                                                     borderRadius: 'var(--g-radius-sm)',
-                                                                    backgroundColor: 'hsla(0, 72%, 51%, 0.1)',
+                                                                    backgroundColor: 'var(--g-priority-p0-bg)',
                                                                     color: 'var(--status-error)',
                                                                     whiteSpace: 'nowrap', flexShrink: 0,
                                                                     textTransform: 'uppercase',
@@ -1349,8 +1349,8 @@ export default function TemplatesPage() {
                                                             display: 'inline-flex', alignItems: 'center',
                                                             padding: '2px 6px', fontSize: '9px', fontWeight: 600,
                                                             borderRadius: 'var(--g-radius-sm)',
-                                                            backgroundColor: 'hsla(45, 80%, 42%, 0.1)',
-                                                            color: 'hsl(45, 80%, 42%)',
+                                                            backgroundColor: 'var(--g-trigger-bg)',
+                                                            color: 'var(--g-severity-medium)',
                                                             whiteSpace: 'nowrap', flexShrink: 0,
                                                         }}>
                                                             Modificado
@@ -1381,8 +1381,8 @@ export default function TemplatesPage() {
                                                             display: 'inline-flex', alignItems: 'center',
                                                             padding: '1px 6px', fontSize: '9px', fontWeight: 600,
                                                             borderRadius: 'var(--g-radius-sm)',
-                                                            backgroundColor: 'hsla(160, 60%, 35%, 0.1)',
-                                                            color: 'hsl(160, 60%, 35%)',
+                                                            backgroundColor: 'var(--g-source-bg)',
+                                                            color: 'var(--g-source-color)',
                                                             whiteSpace: 'nowrap', flexShrink: 0,
                                                         }}>
                                                             Grounding
@@ -1443,10 +1443,10 @@ export default function TemplatesPage() {
                         display: 'flex', alignItems: 'flex-start', gap: 'var(--g-space-3)',
                         padding: 'var(--g-space-4)',
                         borderRadius: 'var(--g-radius-lg)',
-                        backgroundColor: 'hsla(217, 91%, 60%, 0.06)',
-                        border: '1px solid hsla(217, 91%, 60%, 0.15)',
+                        backgroundColor: 'var(--g-input-bg)',
+                        border: '1px solid var(--g-input-bg)',
                     }}>
-                        <Shield style={{ width: '18px', height: '18px', color: 'hsl(217, 91%, 60%)', flexShrink: 0, marginTop: '1px' }} aria-hidden="true" />
+                        <Shield style={{ width: '18px', height: '18px', color: 'var(--g-input-color)', flexShrink: 0, marginTop: '1px' }} aria-hidden="true" />
                         <div>
                             <p style={{ fontSize: 'var(--g-text-sm)', fontWeight: 600, color: 'var(--g-text-primary)', margin: 0, marginBottom: '4px' }}>
                                 Presets de operacion preconfigurados
@@ -1709,8 +1709,8 @@ export default function TemplatesPage() {
                                         <span key={area} style={{
                                             display: 'inline-flex', padding: '3px 10px', borderRadius: 'var(--g-radius-full)',
                                             fontSize: 'var(--g-text-caption)', fontWeight: 600,
-                                            backgroundColor: p.emphasis_areas?.includes(area) ? 'hsla(217, 91%, 60%, 0.15)' : 'var(--g-surface-muted)',
-                                            color: p.emphasis_areas?.includes(area) ? 'hsl(217, 91%, 60%)' : 'var(--g-text-secondary)',
+                                            backgroundColor: p.emphasis_areas?.includes(area) ? 'var(--g-input-bg)' : 'var(--g-surface-muted)',
+                                            color: p.emphasis_areas?.includes(area) ? 'var(--g-input-color)' : 'var(--g-text-secondary)',
                                             border: p.emphasis_areas?.includes(area) ? '1px solid hsla(217, 91%, 60%, 0.3)' : '1px solid transparent',
                                         }}>
                                             {area}

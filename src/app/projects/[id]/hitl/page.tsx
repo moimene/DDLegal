@@ -785,7 +785,7 @@ export default function ProjectHitlPage({ params }: { params: Promise<{ id: stri
                             style={{
                                 position: 'fixed',
                                 inset: 0,
-                                backgroundColor: 'rgba(0,0,0,0.3)',
+                                backgroundColor: 'var(--g-overlay-light)',
                                 zIndex: 998,
                                 transition: 'opacity 200ms ease',
                             }}

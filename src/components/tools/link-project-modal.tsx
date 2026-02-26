@@ -65,7 +65,7 @@ export default function LinkProjectModal({ open, onClose, executionId, onLinked 
             {/* Backdrop */}
             <div
                 className="fixed inset-0 z-50 transition-opacity"
-                style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}
+                style={{ backgroundColor: 'var(--g-overlay-light)' }}
                 onClick={onClose}
                 aria-hidden="true"
             />

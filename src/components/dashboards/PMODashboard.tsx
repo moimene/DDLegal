@@ -317,7 +317,7 @@ export default function PMODashboard({ projectId }: PMODashboardProps) {
             {error && (
                 <div style={{
                     padding: 'var(--g-space-3) var(--g-space-4)',
-                    backgroundColor: '#fef9ee',
+                    backgroundColor: 'var(--g-trigger-bg)',
                     borderRadius: 'var(--g-radius-md)',
                     color: 'var(--status-warning)',
                     fontSize: 'var(--g-text-body)',

@@ -29,7 +29,7 @@ const ADMIN_USER: DemoUser = {
     label: 'Superusuario',
     description: 'Acceso total al sistema',
     icon: Shield,
-    accent: '#004438',
+    accent: 'var(--g-role-clo)',
 };
 
 const DEMO_USERS: DemoUser[] = [
@@ -40,7 +40,7 @@ const DEMO_USERS: DemoUser[] = [
         label: 'CLO',
         description: 'Director Legal',
         icon: Scale,
-        accent: '#004438',
+        accent: 'var(--g-role-clo)',
     },
     {
         email: 'pm@test.ddlegal.com',
@@ -49,7 +49,7 @@ const DEMO_USERS: DemoUser[] = [
         label: 'PM',
         description: 'Project Manager',
         icon: Briefcase,
-        accent: '#007362',
+        accent: 'var(--g-role-pm)',
     },
     {
         email: 'abogado.merc@test.ddlegal.com',
@@ -58,7 +58,7 @@ const DEMO_USERS: DemoUser[] = [
         label: 'Abogado',
         description: 'Mercantil',
         icon: Gavel,
-        accent: 'hsl(262, 83%, 58%)',
+        accent: 'var(--g-role-abogado)',
     },
     {
         email: 'sponsor@test.ddlegal.com',
@@ -67,7 +67,7 @@ const DEMO_USERS: DemoUser[] = [
         label: 'Sponsor',
         description: 'Deal Sponsor',
         icon: Target,
-        accent: 'hsl(217, 91%, 60%)',
+        accent: 'var(--g-role-sponsor)',
     },
     {
         email: 'target@test.ddlegal.com',
@@ -76,7 +76,7 @@ const DEMO_USERS: DemoUser[] = [
         label: 'Target',
         description: 'Contacto Target',
         icon: UserCheck,
-        accent: 'hsl(25, 95%, 53%)',
+        accent: 'var(--g-role-target)',
     },
     {
         email: 'stakeholder@test.ddlegal.com',
@@ -85,7 +85,7 @@ const DEMO_USERS: DemoUser[] = [
         label: 'Stakeholder',
         description: 'Negocio',
         icon: Users,
-        accent: 'hsl(38, 92%, 50%)',
+        accent: 'var(--g-role-stakeholder)',
     },
     {
         email: 'cliente@test.ddlegal.com',
@@ -94,7 +94,7 @@ const DEMO_USERS: DemoUser[] = [
         label: 'Cliente',
         description: 'Solo lectura',
         icon: Eye,
-        accent: '#8c9196',
+        accent: 'var(--g-role-cliente)',
     },
 ];
 
@@ -194,7 +194,7 @@ export default function LoginPage() {
                 <div style={styles.brandPanel}>
                     <div style={styles.brandContent}>
                         <div style={styles.logoMark}>
-                            <Scale style={{ width: 28, height: 28, color: '#fff' }} />
+                            <Scale style={{ width: 28, height: 28, color: 'var(--g-text-inverse)' }} />
                         </div>
                         <h1 style={styles.brandTitle}>DD Legal PMO</h1>
                         <p style={styles.brandSubtitle}>
@@ -236,9 +236,9 @@ export default function LoginPage() {
                     >
                         <div style={styles.adminIconWrap}>
                             {selectedUser === ADMIN_USER.email && phase !== 'idle' ? (
-                                <Loader2 style={{ width: 18, height: 18, color: '#fff', animation: 'spin 1s linear infinite' }} />
+                                <Loader2 style={{ width: 18, height: 18, color: 'var(--g-text-inverse)', animation: 'spin 1s linear infinite' }} />
                             ) : (
-                                <Shield style={{ width: 18, height: 18, color: '#fff' }} />
+                                <Shield style={{ width: 18, height: 18, color: 'var(--g-text-inverse)' }} />
                             )}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -417,7 +417,7 @@ const styles: Record<string, React.CSSProperties> = {
     brandPanel: {
         width: 280,
         flexShrink: 0,
-        background: 'linear-gradient(165deg, #004438 0%, #00332a 60%, #001f1a 100%)',
+        background: 'var(--g-brand-gradient)',
         padding: '40px 32px 28px',
         display: 'flex',
         flexDirection: 'column',
@@ -428,7 +428,7 @@ const styles: Record<string, React.CSSProperties> = {
         width: 48,
         height: 48,
         borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.12)',
+        backgroundColor: 'var(--g-brand-logo-bg)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -437,33 +437,33 @@ const styles: Record<string, React.CSSProperties> = {
     brandTitle: {
         fontSize: '1.375rem',
         fontWeight: 700,
-        color: '#ffffff',
+        color: 'var(--g-text-inverse)',
         margin: 0,
         letterSpacing: '-0.02em',
         lineHeight: 1.2,
     },
     brandSubtitle: {
         fontSize: '0.8125rem',
-        color: 'rgba(255,255,255,0.6)',
+        color: 'var(--g-sidebar-placeholder)',
         margin: '6px 0 0',
         fontWeight: 400,
     },
     brandDivider: {
         width: 32,
         height: 2,
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: 'var(--g-sidebar-surface-selected)',
         margin: '24px 0',
         borderRadius: 1,
     },
     brandCaption: {
         fontSize: '0.75rem',
-        color: 'rgba(255,255,255,0.45)',
+        color: 'var(--g-sidebar-text-faint)',
         margin: 0,
         lineHeight: 1.6,
     },
     brandFooter: {
         fontSize: '0.6875rem',
-        color: 'rgba(255,255,255,0.3)',
+        color: 'var(--g-sidebar-text-ghost)',
         margin: 0,
         letterSpacing: '0.04em',
         textTransform: 'uppercase' as const,
@@ -483,9 +483,9 @@ const styles: Record<string, React.CSSProperties> = {
         gap: 8,
         padding: '10px 14px',
         borderRadius: 'var(--g-radius-md, 8px)',
-        backgroundColor: 'hsl(0, 72%, 97%)',
-        border: '1px solid hsl(0, 72%, 90%)',
-        color: 'hsl(0, 72%, 40%)',
+        backgroundColor: 'var(--g-error-surface)',
+        border: '1px solid var(--g-error-border)',
+        color: 'var(--g-error-text)',
         fontSize: '0.8125rem',
         animation: 'fadeInUp 0.25s ease',
     },
@@ -512,34 +512,34 @@ const styles: Record<string, React.CSSProperties> = {
         fontFamily: 'inherit',
     },
     adminCardSelected: {
-        boxShadow: '0 0 0 2px #004438, 0 4px 12px rgba(0,68,56,0.25)',
+        boxShadow: '0 0 0 2px var(--g-brand-3308), 0 4px 12px var(--g-shadow-brand)',
     },
     adminIconWrap: {
         width: 36,
         height: 36,
         borderRadius: '50%',
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: 'var(--g-sidebar-surface-selected)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
     },
     adminLabel: {
-        fontSize: '0.875rem',
+        fontSize: 'var(--g-text-body)',
         fontWeight: 700,
-        color: '#fff',
+        color: 'var(--g-text-inverse)',
         lineHeight: 1.2,
     },
     adminDesc: {
         fontSize: '0.6875rem',
-        color: 'rgba(255,255,255,0.6)',
+        color: 'var(--g-sidebar-placeholder)',
         marginTop: 1,
     },
     selectedBadge: {
         width: 20,
         height: 20,
         borderRadius: '50%',
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'var(--g-sidebar-surface-selected)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -549,7 +549,7 @@ const styles: Record<string, React.CSSProperties> = {
         width: 8,
         height: 8,
         borderRadius: '50%',
-        backgroundColor: '#fff',
+        backgroundColor: 'var(--g-text-inverse)',
     },
     /* ── User grid ── */
     userGrid: {
@@ -650,7 +650,7 @@ const styles: Record<string, React.CSSProperties> = {
         borderRadius: 'var(--g-radius-md, 8px)',
         border: 'none',
         backgroundColor: 'var(--g-brand-3308, #004438)',
-        color: '#ffffff',
+        color: 'var(--g-text-inverse)',
         fontSize: '0.8125rem',
         fontWeight: 600,
         transition: 'opacity 0.15s',

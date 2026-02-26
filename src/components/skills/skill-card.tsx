@@ -6,10 +6,10 @@ import type { DDSkill } from '@/lib/supabase';
 import { SKILL_CATEGORY_CONFIG, AREA_COLORS } from '@/lib/utils';
 
 const PRIORITY_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-    P0: { label: 'P0', color: '#dc2626', bg: 'rgba(220,38,38,0.1)' },
-    P1: { label: 'P1', color: '#ea580c', bg: 'rgba(234,88,12,0.1)' },
-    P2: { label: 'P2', color: '#ca8a04', bg: 'rgba(202,138,4,0.1)' },
-    P3: { label: 'P3', color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
+    P0: { label: 'P0', color: 'var(--g-priority-p0)', bg: 'var(--g-priority-p0-bg)' },
+    P1: { label: 'P1', color: 'var(--g-priority-p1)', bg: 'var(--g-priority-p1-bg)' },
+    P2: { label: 'P2', color: 'var(--g-priority-p2)', bg: 'var(--g-priority-p2-bg)' },
+    P3: { label: 'P3', color: 'var(--g-priority-p3)', bg: 'var(--g-priority-p3-bg)' },
 };
 
 interface SkillCardProps {
@@ -75,8 +75,8 @@ export default function SkillCard({ skill }: SkillCardProps) {
                                     className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-semibold"
                                     style={{
                                         borderRadius: 'var(--g-radius-sm)',
-                                        backgroundColor: 'hsla(25, 95%, 53%, 0.1)',
-                                        color: 'hsl(25, 95%, 53%)',
+                                        backgroundColor: 'var(--g-hitl-bg)',
+                                        color: 'var(--g-hitl-color)',
                                     }}
                                 >
                                     <Users className="h-2.5 w-2.5" /> HITL
@@ -162,7 +162,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
                                 <p className="text-[10px] font-semibold uppercase mb-1" style={{ color: 'var(--g-text-muted)' }}>Inputs Requeridos</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {(skill.inputs_required as string[]).map((inp, i) => (
-                                        <span key={i} className="px-2 py-0.5 text-[11px] font-medium" style={{ borderRadius: 'var(--g-radius-full)', backgroundColor: 'hsla(217, 91%, 60%, 0.1)', color: 'hsl(217, 91%, 60%)' }}>
+                                        <span key={i} className="px-2 py-0.5 text-[11px] font-medium" style={{ borderRadius: 'var(--g-radius-full)', backgroundColor: 'var(--g-input-bg)', color: 'var(--g-input-color)' }}>
                                             {inp}
                                         </span>
                                     ))}
@@ -173,7 +173,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
                         {/* Trigger */}
                         {skill.trigger_description && (
                             <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--g-text-secondary)' }}>
-                                <Zap className="h-3.5 w-3.5" style={{ color: 'hsl(45, 80%, 42%)' }} />
+                                <Zap className="h-3.5 w-3.5" style={{ color: 'var(--g-trigger-color)' }} />
                                 <span><strong>Disparador:</strong> {skill.trigger_description}</span>
                             </div>
                         )}
@@ -184,7 +184,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
                                 <p className="text-[10px] font-semibold uppercase mb-1" style={{ color: 'var(--g-text-muted)' }}>Fuentes Autorizadas</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {(skill.authorized_sources as string[]).map((src, i) => (
-                                        <span key={i} className="px-2 py-0.5 text-[11px] font-medium" style={{ borderRadius: 'var(--g-radius-full)', backgroundColor: 'hsla(160, 60%, 35%, 0.1)', color: 'hsl(160, 60%, 35%)' }}>
+                                        <span key={i} className="px-2 py-0.5 text-[11px] font-medium" style={{ borderRadius: 'var(--g-radius-full)', backgroundColor: 'var(--g-source-bg)', color: 'var(--g-source-color)' }}>
                                             {src}
                                         </span>
                                     ))}
@@ -203,7 +203,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
                         {/* HITL conditions */}
                         {skill.hitl_conditions && (
                             <div className="flex items-start gap-1.5 text-xs" style={{ color: 'var(--g-text-secondary)' }}>
-                                <Users className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: 'hsl(25, 95%, 53%)' }} />
+                                <Users className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: 'var(--g-hitl-color)' }} />
                                 <span><strong>Revisión Humana:</strong> {skill.hitl_conditions}</span>
                             </div>
                         )}
@@ -211,7 +211,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
                         {/* Risks */}
                         {skill.risks_limits && (
                             <div className="flex items-start gap-1.5 text-xs" style={{ color: 'var(--g-text-secondary)' }}>
-                                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: 'hsl(45, 80%, 42%)' }} />
+                                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: 'var(--g-trigger-color)' }} />
                                 <span><strong>Riesgos:</strong> {skill.risks_limits}</span>
                             </div>
                         )}
@@ -222,7 +222,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
                                 <p className="text-[10px] font-semibold uppercase mb-1" style={{ color: 'var(--g-text-muted)' }}>KPIs</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {(skill.kpis as string[]).map((kpi, i) => (
-                                        <span key={i} className="px-2 py-0.5 text-[11px] font-medium" style={{ borderRadius: 'var(--g-radius-full)', backgroundColor: 'hsla(280, 50%, 45%, 0.1)', color: 'hsl(280, 50%, 45%)' }}>
+                                        <span key={i} className="px-2 py-0.5 text-[11px] font-medium" style={{ borderRadius: 'var(--g-radius-full)', backgroundColor: 'var(--g-kpi-bg)', color: 'var(--g-kpi-color)' }}>
                                             {kpi}
                                         </span>
                                     ))}

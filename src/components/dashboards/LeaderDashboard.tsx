@@ -234,9 +234,9 @@ export default function LeaderDashboard({ projectId }: LeaderDashboardProps) {
             {error && (
                 <div style={{
                     padding: 'var(--g-space-3) var(--g-space-4)',
-                    backgroundColor: '#fef9ee',
+                    backgroundColor: 'var(--g-severity-medium)',
                     borderRadius: 'var(--g-radius-md)',
-                    color: 'var(--status-warning)',
+                    color: 'var(--g-text-inverse)',
                     fontSize: 'var(--g-text-body)',
                 }}>
                     Algunos datos no pudieron cargarse. Mostrando informacion parcial.
@@ -364,11 +364,11 @@ export default function LeaderDashboard({ projectId }: LeaderDashboardProps) {
                         padding: 'var(--g-space-4) var(--g-space-5)',
                         borderBottom: '1px solid var(--g-border-subtle)',
                     }}>
-                        <Gavel style={{ width: 14, height: 14, color: '#7C3AED' }} aria-hidden="true" />
+                        <Gavel style={{ width: 14, height: 14, color: 'var(--g-kpi-color)' }} aria-hidden="true" />
                         <span style={{
                             fontWeight: 700, fontSize: 'var(--g-text-caption)',
                             textTransform: 'uppercase', letterSpacing: '0.04em',
-                            color: '#7C3AED',
+                            color: 'var(--g-kpi-color)',
                         }}>
                             Decisiones Pendientes
                         </span>
@@ -376,7 +376,7 @@ export default function LeaderDashboard({ projectId }: LeaderDashboardProps) {
                             marginLeft: 'auto',
                             padding: '2px 8px', borderRadius: 'var(--g-radius-full)',
                             fontSize: 'var(--g-text-caption)', fontWeight: 700,
-                            backgroundColor: '#7C3AED', color: 'var(--g-text-inverse)',
+                            backgroundColor: 'var(--g-kpi-color)', color: 'var(--g-text-inverse)',
                         }}>
                             {pendingDecisions.length}
                         </span>

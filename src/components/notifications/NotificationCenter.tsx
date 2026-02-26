@@ -300,7 +300,7 @@ export default function NotificationCenter() {
                             justifyContent: 'center',
                             borderRadius: 'var(--g-radius-full)',
                             backgroundColor: 'var(--status-error)',
-                            color: '#ffffff',
+                            color: 'var(--g-text-inverse)',
                             fontSize: '10px',
                             fontWeight: 700,
                             lineHeight: 1,

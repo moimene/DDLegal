@@ -299,11 +299,11 @@ export default function Sidebar() {
                 >
                     <p
                         style={{
-                            fontSize: '0.6875rem',
-                            fontWeight: 700,
+                            fontSize: 'var(--g-text-caption)',
+                            fontWeight: 'var(--g-font-weight-bold)',
                             textTransform: 'uppercase',
                             letterSpacing: '0.08em',
-                            color: 'rgba(255,255,255,0.5)',
+                            color: 'var(--g-sidebar-text-muted)',
                             lineHeight: '1',
                             margin: 0,
                         }}
@@ -367,7 +367,7 @@ export default function Sidebar() {
                 >
                     <GroupIcon
                         className="h-[16px] w-[16px] shrink-0"
-                        style={{ color: hasActive ? 'var(--g-brand-bright)' : 'rgba(255,255,255,0.5)' }}
+                        style={{ color: hasActive ? 'var(--g-brand-bright)' : 'var(--g-sidebar-icon-muted)' }}
                     />
                     {!collapsed && (
                         <>
@@ -377,7 +377,7 @@ export default function Sidebar() {
                                     fontWeight: 700,
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.08em',
-                                    color: hasActive ? 'var(--g-brand-bright)' : 'rgba(255,255,255,0.5)',
+                                    color: hasActive ? 'var(--g-brand-bright)' : 'var(--g-sidebar-icon-muted)',
                                     lineHeight: '1',
                                     flex: 1,
                                     textAlign: 'left',
@@ -405,7 +405,7 @@ export default function Sidebar() {
                             <ChevronDown
                                 className="h-3.5 w-3.5 shrink-0 transition-transform"
                                 style={{
-                                    color: 'rgba(255,255,255,0.4)',
+                                    color: 'var(--g-sidebar-icon-faint)',
                                     transform: isGroupCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
                                 }}
                             />
@@ -441,7 +441,7 @@ export default function Sidebar() {
                                             style={{
                                                 flex: 1,
                                                 border: 'none',
-                                                borderTop: '1px solid rgba(255,255,255,0.1)',
+                                                borderTop: '1px solid var(--g-sidebar-divider)',
                                             }}
                                         />
                                         <span
@@ -450,7 +450,7 @@ export default function Sidebar() {
                                                 fontWeight: 600,
                                                 textTransform: 'uppercase',
                                                 letterSpacing: '0.06em',
-                                                color: 'rgba(255,255,255,0.3)',
+                                                color: 'var(--g-sidebar-text-ghost)',
                                                 whiteSpace: 'nowrap',
                                             }}
                                         >
@@ -460,7 +460,7 @@ export default function Sidebar() {
                                             style={{
                                                 flex: 1,
                                                 border: 'none',
-                                                borderTop: '1px solid rgba(255,255,255,0.1)',
+                                                borderTop: '1px solid var(--g-sidebar-divider)',
                                             }}
                                         />
                                     </div>
@@ -546,7 +546,7 @@ export default function Sidebar() {
                                         fontWeight: 700,
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.08em',
-                                        color: 'rgba(255,255,255,0.5)',
+                                        color: 'var(--g-sidebar-text-muted)',
                                         lineHeight: '1',
                                         margin: 0,
                                     }}

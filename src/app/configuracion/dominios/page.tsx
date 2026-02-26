@@ -470,7 +470,7 @@ export default function DominiosPage() {
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                     width: '100%', padding: 'var(--g-space-3) var(--g-space-4)',
                                     border: 'none', cursor: 'pointer',
-                                    backgroundColor: isActive ? 'hsla(217, 91%, 60%, 0.08)' : 'transparent',
+                                    backgroundColor: isActive ? 'var(--g-input-bg)' : 'transparent',
                                     borderLeft: isActive ? '3px solid var(--g-brand-3308)' : '3px solid transparent',
                                     color: isActive ? 'var(--g-brand-3308)' : 'var(--g-text-primary)',
                                     fontWeight: isActive ? 700 : 500,
@@ -548,7 +548,7 @@ export default function DominiosPage() {
                                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                                 padding: '5px 12px', border: '1px solid var(--g-border-default)',
                                 borderRadius: 'var(--g-radius-md)',
-                                backgroundColor: showInactive ? 'hsla(217, 91%, 60%, 0.08)' : 'transparent',
+                                backgroundColor: showInactive ? 'var(--g-input-bg)' : 'transparent',
                                 color: showInactive ? 'var(--g-brand-3308)' : 'var(--g-text-secondary)',
                                 fontSize: 'var(--g-text-caption)', fontWeight: 500,
                                 cursor: 'pointer', transition: 'all var(--g-transition-fast)',
@@ -587,7 +587,7 @@ export default function DominiosPage() {
                             display: 'flex', alignItems: 'center', gap: 'var(--g-space-3)',
                             padding: 'var(--g-space-3) var(--g-space-4)',
                             borderBottom: '1px solid var(--g-border-default)',
-                            backgroundColor: 'hsla(217, 91%, 60%, 0.04)',
+                            backgroundColor: 'hsla(217, 91%, 60%, 0.02)',
                         }}>
                             <input
                                 type="text" placeholder="code *" value={newForm.code}
@@ -723,7 +723,7 @@ export default function DominiosPage() {
                                     opacity: item.is_active ? 1 : 0.5,
                                     transition: 'opacity var(--g-transition-fast), background var(--g-transition-fast)',
                                     cursor: 'pointer',
-                                    backgroundColor: isRowSelected ? 'hsla(217, 91%, 60%, 0.06)' : 'transparent',
+                                    backgroundColor: isRowSelected ? 'var(--g-input-bg)' : 'transparent',
                                     borderLeft: isRowSelected ? '3px solid var(--g-brand-3308)' : '3px solid transparent',
                                 }}
                                 onMouseEnter={e => {

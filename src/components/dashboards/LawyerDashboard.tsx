@@ -224,7 +224,7 @@ export default function LawyerDashboard({ projectId }: LawyerDashboardProps) {
             {error && (
                 <div style={{
                     padding: 'var(--g-space-3) var(--g-space-4)',
-                    backgroundColor: '#fef9ee',
+                    backgroundColor: 'var(--g-trigger-bg)',
                     borderRadius: 'var(--g-radius-md)',
                     color: 'var(--status-warning)',
                     fontSize: 'var(--g-text-body)',
@@ -259,7 +259,7 @@ export default function LawyerDashboard({ projectId }: LawyerDashboardProps) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-3)', marginBottom: 'var(--g-space-3)' }}>
                         <div style={{
                             width: '40px', height: '40px', borderRadius: 'var(--g-radius-md)',
-                            backgroundColor: '#fef9ee',
+                            backgroundColor: 'var(--g-trigger-bg)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                             <Bot style={{ width: 20, height: 20, color: 'var(--status-warning)' }} aria-hidden="true" />
@@ -278,7 +278,7 @@ export default function LawyerDashboard({ projectId }: LawyerDashboardProps) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-3)', marginBottom: 'var(--g-space-3)' }}>
                         <div style={{
                             width: '40px', height: '40px', borderRadius: 'var(--g-radius-md)',
-                            backgroundColor: '#eef4ff',
+                            backgroundColor: 'var(--g-input-bg)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                             <FileSearch style={{ width: 20, height: 20, color: 'var(--status-info)' }} aria-hidden="true" />

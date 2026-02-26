@@ -651,7 +651,7 @@ export default function SocietarioPage() {
                             style={{
                                 borderColor: 'var(--status-error)',
                                 borderRadius: 'var(--g-radius-md)',
-                                backgroundColor: 'hsla(0, 84%, 60%, 0.04)',
+                                backgroundColor: 'hsla(0, 72%, 51%, 0.02)',
                             }}
                         >
                             <p className="text-sm font-medium" style={{ color: 'var(--status-error)' }}>

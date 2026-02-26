@@ -98,7 +98,7 @@ const STATUS_CONFIG: Record<
   error: {
     label: 'Error',
     color: 'var(--status-error)',
-    bgColor: 'rgba(239, 68, 68, 0.1)',
+    bgColor: 'var(--g-priority-p0-bg)',
     Icon: AlertCircle,
   },
 };
@@ -527,7 +527,7 @@ export function WorkerDashboard({ projectId }: WorkerDashboardProps) {
                               : isPast
                               ? 'var(--status-success)'
                               : 'var(--g-surface-muted)',
-                            color: isActive || isPast ? '#fff' : 'var(--g-text-secondary)',
+                            color: isActive || isPast ? 'var(--g-text-inverse)' : 'var(--g-text-secondary)',
                           }}
                         >
                           {isPast ? <CheckCircle className="h-4 w-4" /> : idx + 1}
@@ -614,7 +614,7 @@ export function WorkerDashboard({ projectId }: WorkerDashboardProps) {
         <div
           className="p-4"
           style={{
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            backgroundColor: 'var(--g-priority-p0-bg)',
             borderRadius: 'var(--g-radius-lg)',
             border: '1px solid var(--status-error)',
           }}

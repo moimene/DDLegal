@@ -114,8 +114,8 @@ export default function UserIndicator() {
                             transition: 'all 0.15s',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#fef2f2';
-                            e.currentTarget.style.borderColor = '#fecaca';
+                            e.currentTarget.style.backgroundColor = 'var(--g-error-surface)';
+                            e.currentTarget.style.borderColor = 'var(--g-error-border)';
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = 'transparent';

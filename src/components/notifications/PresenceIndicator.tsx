@@ -249,7 +249,7 @@ export default function PresenceIndicator({ projectId }: PresenceIndicatorProps)
                                     height: '28px',
                                     borderRadius: 'var(--g-radius-full)',
                                     backgroundColor: color,
-                                    color: '#ffffff',
+                                    color: 'var(--g-text-inverse)',
                                     fontSize: '10px',
                                     fontWeight: 700,
                                     display: 'flex',
@@ -274,7 +274,7 @@ export default function PresenceIndicator({ projectId }: PresenceIndicatorProps)
                                     width: '8px',
                                     height: '8px',
                                     borderRadius: 'var(--g-radius-full)',
-                                    backgroundColor: '#10B981',
+                                    backgroundColor: 'var(--status-success)',
                                     border: '2px solid var(--g-surface-card)',
                                 }}
                             />

@@ -120,6 +120,74 @@
   --g-sidebar-hover: rgba(255, 255, 255, 0.06);
   --g-sidebar-active: rgba(255, 255, 255, 0.14);
 
+  /* Sidebar — dark-on-dark semantic tokens */
+  --g-sidebar-text: rgba(255, 255, 255, 0.75);
+  --g-sidebar-text-muted: rgba(255, 255, 255, 0.5);
+  --g-sidebar-text-faint: rgba(255, 255, 255, 0.45);
+  --g-sidebar-text-ghost: rgba(255, 255, 255, 0.3);
+  --g-sidebar-icon-muted: rgba(255, 255, 255, 0.5);
+  --g-sidebar-icon-faint: rgba(255, 255, 255, 0.4);
+  --g-sidebar-surface-subtle: rgba(255, 255, 255, 0.05);
+  --g-sidebar-surface-hover: rgba(255, 255, 255, 0.08);
+  --g-sidebar-surface-active-hover: rgba(255, 255, 255, 0.12);
+  --g-sidebar-surface-selected: rgba(255, 255, 255, 0.15);
+  --g-sidebar-divider: rgba(255, 255, 255, 0.1);
+  --g-sidebar-placeholder: rgba(255, 255, 255, 0.6);
+
+  /* Overlay */
+  --g-overlay-light: rgba(0, 0, 0, 0.3);
+  --g-overlay-medium: rgba(0, 0, 0, 0.5);
+  --g-overlay-dark: rgba(0, 0, 0, 0.7);
+
+  /* Priority (P0–P3) */
+  --g-priority-p0: #dc2626;
+  --g-priority-p0-bg: rgba(220, 38, 38, 0.1);
+  --g-priority-p1: #ea580c;
+  --g-priority-p1-bg: rgba(234, 88, 12, 0.1);
+  --g-priority-p2: #ca8a04;
+  --g-priority-p2-bg: rgba(202, 138, 4, 0.1);
+  --g-priority-p3: #6b7280;
+  --g-priority-p3-bg: rgba(107, 114, 128, 0.1);
+
+  /* Project status */
+  --g-status-active: #4ade80;
+  --g-status-review: #fbbf24;
+  --g-status-draft: #9ca3af;
+  --g-status-closed: #60a5fa;
+
+  /* Feature-specific semantic colors */
+  --g-hitl-color: hsl(25, 95%, 53%);
+  --g-hitl-bg: hsla(25, 95%, 53%, 0.1);
+  --g-trigger-color: hsl(45, 80%, 42%);
+  --g-trigger-bg: hsla(45, 80%, 42%, 0.1);
+  --g-input-color: hsl(217, 91%, 60%);
+  --g-input-bg: hsla(217, 91%, 60%, 0.1);
+  --g-source-color: hsl(160, 60%, 35%);
+  --g-source-bg: hsla(160, 60%, 35%, 0.1);
+  --g-kpi-color: hsl(280, 50%, 45%);
+  --g-kpi-bg: hsla(280, 50%, 45%, 0.1);
+
+  /* Role accents (login / user cards) */
+  --g-role-clo: #004438;
+  --g-role-pm: #007362;
+  --g-role-abogado: hsl(262, 83%, 58%);
+  --g-role-sponsor: hsl(217, 91%, 60%);
+  --g-role-target: hsl(25, 95%, 53%);
+  --g-role-stakeholder: hsl(38, 92%, 50%);
+  --g-role-cliente: #8c9196;
+
+  /* Brand gradient (login panel) */
+  --g-brand-gradient: linear-gradient(165deg, #004438 0%, #00332a 60%, #001f1a 100%);
+  --g-brand-logo-bg: rgba(255, 255, 255, 0.12);
+
+  /* Error surfaces */
+  --g-error-surface: hsl(0, 72%, 97%);
+  --g-error-border: hsl(0, 72%, 90%);
+  --g-error-text: hsl(0, 72%, 40%);
+
+  /* Popover shadow */
+  --g-shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.3);
+
   /* Layout */
   --g-content-max-width: 1200px;
   --g-header-height: 56px;

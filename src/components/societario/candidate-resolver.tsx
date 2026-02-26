@@ -99,7 +99,7 @@ export default function CandidateResolver({ candidates, requestId, onResolved }:
                             className="w-full p-4 text-left transition-colors"
                             style={{
                                 backgroundColor: isSelected
-                                    ? 'hsla(162, 100%, 13%, 0.04)'
+                                    ? 'var(--g-sidebar-surface-subtle)'
                                     : 'transparent',
                                 border: 'none',
                                 cursor: 'pointer',

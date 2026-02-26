@@ -637,7 +637,7 @@ export default function ProcessWorkbench({ projectId, areaCode, areaName }: Proc
                                                     fontWeight: 'var(--g-font-weight-bold)',
                                                     borderRadius: 'var(--g-radius-sm)',
                                                     backgroundColor: sevCfg.color,
-                                                    color: '#fff',
+                                                    color: 'var(--g-text-inverse)',
                                                     textTransform: 'uppercase',
                                                 }}
                                             >
@@ -894,7 +894,7 @@ export default function ProcessWorkbench({ projectId, areaCode, areaName }: Proc
                                                     fontWeight: 'var(--g-font-weight-bold)',
                                                     borderRadius: 'var(--g-radius-sm)',
                                                     backgroundColor: sevCfg.color,
-                                                    color: '#fff',
+                                                    color: 'var(--g-text-inverse)',
                                                     textTransform: 'uppercase',
                                                 }}
                                             >

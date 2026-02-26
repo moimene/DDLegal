@@ -30,9 +30,9 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: stri
 };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-    P0: { label: 'P0 — Crítica', color: 'var(--status-error)', bg: 'hsla(0, 72%, 51%, 0.1)' },
-    P1: { label: 'P1 — Alta', color: 'hsl(25, 95%, 53%)', bg: 'hsla(25, 95%, 53%, 0.1)' },
-    P2: { label: 'P2 — Media', color: 'hsl(45, 80%, 42%)', bg: 'hsla(45, 80%, 42%, 0.1)' },
+    P0: { label: 'P0 — Crítica', color: 'var(--g-severity-critical)', bg: 'var(--g-priority-p0-bg)' },
+    P1: { label: 'P1 — Alta', color: 'var(--g-severity-high)', bg: 'var(--g-hitl-bg)' },
+    P2: { label: 'P2 — Media', color: 'var(--g-severity-medium)', bg: 'var(--g-trigger-bg)' },
     P3: { label: 'P3 — Baja', color: 'var(--g-text-muted)', bg: 'var(--g-surface-muted)' },
 };
 
@@ -40,9 +40,9 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string
 // Lifecycle badge configuration
 // ============================================================
 const LIFECYCLE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-    activo: { label: 'Activo', color: 'var(--status-success)', bg: 'hsla(142, 71%, 45%, 0.12)' },
+    activo: { label: 'Activo', color: 'var(--status-success)', bg: 'var(--g-source-bg)' },
     inactivo: { label: 'Inactivo', color: 'var(--g-text-muted)', bg: 'var(--g-surface-muted)' },
-    testing: { label: 'Testing', color: 'hsl(45, 80%, 42%)', bg: 'hsla(45, 80%, 42%, 0.12)' },
+    testing: { label: 'Testing', color: 'var(--g-severity-medium)', bg: 'var(--g-trigger-bg)' },
 };
 
 function getLifecycleStatus(skill: DDSkill): 'activo' | 'inactivo' | 'testing' {
@@ -210,7 +210,7 @@ function VersionHistory({ skill }: { skill: DDSkill }) {
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '20px', paddingTop: '2px' }}>
                                     <div style={{
                                         width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0,
-                                        backgroundColor: idx === 0 ? 'hsl(217, 91%, 60%)' : 'var(--g-border-default)',
+                                        backgroundColor: idx === 0 ? 'var(--g-input-color)' : 'var(--g-border-default)',
                                     }} />
                                     {idx < versions.length - 1 && (
                                         <div style={{ width: '2px', height: '24px', backgroundColor: 'var(--g-border-subtle)', marginTop: '4px' }} />
@@ -222,8 +222,8 @@ function VersionHistory({ skill }: { skill: DDSkill }) {
                                         <span style={{
                                             display: 'inline-flex', alignItems: 'center', padding: '1px 8px',
                                             fontSize: '10px', fontWeight: 700, borderRadius: 'var(--g-radius-full)',
-                                            backgroundColor: idx === 0 ? 'hsla(217, 91%, 60%, 0.12)' : 'var(--g-surface-card)',
-                                            color: idx === 0 ? 'hsl(217, 91%, 60%)' : 'var(--g-text-muted)',
+                                            backgroundColor: idx === 0 ? 'var(--g-input-bg)' : 'var(--g-surface-card)',
+                                            color: idx === 0 ? 'var(--g-input-color)' : 'var(--g-text-muted)',
                                             border: '1px solid var(--g-border-subtle)',
                                         }}>
                                             v{entry.version}
@@ -260,7 +260,7 @@ function VersionHistory({ skill }: { skill: DDSkill }) {
                                     <span style={{
                                         display: 'inline-flex', alignItems: 'center', padding: '1px 8px',
                                         fontSize: '10px', fontWeight: 700, borderRadius: 'var(--g-radius-full)',
-                                        backgroundColor: 'hsla(217, 91%, 60%, 0.12)', color: 'hsl(217, 91%, 60%)',
+                                        backgroundColor: 'var(--g-input-bg)', color: 'var(--g-input-color)',
                                     }}>
                                         v{skill.version}
                                     </span>
@@ -302,8 +302,8 @@ function SkillTestPanel({ skill }: { skill: DDSkill }) {
 
     const statusConfig = {
         ready:   { label: 'Listo para prueba', color: 'var(--g-text-secondary)', bg: 'var(--g-surface-muted)' },
-        running: { label: 'Ejecutando...', color: 'hsl(45, 80%, 42%)', bg: 'hsla(45, 80%, 42%, 0.1)' },
-        done:    { label: 'Completado', color: 'var(--status-success)', bg: 'hsla(142, 71%, 45%, 0.12)' },
+        running: { label: 'Ejecutando...', color: 'var(--g-severity-medium)', bg: 'var(--g-trigger-bg)' },
+        done:    { label: 'Completado', color: 'var(--status-success)', bg: 'var(--g-source-bg)' },
     };
 
     const sc = statusConfig[status];
@@ -534,7 +534,7 @@ function CreateSkillModal({ areas, onClose, onCreated }: { areas: DDArea[]; onCl
                         <textarea value={form.prompt_template} onChange={e => setForm(prev => ({ ...prev, prompt_template: e.target.value }))} placeholder="Escribe el prompt template..." rows={6} style={{ ...fieldStyle, resize: 'vertical', fontFamily: 'monospace', fontSize: '12px' }} />
                     </div>
                     {error && (
-                        <div style={{ padding: '8px 12px', borderRadius: 'var(--g-radius-md)', backgroundColor: 'hsla(0, 72%, 51%, 0.1)', color: 'var(--status-error)', fontSize: 'var(--g-text-caption)', fontWeight: 500 }}>
+                        <div style={{ padding: '8px 12px', borderRadius: 'var(--g-radius-md)', backgroundColor: 'var(--g-priority-p0-bg)', color: 'var(--status-error)', fontSize: 'var(--g-text-caption)', fontWeight: 500 }}>
                             {error}
                         </div>
                     )}
@@ -658,7 +658,7 @@ function TelemetryPanel() {
 
                 <div className="g-card" style={{ padding: 'var(--g-space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--g-space-2)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-2)' }}>
-                        <Clock style={{ width: '16px', height: '16px', color: 'hsl(217, 91%, 60%)' }} aria-hidden="true" />
+                        <Clock style={{ width: '16px', height: '16px', color: 'var(--g-input-color)' }} aria-hidden="true" />
                         <span style={{ fontSize: 'var(--g-text-caption)', color: 'var(--g-text-secondary)', fontWeight: 500 }}>Latencia Media</span>
                     </div>
                     <span style={{ fontSize: 'var(--g-text-h2)', fontWeight: 700, color: 'var(--g-text-primary)' }}>
@@ -681,7 +681,7 @@ function TelemetryPanel() {
                         <Target style={{ width: '16px', height: '16px', color: 'var(--status-success)' }} aria-hidden="true" />
                         <span style={{ fontSize: 'var(--g-text-caption)', color: 'var(--g-text-secondary)', fontWeight: 500 }}>Grounding Medio</span>
                     </div>
-                    <span style={{ fontSize: 'var(--g-text-h2)', fontWeight: 700, color: overall.avg_grounding !== null && overall.avg_grounding >= 80 ? 'var(--status-success)' : overall.avg_grounding !== null && overall.avg_grounding >= 50 ? 'hsl(45, 80%, 42%)' : 'var(--g-text-primary)' }}>
+                    <span style={{ fontSize: 'var(--g-text-h2)', fontWeight: 700, color: overall.avg_grounding !== null && overall.avg_grounding >= 80 ? 'var(--status-success)' : overall.avg_grounding !== null && overall.avg_grounding >= 50 ? 'var(--g-severity-medium)' : 'var(--g-text-primary)' }}>
                         {overall.avg_grounding !== null ? `${overall.avg_grounding}%` : '--'}
                     </span>
                 </div>
@@ -736,8 +736,8 @@ function TelemetryPanel() {
                                                     fontSize: 'var(--g-text-caption)',
                                                     fontWeight: 600,
                                                     borderRadius: 'var(--g-radius-full)',
-                                                    backgroundColor: stat.success_rate >= 90 ? 'hsla(142, 71%, 45%, 0.12)' : stat.success_rate >= 70 ? 'hsla(45, 80%, 42%, 0.12)' : 'hsla(0, 72%, 51%, 0.1)',
-                                                    color: stat.success_rate >= 90 ? 'var(--status-success)' : stat.success_rate >= 70 ? 'hsl(45, 80%, 42%)' : 'var(--status-error)',
+                                                    backgroundColor: stat.success_rate >= 90 ? 'var(--g-source-bg)' : stat.success_rate >= 70 ? 'var(--g-trigger-bg)' : 'var(--g-priority-p0-bg)',
+                                                    color: stat.success_rate >= 90 ? 'var(--status-success)' : stat.success_rate >= 70 ? 'var(--g-severity-medium)' : 'var(--status-error)',
                                                 }}>
                                                     {stat.success_rate}%
                                                 </span>
@@ -748,7 +748,7 @@ function TelemetryPanel() {
                                                 <span style={{
                                                     fontSize: 'var(--g-text-sm)',
                                                     fontWeight: 600,
-                                                    color: stat.avg_grounding >= 80 ? 'var(--status-success)' : stat.avg_grounding >= 50 ? 'hsl(45, 80%, 42%)' : 'var(--status-error)',
+                                                    color: stat.avg_grounding >= 80 ? 'var(--status-success)' : stat.avg_grounding >= 50 ? 'var(--g-severity-medium)' : 'var(--status-error)',
                                                 }}>
                                                     {stat.avg_grounding}%
                                                 </span>
@@ -968,8 +968,8 @@ export default function SkillsAdminPage() {
                             fontSize: '10px',
                             fontWeight: 700,
                             borderRadius: 'var(--g-radius-full)',
-                            backgroundColor: 'hsla(45, 80%, 42%, 0.15)',
-                            color: 'hsl(45, 80%, 42%)',
+                            backgroundColor: 'var(--g-trigger-bg)',
+                            color: 'var(--g-severity-medium)',
                         }}>
                             {testingCount}
                         </span>
@@ -1141,7 +1141,7 @@ export default function SkillsAdminPage() {
 
                                                             {/* HITL badge */}
                                                             {skill.hitl_required && (
-                                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', fontSize: '9px', fontWeight: 600, borderRadius: 'var(--g-radius-sm)', backgroundColor: 'hsla(25, 95%, 53%, 0.1)', color: 'hsl(25, 95%, 53%)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', fontSize: '9px', fontWeight: 600, borderRadius: 'var(--g-radius-sm)', backgroundColor: 'var(--g-hitl-bg)', color: 'var(--g-severity-high)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                                                     <Users style={{ width: '10px', height: '10px' }} /> HITL
                                                                 </span>
                                                             )}
@@ -1175,7 +1175,7 @@ export default function SkillsAdminPage() {
                                                                 }}>
                                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-2)' }}>
                                                                         <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--g-text-muted)' }}>Version</span>
-                                                                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', fontSize: 'var(--g-text-caption)', fontWeight: 700, borderRadius: 'var(--g-radius-full)', backgroundColor: 'hsla(217, 91%, 60%, 0.12)', color: 'hsl(217, 91%, 60%)' }}>
+                                                                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', fontSize: 'var(--g-text-caption)', fontWeight: 700, borderRadius: 'var(--g-radius-full)', backgroundColor: 'var(--g-input-bg)', color: 'var(--g-input-color)' }}>
                                                                             v{skill.version}
                                                                         </span>
                                                                     </div>
@@ -1230,7 +1230,7 @@ export default function SkillsAdminPage() {
                                                                         {skill.trigger_description && (
                                                                             <DetailSection label="Disparador">
                                                                                 <p style={{ fontSize: 'var(--g-text-sm)', color: 'var(--g-text-secondary)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                                    <Zap style={{ width: '14px', height: '14px', color: 'hsl(45, 80%, 42%)' }} />
+                                                                                    <Zap style={{ width: '14px', height: '14px', color: 'var(--g-severity-medium)' }} />
                                                                                     {skill.trigger_description}
                                                                                 </p>
                                                                             </DetailSection>
@@ -1267,7 +1267,7 @@ export default function SkillsAdminPage() {
                                                                         {skill.hitl_conditions && (
                                                                             <DetailSection label="Revision Humana (HITL)">
                                                                                 <p style={{ fontSize: 'var(--g-text-sm)', color: 'var(--g-text-secondary)', margin: 0, display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-                                                                                    <Eye style={{ width: '14px', height: '14px', color: 'hsl(25, 95%, 53%)', flexShrink: 0, marginTop: '2px' }} />
+                                                                                    <Eye style={{ width: '14px', height: '14px', color: 'var(--g-severity-high)', flexShrink: 0, marginTop: '2px' }} />
                                                                                     {skill.hitl_conditions}
                                                                                 </p>
                                                                             </DetailSection>
@@ -1284,7 +1284,7 @@ export default function SkillsAdminPage() {
                                                                         {skill.risks_limits && (
                                                                             <DetailSection label="Riesgos y Limites">
                                                                                 <p style={{ fontSize: 'var(--g-text-sm)', color: 'var(--g-text-secondary)', margin: 0, display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-                                                                                    <AlertTriangle style={{ width: '14px', height: '14px', color: 'hsl(45, 80%, 42%)', flexShrink: 0, marginTop: '2px' }} />
+                                                                                    <AlertTriangle style={{ width: '14px', height: '14px', color: 'var(--g-severity-medium)', flexShrink: 0, marginTop: '2px' }} />
                                                                                     {skill.risks_limits}
                                                                                 </p>
                                                                             </DetailSection>

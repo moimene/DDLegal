@@ -497,8 +497,8 @@ export default function ConfiguracionPage() {
                         fontWeight: 600,
                         backgroundColor:
                           route.method === 'GET'
-                            ? 'hsla(217, 91%, 60%, 0.12)'
-                            : 'hsla(160, 100%, 30%, 0.12)',
+                            ? 'var(--g-input-bg)'
+                            : 'var(--g-source-bg)',
                         color:
                           route.method === 'GET'
                             ? 'var(--status-info)'

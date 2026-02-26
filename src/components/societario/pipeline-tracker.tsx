@@ -38,17 +38,17 @@ export default function PipelineTracker({ currentStep, status }: PipelineTracker
                         textColor = 'var(--status-success)';
                     } else if (isActive) {
                         if (isFailed) {
-                            iconColor = 'var(--status-error)';
-                            textColor = 'var(--status-error)';
-                            bgColor = 'hsla(0, 84%, 60%, 0.08)';
+                            iconColor = 'var(--g-severity-critical)';
+                            textColor = 'var(--g-severity-critical)';
+                            bgColor = 'var(--g-priority-p0-bg)';
                         } else if (isNeedsReview) {
-                            iconColor = 'var(--status-warning)';
-                            textColor = 'var(--status-warning)';
-                            bgColor = 'hsla(38, 92%, 50%, 0.08)';
+                            iconColor = 'var(--g-severity-medium)';
+                            textColor = 'var(--g-severity-medium)';
+                            bgColor = 'var(--g-trigger-bg)';
                         } else {
                             iconColor = 'var(--g-brand-3308)';
                             textColor = 'var(--g-brand-3308)';
-                            bgColor = 'hsla(162, 100%, 13%, 0.06)';
+                            bgColor = 'var(--g-sidebar-surface-subtle)';
                         }
                     }
 

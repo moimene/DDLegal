@@ -78,10 +78,10 @@ export default function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
                                     style={{
                                         borderRadius: 'var(--g-radius-full)',
                                         backgroundColor: tab.key === 'redflags'
-                                            ? 'hsla(0, 84%, 60%, 0.15)'
+                                            ? 'var(--g-priority-p0-bg)'
                                             : 'var(--g-surface-muted)',
                                         color: tab.key === 'redflags'
-                                            ? 'var(--status-error)'
+                                            ? 'var(--g-priority-p0)'
                                             : 'var(--g-text-muted)',
                                     }}
                                 >
@@ -136,7 +136,7 @@ export default function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
                                                 className="w-8 h-8 shrink-0 flex items-center justify-center text-xs font-bold"
                                                 style={{
                                                     borderRadius: 'var(--g-radius-full)',
-                                                    backgroundColor: 'hsla(162, 100%, 13%, 0.08)',
+                                                    backgroundColor: 'var(--g-sidebar-surface-subtle)',
                                                     color: 'var(--g-brand-3308)',
                                                 }}
                                             >
@@ -192,8 +192,8 @@ export default function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
                                                 className="px-1.5 py-0.5 text-[9px] font-semibold mr-2"
                                                 style={{
                                                     borderRadius: 'var(--g-radius-sm)',
-                                                    backgroundColor: 'hsla(217, 91%, 60%, 0.1)',
-                                                    color: 'hsl(217, 91%, 60%)',
+                                                    backgroundColor: 'var(--g-input-bg)',
+                                                    color: 'var(--g-input-color)',
                                                 }}
                                             >
                                                 {TIPO_ACTO_LABELS[pod.tipo as string] || pod.tipo as string}
@@ -243,8 +243,8 @@ export default function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
                                                     className="px-1.5 py-0.5 text-[9px] font-semibold"
                                                     style={{
                                                         borderRadius: 'var(--g-radius-sm)',
-                                                        backgroundColor: 'hsla(38, 92%, 50%, 0.1)',
-                                                        color: 'hsl(38, 92%, 50%)',
+                                                        backgroundColor: 'var(--g-severity-medium)',
+                                                        color: 'var(--g-text-inverse)',
                                                     }}
                                                 >
                                                     {TIPO_ACTO_LABELS[mod.tipo as string] || mod.tipo as string}
@@ -282,11 +282,11 @@ export default function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
                                                 style={{
                                                     borderRadius: 'var(--g-radius-sm)',
                                                     backgroundColor: ch.tipo === 'AMPLIACION_CAPITAL'
-                                                        ? 'hsla(120, 60%, 40%, 0.1)'
-                                                        : 'hsla(0, 84%, 60%, 0.1)',
+                                                        ? 'var(--g-source-bg)'
+                                                        : 'var(--g-priority-p0-bg)',
                                                     color: ch.tipo === 'AMPLIACION_CAPITAL'
-                                                        ? 'hsl(120, 60%, 40%)'
-                                                        : 'var(--status-error)',
+                                                        ? 'var(--g-source-color)'
+                                                        : 'var(--g-priority-p0)',
                                                 }}
                                             >
                                                 {ch.tipo === 'AMPLIACION_CAPITAL' ? '+ Ampliación' : '- Reducción'}
@@ -345,15 +345,15 @@ export default function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
                             redFlags.map((flag, i) => {
                                 const severity = flag.severidad as string;
                                 const sevColor = severity === 'critical'
-                                    ? 'var(--status-error)'
+                                    ? 'var(--g-severity-critical)'
                                     : severity === 'high'
-                                        ? 'hsl(25, 95%, 53%)'
-                                        : 'var(--status-warning)';
+                                        ? 'var(--g-severity-high)'
+                                        : 'var(--g-severity-medium)';
                                 const sevBg = severity === 'critical'
-                                    ? 'hsla(0, 84%, 60%, 0.08)'
+                                    ? 'var(--g-priority-p0-bg)'
                                     : severity === 'high'
-                                        ? 'hsla(25, 95%, 53%, 0.08)'
-                                        : 'hsla(38, 92%, 50%, 0.08)';
+                                        ? 'var(--g-hitl-bg)'
+                                        : 'var(--g-trigger-bg)';
 
                                 return (
                                     <div
@@ -397,7 +397,7 @@ export default function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
                                 className="flex items-center gap-2 p-3"
                                 style={{
                                     borderRadius: 'var(--g-radius-md)',
-                                    backgroundColor: 'hsla(120, 60%, 40%, 0.06)',
+                                    backgroundColor: 'var(--g-source-bg)',
                                 }}
                             >
                                 <span className="text-sm" style={{ color: 'var(--status-success)' }}>

@@ -37,9 +37,9 @@ export default function ToggleSwitch({ checked, onChange, disabled, label }: Tog
           width: '16px',
           height: '16px',
           borderRadius: 'var(--g-radius-full)',
-          backgroundColor: 'white',
+          backgroundColor: 'var(--g-text-inverse)',
           transition: 'left var(--g-transition-fast)',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          boxShadow: 'var(--g-shadow-sm)',
         }}
       />
     </button>

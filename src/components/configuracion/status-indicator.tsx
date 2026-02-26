@@ -12,10 +12,10 @@ interface StatusIndicatorProps {
 }
 
 const STATUS_CONFIG: Record<StatusType, { bg: string; fg: string; text: string }> = {
-  ok: { bg: 'hsla(160, 100%, 30%, 0.12)', fg: 'var(--status-success)', text: 'Operativo' },
-  error: { bg: 'hsla(0, 72%, 51%, 0.12)', fg: 'var(--status-error)', text: 'Error' },
-  warning: { bg: 'hsla(43, 80%, 50%, 0.12)', fg: 'var(--status-warning)', text: 'Advertencia' },
-  loading: { bg: 'hsla(217, 91%, 60%, 0.12)', fg: 'var(--status-info)', text: 'Verificando...' },
+  ok: { bg: 'hsla(160, 100%, 30%, 0.12)', fg: 'var(--g-severity-low)', text: 'Operativo' },
+  error: { bg: 'hsla(0, 72%, 51%, 0.12)', fg: 'var(--g-severity-critical)', text: 'Error' },
+  warning: { bg: 'hsla(45, 80%, 42%, 0.12)', fg: 'var(--g-severity-medium)', text: 'Advertencia' },
+  loading: { bg: 'var(--g-input-bg)', fg: 'var(--g-input-color)', text: 'Verificando...' },
   unconfigured: { bg: 'var(--g-surface-muted)', fg: 'var(--g-text-muted)', text: 'No configurado' },
 };
 

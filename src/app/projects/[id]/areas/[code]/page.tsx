@@ -317,7 +317,7 @@ export default function AreaPage({ params }: { params: Promise<{ id: string; cod
                                                             padding: '2px 8px',
                                                             borderRadius: 'var(--g-radius-sm)',
                                                             backgroundColor: sevCfg.color,
-                                                            color: '#fff',
+                                                            color: 'var(--g-text-inverse)',
                                                         }}
                                                     >
                                                         {sevCfg.label}

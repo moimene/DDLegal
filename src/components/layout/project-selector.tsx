@@ -11,10 +11,10 @@ import { FolderKanban, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 const PROJECT_ID_RE = /^\/projects\/([^/]+)/;
 
 const STATUS_COLORS: Record<string, string> = {
-    active: '#4ade80',
-    review: '#fbbf24',
-    draft: '#9ca3af',
-    closed: '#60a5fa',
+    active: 'var(--g-status-active)',
+    review: 'var(--g-status-review)',
+    draft: 'var(--g-status-draft)',
+    closed: 'var(--g-status-closed)',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -117,15 +117,15 @@ export default function ProjectSelector({ collapsed }: Props) {
         return (
             <div
                 style={{
-                    padding: collapsed ? '8px 0' : '8px 12px',
-                    marginBottom: '8px',
+                    padding: collapsed ? 'var(--g-space-2) 0' : 'var(--g-space-2) var(--g-space-3)',
+                    marginBottom: 'var(--g-space-2)',
                 }}
             >
                 <div
                     style={{
                         height: collapsed ? '36px' : '40px',
                         borderRadius: 'var(--g-radius-md)',
-                        backgroundColor: 'rgba(255,255,255,0.05)',
+                        backgroundColor: 'var(--g-sidebar-surface-subtle)',
                         animation: 'pulse 2s ease-in-out infinite',
                     }}
                 />
@@ -143,7 +143,7 @@ export default function ProjectSelector({ collapsed }: Props) {
         return (
             <div
                 ref={containerRef}
-                style={{ position: 'relative', padding: '8px 0', marginBottom: '8px' }}
+                style={{ position: 'relative', padding: 'var(--g-space-2) 0', marginBottom: 'var(--g-space-2)' }}
             >
                 {/* Trigger: icon button */}
                 <button
@@ -158,17 +158,17 @@ export default function ProjectSelector({ collapsed }: Props) {
                         height: '36px',
                         margin: '0 auto',
                         borderRadius: 'var(--g-radius-md)',
-                        backgroundColor: open ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)',
+                        backgroundColor: open ? 'var(--g-sidebar-surface-selected)' : 'var(--g-sidebar-surface-hover)',
                         border: 'none',
                         cursor: 'pointer',
                         position: 'relative',
-                        transition: 'background-color 0.15s',
+                        transition: 'background-color var(--g-transition-fast)',
                     }}
                     onMouseEnter={(e) => {
-                        if (!open) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.12)';
+                        if (!open) e.currentTarget.style.backgroundColor = 'var(--g-sidebar-surface-active-hover)';
                     }}
                     onMouseLeave={(e) => {
-                        if (!open) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)';
+                        if (!open) e.currentTarget.style.backgroundColor = 'var(--g-sidebar-surface-hover)';
                     }}
                 >
                     <FolderKanban
@@ -183,11 +183,11 @@ export default function ProjectSelector({ collapsed }: Props) {
                         <span
                             style={{
                                 position: 'absolute',
-                                top: '4px',
-                                right: '4px',
+                                top: 'var(--g-space-1)',
+                                right: 'var(--g-space-1)',
                                 width: '8px',
                                 height: '8px',
-                                borderRadius: '50%',
+                                borderRadius: 'var(--g-radius-full)',
                                 backgroundColor: STATUS_COLORS[currentProject.status] || STATUS_COLORS.draft,
                                 border: '1.5px solid var(--g-brand-3308)',
                             }}
@@ -201,26 +201,26 @@ export default function ProjectSelector({ collapsed }: Props) {
                         style={{
                             position: 'absolute',
                             top: 0,
-                            left: 'calc(100% + 8px)',
+                            left: 'calc(100% + var(--g-space-2))',
                             width: '260px',
                             maxHeight: '300px',
                             overflowY: 'auto',
                             backgroundColor: 'var(--g-brand-3308)',
-                            border: '1px solid rgba(255,255,255,0.15)',
+                            border: '1px solid var(--g-sidebar-surface-selected)',
                             borderRadius: 'var(--g-radius-md)',
                             zIndex: 50,
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                            padding: '4px',
+                            boxShadow: 'var(--g-shadow-popover)',
+                            padding: 'var(--g-space-1)',
                         }}
                     >
                         <div
                             style={{
-                                padding: '8px 10px 6px',
-                                fontSize: '0.6875rem',
-                                fontWeight: 700,
+                                padding: 'var(--g-space-2) 10px var(--g-space-1)',
+                                fontSize: 'var(--g-text-caption)',
+                                fontWeight: 'var(--g-font-weight-bold)',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.08em',
-                                color: 'rgba(255,255,255,0.5)',
+                                color: 'var(--g-sidebar-text-muted)',
                             }}
                         >
                             Proyectos
@@ -240,14 +240,14 @@ export default function ProjectSelector({ collapsed }: Props) {
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '10px',
-                                        padding: '8px 10px',
+                                        padding: 'var(--g-space-2) 10px',
                                         borderRadius: 'var(--g-radius-md)',
-                                        backgroundColor: isActive ? 'rgba(255,255,255,0.15)' : 'transparent',
+                                        backgroundColor: isActive ? 'var(--g-sidebar-surface-selected)' : 'transparent',
                                         cursor: 'pointer',
-                                        transition: 'background-color 0.15s',
+                                        transition: 'background-color var(--g-transition-fast)',
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.12)';
+                                        if (!isActive) e.currentTarget.style.backgroundColor = 'var(--g-sidebar-surface-active-hover)';
                                     }}
                                     onMouseLeave={(e) => {
                                         if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
@@ -258,7 +258,7 @@ export default function ProjectSelector({ collapsed }: Props) {
                                         style={{
                                             width: '8px',
                                             height: '8px',
-                                            borderRadius: '50%',
+                                            borderRadius: 'var(--g-radius-full)',
                                             backgroundColor: STATUS_COLORS[project.status] || STATUS_COLORS.draft,
                                             flexShrink: 0,
                                         }}
@@ -268,7 +268,7 @@ export default function ProjectSelector({ collapsed }: Props) {
                                         style={{
                                             flex: 1,
                                             fontSize: 'var(--g-text-body)',
-                                            fontWeight: isActive ? 600 : 400,
+                                            fontWeight: isActive ? 600 : 'var(--g-font-weight-regular)',
                                             color: 'var(--g-text-inverse)',
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis',
@@ -283,7 +283,7 @@ export default function ProjectSelector({ collapsed }: Props) {
                                             style={{
                                                 width: '14px',
                                                 height: '14px',
-                                                color: 'rgba(255,255,255,0.5)',
+                                                color: 'var(--g-sidebar-text-muted)',
                                                 flexShrink: 0,
                                             }}
                                         />
@@ -298,8 +298,8 @@ export default function ProjectSelector({ collapsed }: Props) {
                 <hr
                     style={{
                         border: 'none',
-                        borderTop: '1px solid rgba(255,255,255,0.1)',
-                        margin: '8px 8px 0',
+                        borderTop: '1px solid var(--g-sidebar-divider)',
+                        margin: 'var(--g-space-2) var(--g-space-2) 0',
                     }}
                 />
             </div>
@@ -315,7 +315,7 @@ export default function ProjectSelector({ collapsed }: Props) {
     return (
         <div
             ref={containerRef}
-            style={{ position: 'relative', padding: '8px 12px', marginBottom: '4px' }}
+            style={{ position: 'relative', padding: 'var(--g-space-2) var(--g-space-3)', marginBottom: 'var(--g-space-1)' }}
         >
             {/* Trigger button */}
             <button
@@ -328,19 +328,19 @@ export default function ProjectSelector({ collapsed }: Props) {
                     alignItems: 'center',
                     gap: '10px',
                     width: '100%',
-                    padding: '8px 10px',
+                    padding: 'var(--g-space-2) 10px',
                     borderRadius: 'var(--g-radius-md)',
-                    backgroundColor: open ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)',
+                    backgroundColor: open ? 'var(--g-sidebar-surface-selected)' : 'var(--g-sidebar-surface-hover)',
                     border: 'none',
                     cursor: 'pointer',
                     textAlign: 'left',
-                    transition: 'background-color 0.15s',
+                    transition: 'background-color var(--g-transition-fast)',
                 }}
                 onMouseEnter={(e) => {
-                    if (!open) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.12)';
+                    if (!open) e.currentTarget.style.backgroundColor = 'var(--g-sidebar-surface-active-hover)';
                 }}
                 onMouseLeave={(e) => {
-                    if (!open) e.currentTarget.style.backgroundColor = open ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)';
+                    if (!open) e.currentTarget.style.backgroundColor = open ? 'var(--g-sidebar-surface-selected)' : 'var(--g-sidebar-surface-hover)';
                 }}
             >
                 <FolderKanban
@@ -353,13 +353,13 @@ export default function ProjectSelector({ collapsed }: Props) {
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
                     {currentProject ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--g-space-2)' }}>
                             {/* Status dot */}
                             <span
                                 style={{
                                     width: '8px',
                                     height: '8px',
-                                    borderRadius: '50%',
+                                    borderRadius: 'var(--g-radius-full)',
                                     backgroundColor: STATUS_COLORS[currentProject.status] || STATUS_COLORS.draft,
                                     flexShrink: 0,
                                 }}
@@ -381,8 +381,8 @@ export default function ProjectSelector({ collapsed }: Props) {
                         <span
                             style={{
                                 fontSize: 'var(--g-text-body)',
-                                fontWeight: 500,
-                                color: 'rgba(255,255,255,0.6)',
+                                fontWeight: 'var(--g-font-weight-medium)',
+                                color: 'var(--g-sidebar-placeholder)',
                             }}
                         >
                             Seleccionar Proyecto
@@ -393,7 +393,7 @@ export default function ProjectSelector({ collapsed }: Props) {
                     style={{
                         width: '14px',
                         height: '14px',
-                        color: 'rgba(255,255,255,0.5)',
+                        color: 'var(--g-sidebar-text-muted)',
                         flexShrink: 0,
                     }}
                 />
@@ -406,17 +406,17 @@ export default function ProjectSelector({ collapsed }: Props) {
                     aria-label="Lista de proyectos"
                     style={{
                         position: 'absolute',
-                        top: 'calc(100% + 4px)',
-                        left: '12px',
-                        right: '12px',
+                        top: 'calc(100% + var(--g-space-1))',
+                        left: 'var(--g-space-3)',
+                        right: 'var(--g-space-3)',
                         maxHeight: '300px',
                         overflowY: 'auto',
                         backgroundColor: 'var(--g-brand-3308)',
-                        border: '1px solid rgba(255,255,255,0.15)',
+                        border: '1px solid var(--g-sidebar-surface-selected)',
                         borderRadius: 'var(--g-radius-md)',
                         zIndex: 50,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                        padding: '4px',
+                        boxShadow: 'var(--g-shadow-popover)',
+                        padding: 'var(--g-space-1)',
                     }}
                 >
                     {projects.map((project) => {
@@ -435,17 +435,17 @@ export default function ProjectSelector({ collapsed }: Props) {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '10px',
-                                    padding: '8px 10px',
+                                    padding: 'var(--g-space-2) 10px',
                                     borderRadius: 'var(--g-radius-md)',
-                                    backgroundColor: isActive ? 'rgba(255,255,255,0.15)' : 'transparent',
+                                    backgroundColor: isActive ? 'var(--g-sidebar-surface-selected)' : 'transparent',
                                     cursor: 'pointer',
-                                    transition: 'background-color 0.15s',
+                                    transition: 'background-color var(--g-transition-fast)',
                                 }}
                                 onMouseEnter={(e) => {
-                                    if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.12)';
+                                    if (!isActive) e.currentTarget.style.backgroundColor = 'var(--g-sidebar-surface-active-hover)';
                                 }}
                                 onMouseLeave={(e) => {
-                                    if (!isActive) e.currentTarget.style.backgroundColor = isActive ? 'rgba(255,255,255,0.15)' : 'transparent';
+                                    if (!isActive) e.currentTarget.style.backgroundColor = isActive ? 'var(--g-sidebar-surface-selected)' : 'transparent';
                                 }}
                             >
                                 {/* Status dot */}
@@ -453,7 +453,7 @@ export default function ProjectSelector({ collapsed }: Props) {
                                     style={{
                                         width: '8px',
                                         height: '8px',
-                                        borderRadius: '50%',
+                                        borderRadius: 'var(--g-radius-full)',
                                         backgroundColor: STATUS_COLORS[project.status] || STATUS_COLORS.draft,
                                         flexShrink: 0,
                                     }}
@@ -465,12 +465,12 @@ export default function ProjectSelector({ collapsed }: Props) {
                                         style={{
                                             display: 'block',
                                             fontSize: 'var(--g-text-body)',
-                                            fontWeight: isActive ? 600 : 400,
+                                            fontWeight: isActive ? 600 : 'var(--g-font-weight-regular)',
                                             color: 'var(--g-text-inverse)',
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis',
                                             whiteSpace: 'nowrap',
-                                            lineHeight: '1.3',
+                                            lineHeight: 'var(--g-leading-tight)',
                                         }}
                                     >
                                         {project.name}
@@ -480,11 +480,11 @@ export default function ProjectSelector({ collapsed }: Props) {
                                             style={{
                                                 display: 'block',
                                                 fontSize: 'var(--g-text-caption)',
-                                                color: 'rgba(255,255,255,0.45)',
+                                                color: 'var(--g-sidebar-text-faint)',
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
                                                 whiteSpace: 'nowrap',
-                                                lineHeight: '1.3',
+                                                lineHeight: 'var(--g-leading-tight)',
                                                 marginTop: '1px',
                                             }}
                                         >
@@ -498,7 +498,7 @@ export default function ProjectSelector({ collapsed }: Props) {
                                         style={{
                                             width: '14px',
                                             height: '14px',
-                                            color: 'rgba(255,255,255,0.5)',
+                                            color: 'var(--g-sidebar-text-muted)',
                                             flexShrink: 0,
                                         }}
                                     />
@@ -513,8 +513,8 @@ export default function ProjectSelector({ collapsed }: Props) {
             <hr
                 style={{
                     border: 'none',
-                    borderTop: '1px solid rgba(255,255,255,0.1)',
-                    margin: '8px 0 0',
+                    borderTop: '1px solid var(--g-sidebar-divider)',
+                    margin: 'var(--g-space-2) 0 0',
                 }}
             />
         </div>
