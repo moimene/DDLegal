@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
     Upload, X, FileText, ChevronDown, Shield, ShieldOff, Trash2
 } from 'lucide-react';
@@ -149,6 +149,13 @@ export default function UploadDropzone({ folderId, areaCode, onUpload }: UploadD
         }, 100);
     }, [queue, onUpload]);
 
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileInputRef.current?.click();
+        }
+    }, []);
+
     return (
         <div style={{
             display: 'flex',
@@ -157,6 +164,10 @@ export default function UploadDropzone({ folderId, areaCode, onUpload }: UploadD
         }}>
             {/* Drop Zone Area */}
             <div
+                role="button"
+                tabIndex={0}
+                aria-label="Subir archivos. Arrastra archivos aqui o presiona Enter para seleccionar."
+                onKeyDown={handleKeyDown}
                 onDragEnter={handleDragEnter}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -179,7 +190,9 @@ export default function UploadDropzone({ folderId, areaCode, onUpload }: UploadD
                     cursor: 'pointer',
                     transition: 'border-color 0.2s, background-color 0.2s',
                     minHeight: 120,
+                    outline: 'none',
                 }}
+                className="focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500"
             >
                 <Upload style={{
                     width: 28,
@@ -316,6 +329,7 @@ export default function UploadDropzone({ folderId, areaCode, onUpload }: UploadD
                                     onClick={() => removeFile(qf.id)}
                                     disabled={isUploading}
                                     title="Eliminar"
+                                    aria-label={`Eliminar ${qf.file.name}`}
                                     style={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
@@ -347,6 +361,7 @@ export default function UploadDropzone({ folderId, areaCode, onUpload }: UploadD
                                         value={qf.category}
                                         onChange={(e) => updateCategory(qf.id, e.target.value)}
                                         disabled={isUploading}
+                                        aria-label={`Categoria para ${qf.file.name}`}
                                         style={{
                                             width: '100%',
                                             height: 28,
@@ -381,6 +396,7 @@ export default function UploadDropzone({ folderId, areaCode, onUpload }: UploadD
                                     onClick={() => toggleConfidential(qf.id)}
                                     disabled={isUploading}
                                     title={qf.isConfidential ? 'Confidencial' : 'No confidencial'}
+                                    aria-label={qf.isConfidential ? 'Marcar como no confidencial' : 'Marcar como confidencial'}
                                     style={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
