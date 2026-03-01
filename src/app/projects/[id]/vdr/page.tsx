@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useResolvedParams } from '@/lib/utils';
 import Link from 'next/link';
+
+const dateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 import {
     ArrowLeft, FolderOpen, FolderPlus, FileText, Upload, ChevronRight,
     ChevronDown, ChevronUp, Clock, Shield, AlertTriangle, CheckCircle2, Search,
@@ -208,7 +210,7 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
-    const formatDate = (d: string) => new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(d));
+    const formatDate = (d: string) => dateFormatter.format(new Date(d));
 
     const rootFolders = folders.filter(f => !f.parent_id);
     const getChildFolders = (parentId: string) => folders.filter(f => f.parent_id === parentId);

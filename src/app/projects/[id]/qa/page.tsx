@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useResolvedParams } from '@/lib/utils';
 import Link from 'next/link';
+
+const dateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 import {
     ArrowLeft, MessageSquare, Plus, Clock, AlertTriangle,
     Send, ChevronRight, Filter, CheckCircle2, XCircle
@@ -117,7 +119,7 @@ export default function QAPage({ params }: { params: Promise<{ id: string }> }) 
         fetchThreads();
     };
 
-    const formatDate = (d: string) => new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(d));
+    const formatDate = (d: string) => dateFormatter.format(new Date(d));
 
     const getSlaIndicator = (thread: QAThread) => {
         if (thread.status === 'closed') return { color: 'var(--g-text-secondary)', icon: CheckCircle2 };
