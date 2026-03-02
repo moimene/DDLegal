@@ -110,18 +110,22 @@ function formatGroupDate(dateStr: string): string {
 
     if (diffDays === 0) return 'Hoy';
     if (diffDays === 1) return 'Ayer';
-    return new Intl.DateTimeFormat('es-ES', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    }).format(date);
+    return activityTimelineDateFormatter.format(date);
 }
 
+const activityTimelineDateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+});
+
+const activityTimelineTimeFormatter = new Intl.DateTimeFormat('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit',
+});
+
 function formatTime(dateStr: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(new Date(dateStr));
+    return activityTimelineTimeFormatter.format(new Date(dateStr));
 }
 
 function groupByDate(events: ActivityEvent[]): Map<string, ActivityEvent[]> {
