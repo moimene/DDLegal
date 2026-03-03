@@ -1,0 +1,3 @@
+## 2024-05-18 - Missing `aria-controls` bindings
+**Learning:** Found multiple components in this app using `aria-expanded` without a matching `aria-controls` binding to an `id`. This makes screen reader traversal of custom collapsible panels unclear.
+**Action:** Always add `aria-expanded` and `aria-controls` bindings with matching `id` attributes to custom collapsible panels/components in this codebase to ensure screen reader accessibility.
