@@ -365,6 +365,7 @@ export default function Sidebar() {
                     }}
                     aria-expanded={!isGroupCollapsed}
                     aria-label={`${group.header} grupo`}
+                    aria-controls={`group-content-${group.id}`}
                 >
                     <GroupIcon
                         className="h-[16px] w-[16px] shrink-0"
@@ -417,6 +418,7 @@ export default function Sidebar() {
                 {/* Group items */}
                 {!isGroupCollapsed && !collapsed && (
                     <div
+                        id={`group-content-${group.id}`}
                         style={{
                             display: 'flex',
                             flexDirection: 'column',
