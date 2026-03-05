@@ -35,15 +35,17 @@ function escapeHtml(text: string): string {
 function formatDateEs(dateStr: string): string {
     if (!dateStr) return '--';
     try {
-        return new Intl.DateTimeFormat('es-ES', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-        }).format(new Date(dateStr));
+        return reportExportDateFormatter.format(new Date(dateStr));
     } catch {
         return dateStr;
     }
 }
+
+const reportExportDateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+});
 
 function extractSections(harveyResponse: Record<string, unknown>): Array<{ key: string; title: string; content: string }> {
     const sections: Array<{ key: string; title: string; content: string }> = [];
