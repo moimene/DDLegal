@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import {
   Play,
   CheckCircle2,
@@ -155,6 +155,7 @@ export default function EventFeed({
   const [newCount, setNewCount] = useState(0);
   const [isAutoScroll, setIsAutoScroll] = useState(true);
   const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const contentId = useId();
 
   const feedRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -283,6 +284,8 @@ export default function EventFeed({
       {/* Header */}
       <button
         onClick={toggleCollapse}
+        aria-expanded={!collapsed}
+        aria-controls={contentId}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -336,7 +339,7 @@ export default function EventFeed({
 
       {/* Feed body */}
       {!collapsed && (
-        <div style={{ position: 'relative' }}>
+        <div id={contentId} style={{ position: 'relative' }}>
           {/* New events badge */}
           {newCount > 0 && (
             <button

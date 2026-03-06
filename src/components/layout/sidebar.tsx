@@ -364,6 +364,7 @@ export default function Sidebar() {
                         borderLeft: hasActive ? '2px solid var(--g-brand-bright)' : '2px solid transparent',
                     }}
                     aria-expanded={!isGroupCollapsed}
+                    aria-controls={`group-${group.id}`}
                     aria-label={`${group.header} grupo`}
                 >
                     <GroupIcon
@@ -417,6 +418,7 @@ export default function Sidebar() {
                 {/* Group items */}
                 {!isGroupCollapsed && !collapsed && (
                     <div
+                        id={`group-${group.id}`}
                         style={{
                             display: 'flex',
                             flexDirection: 'column',

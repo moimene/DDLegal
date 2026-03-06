@@ -1,0 +1,3 @@
+## 2024-05-24 - Accessibility bindings for collapsible panels
+**Learning:** Collapsible panels need explicit `aria-controls` bindings with matching `id` attributes to be properly accessible to screen readers, but many existing components (like `SkillCard`, `EventFeed`, and `Sidebar`) only use `aria-expanded` without linking to the content they control.
+**Action:** When creating or updating custom collapsible components (panels, drawers, accordions), always add an `id` to the controlled content element and reference it using `aria-controls` on the toggle button.
