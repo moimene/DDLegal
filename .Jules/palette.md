@@ -1,0 +1,3 @@
+## 2026-03-07 - [Keyboard Accessibility on Custom Collapsible Components]
+**Learning:** Custom collapsible components or expandable cards (e.g., in ActivityTimeline) that use `div` elements with `onClick` handlers often lack basic accessibility attributes like `aria-expanded` and lack keyboard navigation support (Enter/Space to expand). This is a recurring pattern for "card-like" UI elements that double as expanders.
+**Action:** When creating or modifying custom interactive cards that expand/collapse, always add `role="button"`, `tabIndex={0}`, `aria-expanded`, `aria-controls` bindings (using React's `useId()` hook to generate matching IDs), and `onKeyDown` handlers to support keyboard navigation. Ensure focus states are clearly visible.
