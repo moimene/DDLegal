@@ -83,6 +83,12 @@ const ICON_BG_MAP: Record<DDNotification['type'], string> = {
     milestone: 'rgba(0,68,56,0.10)',
 };
 
+// Cache formatter for performance
+const relativeTimeFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+});
+
 function relativeTime(dateStr: string): string {
     const now = Date.now();
     const date = new Date(dateStr).getTime();
@@ -97,10 +103,7 @@ function relativeTime(dateStr: string): string {
     if (diffHour < 24) return `hace ${diffHour}h`;
     if (diffDay === 1) return 'ayer';
     if (diffDay < 7) return `hace ${diffDay} dias`;
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit',
-        month: 'short',
-    }).format(new Date(dateStr));
+    return relativeTimeFormatter.format(new Date(dateStr));
 }
 
 function extractProjectId(pathname: string): string | null {
