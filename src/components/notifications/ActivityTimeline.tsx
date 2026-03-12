@@ -101,6 +101,18 @@ const CATEGORY_BORDER_MAP: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
+// ⚡ Bolt Optimization: Extract Intl.DateTimeFormat to module scope
+const groupDateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+});
+
+const timeFormatter = new Intl.DateTimeFormat('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit',
+});
+
 function formatGroupDate(dateStr: string): string {
     const date = new Date(dateStr);
     const now = new Date();
@@ -110,18 +122,11 @@ function formatGroupDate(dateStr: string): string {
 
     if (diffDays === 0) return 'Hoy';
     if (diffDays === 1) return 'Ayer';
-    return new Intl.DateTimeFormat('es-ES', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    }).format(date);
+    return groupDateFormatter.format(date);
 }
 
 function formatTime(dateStr: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(new Date(dateStr));
+    return timeFormatter.format(new Date(dateStr));
 }
 
 function groupByDate(events: ActivityEvent[]): Map<string, ActivityEvent[]> {
