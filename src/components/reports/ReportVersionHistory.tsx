@@ -46,15 +46,17 @@ function relativeTime(dateStr: string): string {
     return `hace ${Math.floor(diffDays / 365)} anos`;
 }
 
+const reportVersionFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+});
+
 function formatDateShort(dateStr: string): string {
     try {
-        return new Intl.DateTimeFormat('es-ES', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        }).format(new Date(dateStr));
+        return reportVersionFormatter.format(new Date(dateStr));
     } catch {
         return dateStr;
     }

@@ -215,11 +215,13 @@ function authHeaders(): Record<string, string> {
     return headers;
 }
 
+const warRoomDateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+});
+
 function formatDateTime(ts: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-    }).format(new Date(ts));
+    return warRoomDateFormatter.format(new Date(ts));
 }
 
 function relativeTime(ts: string): string {
