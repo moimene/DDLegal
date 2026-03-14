@@ -70,24 +70,28 @@ function getActionColor(action: string): { bg: string; fg: string } {
 // Helpers
 // ============================================================
 
+const timestampFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+});
+
 function formatTimestamp(dateStr: string): string {
     const d = new Date(dateStr);
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-    }).format(d);
+    return timestampFormatter.format(d);
 }
 
+const shortDateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+});
+
 function formatDateShort(dateStr: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-    }).format(new Date(dateStr));
+    return shortDateFormatter.format(new Date(dateStr));
 }
 
 function RoleBadge({ role }: { role: string }) {

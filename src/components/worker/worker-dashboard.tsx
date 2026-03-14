@@ -121,14 +121,16 @@ function formatDuration(ms: number): string {
   return `${Math.round(ms / 3600000)}h`;
 }
 
+const dateFormatter = new Intl.DateTimeFormat('es-ES', {
+  day: '2-digit',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
 function formatDate(date: string | null): string {
   if (!date) return '-';
-  return new Intl.DateTimeFormat('es-ES', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(date));
+  return dateFormatter.format(new Date(date));
 }
 
 // ============================================================================
