@@ -98,6 +98,7 @@ export default function UserIndicator() {
 
                     {/* Logout button */}
                     <button
+                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--g-error-border)]"
                         onClick={handleLogout}
                         title="Cerrar sesion"
                         aria-label="Cerrar sesion"
@@ -127,6 +128,7 @@ export default function UserIndicator() {
                 </div>
             ) : (
                 <button
+                    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--g-border-default)]"
                     onClick={handleLoginRedirect}
                     style={{
                         display: 'flex',

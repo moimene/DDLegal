@@ -593,7 +593,7 @@ export default function Sidebar() {
             {/* AI Assist */}
             <div className="px-3 pb-3">
                 <button
-                    className="w-full flex items-center gap-3 px-3 py-2 transition-all hover:opacity-90"
+                    className="w-full flex items-center gap-3 px-3 py-2 transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/50"
                     style={{
                         borderRadius: 'var(--g-radius-md)',
                         backgroundColor: 'var(--g-brand-bright)',
@@ -611,7 +611,7 @@ export default function Sidebar() {
             {/* Collapse toggle */}
             <button
                 onClick={() => setCollapsed(!collapsed)}
-                className="flex items-center justify-center h-10 border-t transition-colors shrink-0"
+                className="flex items-center justify-center h-10 border-t transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/50"
                 style={{
                     color: 'var(--g-text-inverse)',
                     borderColor: 'var(--g-sidebar-border)',
