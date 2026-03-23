@@ -17,6 +17,7 @@ import {
     Upload,
     Brain,
 } from 'lucide-react';
+import { formatDateWithOptions } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -110,18 +111,18 @@ function formatGroupDate(dateStr: string): string {
 
     if (diffDays === 0) return 'Hoy';
     if (diffDays === 1) return 'Ayer';
-    return new Intl.DateTimeFormat('es-ES', {
+    return formatDateWithOptions(date, {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
-    }).format(date);
+    });
 }
 
 function formatTime(dateStr: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
+    return formatDateWithOptions(dateStr, {
         hour: '2-digit',
         minute: '2-digit',
-    }).format(new Date(dateStr));
+    });
 }
 
 function groupByDate(events: ActivityEvent[]): Map<string, ActivityEvent[]> {
