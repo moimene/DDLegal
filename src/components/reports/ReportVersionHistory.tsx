@@ -6,7 +6,7 @@ import {
     AlertCircle, Eye
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { REPORT_VISIBILITY_CONFIG } from '@/lib/utils';
+import { REPORT_VISIBILITY_CONFIG, getCachedDateTimeFormatter } from '@/lib/utils';
 
 interface VersionItem {
     id: string;
@@ -48,7 +48,7 @@ function relativeTime(dateStr: string): string {
 
 function formatDateShort(dateStr: string): string {
     try {
-        return new Intl.DateTimeFormat('es-ES', {
+        return getCachedDateTimeFormatter('es-ES', {
             day: '2-digit',
             month: 'short',
             year: 'numeric',

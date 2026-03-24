@@ -17,6 +17,7 @@ import {
     X,
     Loader2,
 } from 'lucide-react';
+import { getCachedDateTimeFormatter } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,7 +98,7 @@ function relativeTime(dateStr: string): string {
     if (diffHour < 24) return `hace ${diffHour}h`;
     if (diffDay === 1) return 'ayer';
     if (diffDay < 7) return `hace ${diffDay} dias`;
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormatter('es-ES', {
         day: '2-digit',
         month: 'short',
     }).format(new Date(dateStr));

@@ -9,6 +9,7 @@ import {
     Globe, FileWarning, Gavel, FolderOpen, Database, ScrollText, BarChart3,
     Filter, ArrowUpDown, Trash2, Link2, RefreshCw, Eye, PenLine, XCircle
 } from 'lucide-react';
+import { getCachedDateTimeFormatter } from '@/lib/utils';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -197,7 +198,7 @@ function formatTimestamp(ts: string): string {
     if (diffHours < 24) return `hace ${diffHours}h`;
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `hace ${diffDays}d`;
-    return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short' }).format(d);
+    return getCachedDateTimeFormatter('es-ES', { day: '2-digit', month: 'short' }).format(d);
 }
 
 type SortKey = 'area_code' | 'name' | 'category' | 'is_mandatory' | 'review_depth' | 'status';
