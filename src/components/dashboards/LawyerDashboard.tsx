@@ -297,6 +297,7 @@ export default function LawyerDashboard({ projectId }: LawyerDashboardProps) {
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                     type="button"
+                    aria-label="Ir a siguiente tarea"
                     style={{
                         display: 'inline-flex', alignItems: 'center', gap: 'var(--g-space-2)',
                         backgroundColor: 'var(--g-brand-3308)', color: 'var(--g-text-inverse)',
