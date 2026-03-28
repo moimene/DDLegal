@@ -4,6 +4,7 @@ import {
     FileText, Shield, Download, Link2, Archive, CheckCircle2,
     Clock, Tag, Hash, Lock, Info, ChevronRight, X
 } from 'lucide-react';
+import { getDateTimeFormatter } from '@/lib/utils';
 import type { VDRDocument, VDRDocumentVersion } from '@/lib/supabase';
 
 interface DocumentPreviewProps {
@@ -45,7 +46,7 @@ function formatFileSize(bytes: number): string {
 }
 
 function formatDate(d: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
+    return getDateTimeFormatter({
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -53,7 +54,7 @@ function formatDate(d: string): string {
 }
 
 function formatDateTime(d: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
+    return getDateTimeFormatter({
         day: '2-digit',
         month: 'short',
         year: 'numeric',

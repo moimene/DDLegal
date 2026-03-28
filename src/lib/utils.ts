@@ -13,18 +13,39 @@ export function cn(...classes: (string | boolean | undefined | null)[]): string 
     return classes.filter(Boolean).join(' ');
 }
 
+const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>();
+const numberFormatters = new Map<string, Intl.NumberFormat>();
+
+export function getDateTimeFormatter(options: Intl.DateTimeFormatOptions = {}): Intl.DateTimeFormat {
+    const key = JSON.stringify(options);
+    if (!dateTimeFormatters.has(key)) {
+        dateTimeFormatters.set(key, new Intl.DateTimeFormat('es-ES', options));
+    }
+    return dateTimeFormatters.get(key)!;
+}
+
+export function getNumberFormatter(options: Intl.NumberFormatOptions = {}): Intl.NumberFormat {
+    const key = JSON.stringify(options);
+    if (!numberFormatters.has(key)) {
+        numberFormatters.set(key, new Intl.NumberFormat('es-ES', options));
+    }
+    return numberFormatters.get(key)!;
+}
+
 export function formatDate(date: string | null): string {
     if (!date) return '—';
-    return new Intl.DateTimeFormat('es-ES', {
+    const formatter = getDateTimeFormatter({
         day: '2-digit', month: 'short', year: 'numeric'
-    }).format(new Date(date));
+    });
+    return formatter.format(new Date(date));
 }
 
 export function formatCurrency(amount: number | null, currency = 'EUR'): string {
     if (amount === null) return '—';
-    return new Intl.NumberFormat('es-ES', {
+    const formatter = getNumberFormatter({
         style: 'currency', currency, maximumFractionDigits: 0
-    }).format(amount);
+    });
+    return formatter.format(amount);
 }
 
 export const AREA_COLORS: Record<string, string> = {
