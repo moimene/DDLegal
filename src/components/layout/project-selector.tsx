@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { FolderKanban, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 
@@ -51,6 +51,8 @@ export default function ProjectSelector({ collapsed }: Props) {
     const pathname = usePathname();
     const router = useRouter();
     const containerRef = useRef<HTMLDivElement>(null);
+    const popoverId = useId();
+    const dropdownId = useId();
 
     /* Detect current project from URL */
     const match = PROJECT_ID_RE.exec(pathname);
@@ -149,6 +151,8 @@ export default function ProjectSelector({ collapsed }: Props) {
                 <button
                     onClick={toggleOpen}
                     title={currentProject ? currentProject.name : 'Seleccionar Proyecto'}
+                    aria-expanded={open}
+                    aria-controls={popoverId}
                     aria-label={currentProject ? currentProject.name : 'Seleccionar Proyecto'}
                     style={{
                         display: 'flex',
@@ -198,6 +202,7 @@ export default function ProjectSelector({ collapsed }: Props) {
                 {/* Popover dropdown (positioned to the right) */}
                 {open && (
                     <div
+                        id={popoverId}
                         style={{
                             position: 'absolute',
                             top: 0,
@@ -321,6 +326,7 @@ export default function ProjectSelector({ collapsed }: Props) {
             <button
                 onClick={toggleOpen}
                 aria-expanded={open}
+                aria-controls={dropdownId}
                 aria-haspopup="listbox"
                 aria-label={currentProject ? currentProject.name : 'Seleccionar Proyecto'}
                 style={{
@@ -402,6 +408,7 @@ export default function ProjectSelector({ collapsed }: Props) {
             {/* Dropdown panel */}
             {open && (
                 <div
+                    id={dropdownId}
                     role="listbox"
                     aria-label="Lista de proyectos"
                     style={{
