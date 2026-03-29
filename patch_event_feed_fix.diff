@@ -1,0 +1,19 @@
+--- src/components/events/EventFeed.tsx
++++ src/components/events/EventFeed.tsx
+@@ -359,7 +359,7 @@
+                 cursor: 'pointer',
+                 boxShadow: 'var(--g-shadow-dropdown)',
+               }}
+-              aria-label="Volver a los eventos mas recientes"
++              aria-label={`Volver a los ${newCount} ${newCount === 1 ? 'nuevo evento' : 'nuevos eventos'} mas recientes`}
+             >
+               <RefreshCw style={{ width: 10, height: 10 }} />
+               {newCount} {newCount === 1 ? 'nuevo evento' : 'nuevos eventos'}
+@@ -510,7 +510,6 @@
+                   fontWeight: 500,
+                   padding: 'var(--g-space-1) var(--g-space-2)',
+                 }}
+-                aria-label="Cargar mas eventos"
+               >
+                 Cargar mas eventos
+               </button>
