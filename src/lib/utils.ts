@@ -13,18 +13,40 @@ export function cn(...classes: (string | boolean | undefined | null)[]): string 
     return classes.filter(Boolean).join(' ');
 }
 
+const dateTimeFormatCache = new Map<string, Intl.DateTimeFormat>();
+const numberFormatCache = new Map<string, Intl.NumberFormat>();
+
 export function formatDate(date: string | null): string {
     if (!date) return '—';
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit', month: 'short', year: 'numeric'
-    }).format(new Date(date));
+    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+    const cacheKey = JSON.stringify(options);
+
+    let formatter = dateTimeFormatCache.get(cacheKey);
+    if (!formatter) {
+        formatter = new Intl.DateTimeFormat('es-ES', options);
+        dateTimeFormatCache.set(cacheKey, formatter);
+    }
+
+    return formatter.format(new Date(date));
 }
 
-export function formatCurrency(amount: number | null, currency = 'EUR'): string {
+export function formatCurrency(amount: number | null, currency = 'EUR', optionsOverrides?: Intl.NumberFormatOptions): string {
     if (amount === null) return '—';
-    return new Intl.NumberFormat('es-ES', {
-        style: 'currency', currency, maximumFractionDigits: 0
-    }).format(amount);
+    const options: Intl.NumberFormatOptions = {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 0,
+        ...optionsOverrides
+    };
+    const cacheKey = JSON.stringify(options);
+
+    let formatter = numberFormatCache.get(cacheKey);
+    if (!formatter) {
+        formatter = new Intl.NumberFormat('es-ES', options);
+        numberFormatCache.set(cacheKey, formatter);
+    }
+
+    return formatter.format(amount);
 }
 
 export const AREA_COLORS: Record<string, string> = {
