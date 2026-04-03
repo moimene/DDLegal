@@ -449,6 +449,7 @@ export default function SmartSuggestions({
                 {/* Dismiss button */}
                 <button
                   onClick={() => handleDismiss(suggestion.id)}
+                  aria-label="Descartar sugerencia"
                   style={{
                     position: 'absolute',
                     top: 'var(--g-space-2)',
