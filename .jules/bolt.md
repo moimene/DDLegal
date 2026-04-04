@@ -1,0 +1,3 @@
+## 2024-04-04 - Cache Intl formatters for performance
+**Learning:** `Intl.DateTimeFormat` and `Intl.NumberFormat` instantiation in JavaScript/V8 engine is quite expensive compared to formatting operations. In a codebase where these formatters are called repetitively (like formatting dates and currencies in lists/loops via utility functions), creating them on every function call leads to measurable performance degradation.
+**Action:** When creating formatting utilities wrapping `Intl.*` APIs with varying configurations, cache the instantiated formatter objects in a Map using `JSON.stringify(options)` as the key to ensure they are reused across function calls.
