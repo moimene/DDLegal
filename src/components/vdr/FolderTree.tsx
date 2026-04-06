@@ -495,6 +495,7 @@ export default function FolderTree({
                         setInlineValue('');
                     }}
                     title="Nueva carpeta raiz"
+                    aria-label="Nueva carpeta raiz"
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
