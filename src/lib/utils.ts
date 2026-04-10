@@ -13,16 +13,38 @@ export function cn(...classes: (string | boolean | undefined | null)[]): string 
     return classes.filter(Boolean).join(' ');
 }
 
+const intlFormattersCache = new Map<string, Intl.DateTimeFormat | Intl.NumberFormat>();
+
+export function getCachedDateTimeFormat(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+    const key = `date-${locale}-${JSON.stringify(options)}`;
+    let formatter = intlFormattersCache.get(key) as Intl.DateTimeFormat;
+    if (!formatter) {
+        formatter = new Intl.DateTimeFormat(locale, options);
+        intlFormattersCache.set(key, formatter);
+    }
+    return formatter;
+}
+
+export function getCachedNumberFormat(locale: string, options: Intl.NumberFormatOptions): Intl.NumberFormat {
+    const key = `number-${locale}-${JSON.stringify(options)}`;
+    let formatter = intlFormattersCache.get(key) as Intl.NumberFormat;
+    if (!formatter) {
+        formatter = new Intl.NumberFormat(locale, options);
+        intlFormattersCache.set(key, formatter);
+    }
+    return formatter;
+}
+
 export function formatDate(date: string | null): string {
     if (!date) return '—';
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormat('es-ES', {
         day: '2-digit', month: 'short', year: 'numeric'
     }).format(new Date(date));
 }
 
 export function formatCurrency(amount: number | null, currency = 'EUR'): string {
     if (amount === null) return '—';
-    return new Intl.NumberFormat('es-ES', {
+    return getCachedNumberFormat('es-ES', {
         style: 'currency', currency, maximumFractionDigits: 0
     }).format(amount);
 }
