@@ -494,7 +494,8 @@ export default function FolderTree({
                         setInlineCreate({ parentId: null });
                         setInlineValue('');
                     }}
-                    title="Nueva carpeta raiz"
+                    title="Nueva carpeta raíz"
+                    aria-label="Nueva carpeta raíz"
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
