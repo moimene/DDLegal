@@ -13,7 +13,7 @@ import {
 import { toast } from 'sonner';
 import {
     DECISION_TYPE_CONFIG, SEVERITY_CONFIG,
-    AREA_COLORS, formatCurrency, formatDate,
+    AREA_COLORS, formatCurrency, formatDate, getCachedDateTimeFormat
 } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
@@ -216,7 +216,7 @@ function authHeaders(): Record<string, string> {
 }
 
 function formatDateTime(ts: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormat({
         day: '2-digit', month: 'short', year: 'numeric',
         hour: '2-digit', minute: '2-digit',
     }).format(new Date(ts));

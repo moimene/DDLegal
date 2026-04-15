@@ -1,0 +1,3 @@
+## 2026-04-15 - [Intl Formatters Caching]
+**Learning:** Instantiating `Intl.DateTimeFormat` and `Intl.NumberFormat` repeatedly inside render loops and utility functions causes measurable performance degradation due to high initialization overhead, especially when lists or feeds process many dates.
+**Action:** Created centralized caching utilities (`getCachedDateTimeFormat` and `getCachedNumberFormat`) in `src/lib/utils.ts` using `Map` with JSON-stringified options keys. Refactored all inline `new Intl.DateTimeFormat` and `new Intl.NumberFormat` instances to use these cached versions to eliminate repetitive initialization overhead.

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/auth/require-permission';
+import { getCachedDateTimeFormat } from '@/lib/utils';
 
 /**
  * POST /api/reports/export
@@ -35,7 +36,7 @@ function escapeHtml(text: string): string {
 function formatDateEs(dateStr: string): string {
     if (!dateStr) return '--';
     try {
-        return new Intl.DateTimeFormat('es-ES', {
+        return getCachedDateTimeFormat({
             day: '2-digit',
             month: 'long',
             year: 'numeric',
