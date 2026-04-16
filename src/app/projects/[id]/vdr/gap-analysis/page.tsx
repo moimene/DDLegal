@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { getCachedDateTimeFormat } from '@/lib/utils';
 import {
     ArrowLeft, FileText, Upload, ChevronDown, ChevronRight, AlertTriangle,
     CheckCircle2, Search, Clock, Shield, Briefcase, Scale, Users, Building2,
@@ -197,7 +198,7 @@ function formatTimestamp(ts: string): string {
     if (diffHours < 24) return `hace ${diffHours}h`;
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `hace ${diffDays}d`;
-    return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short' }).format(d);
+    return getCachedDateTimeFormat('es-ES', { day: '2-digit', month: 'short' }).format(d);
 }
 
 type SortKey = 'area_code' | 'name' | 'category' | 'is_mandatory' | 'review_depth' | 'status';
