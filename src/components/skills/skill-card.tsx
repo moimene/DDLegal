@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { ChevronDown, ChevronUp, Cpu, Shield, Users, Zap, AlertTriangle } from 'lucide-react';
 import type { DDSkill } from '@/lib/supabase';
 import { SKILL_CATEGORY_CONFIG, AREA_COLORS } from '@/lib/utils';
@@ -18,6 +18,7 @@ interface SkillCardProps {
 
 export default function SkillCard({ skill }: SkillCardProps) {
     const [expanded, setExpanded] = useState(false);
+    const panelId = useId();
     const categoryConfig = SKILL_CATEGORY_CONFIG[skill.category] || SKILL_CATEGORY_CONFIG.verificacion;
     const areaColor = AREA_COLORS[skill.area_code] || AREA_COLORS.GENERAL;
     const priBadge = skill.priority ? PRIORITY_BADGE[skill.priority] : null;
@@ -115,8 +116,10 @@ export default function SkillCard({ skill }: SkillCardProps) {
                             border: 'none',
                             cursor: 'pointer',
                         }}
+                        title={expanded ? 'Colapsar detalle' : 'Expandir detalle'}
                         aria-label={expanded ? 'Colapsar detalle' : 'Expandir detalle'}
                         aria-expanded={expanded}
+                        aria-controls={expanded ? panelId : undefined}
                     >
                         {expanded
                             ? <ChevronUp className="h-4 w-4" />
@@ -152,6 +155,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
             {/* Expanded detail */}
             {expanded && (
                 <div
+                    id={panelId}
                     className="px-4 pb-4 pt-0 animate-fade-in border-t"
                     style={{ borderColor: 'var(--g-border-subtle)' }}
                 >
