@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useId } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -233,6 +233,7 @@ function groupHasActiveItem(group: NavGroup, pathname: string): boolean {
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
+    const baseId = useId();
     const pathname = usePathname();
     const { sections, projectGroups, projectId } = useResolvedNav(pathname);
     const { collapsedGroups, toggle } = useGroupCollapse(projectId, projectGroups, pathname);
@@ -365,6 +366,7 @@ export default function Sidebar() {
                     }}
                     aria-expanded={!isGroupCollapsed}
                     aria-label={`${group.header} grupo`}
+                    aria-controls={!isGroupCollapsed && !collapsed ? `${baseId}-${group.id}-panel` : undefined}
                 >
                     <GroupIcon
                         className="h-[16px] w-[16px] shrink-0"
@@ -417,6 +419,7 @@ export default function Sidebar() {
                 {/* Group items */}
                 {!isGroupCollapsed && !collapsed && (
                     <div
+                        id={`${baseId}-${group.id}-panel`}
                         style={{
                             display: 'flex',
                             flexDirection: 'column',
