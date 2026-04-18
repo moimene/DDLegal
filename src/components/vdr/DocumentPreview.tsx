@@ -1,4 +1,5 @@
 'use client';
+import { getCachedDateTimeFormat } from '@/lib/utils';
 
 import {
     FileText, Shield, Download, Link2, Archive, CheckCircle2,
@@ -45,7 +46,7 @@ function formatFileSize(bytes: number): string {
 }
 
 function formatDate(d: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormat('es-ES', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -53,7 +54,7 @@ function formatDate(d: string): string {
 }
 
 function formatDateTime(d: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormat('es-ES', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',

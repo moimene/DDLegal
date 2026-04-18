@@ -1,4 +1,5 @@
 'use client';
+import { getCachedDateTimeFormat } from '@/lib/utils';
 
 /**
  * WorkerDashboard — Main dashboard for DD Worker monitoring and control
@@ -123,7 +124,7 @@ function formatDuration(ms: number): string {
 
 function formatDate(date: string | null): string {
   if (!date) return '-';
-  return new Intl.DateTimeFormat('es-ES', {
+  return getCachedDateTimeFormat('es-ES', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
