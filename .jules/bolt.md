@@ -1,0 +1,3 @@
+## 2024-04-19 - Cache Intl instantiations
+**Learning:** The codebase instantiated `new Intl.DateTimeFormat` and `new Intl.NumberFormat` repeatedly inside render functions and utility formatting functions (e.g., `formatDate`, `formatCurrency`). This is a known performance anti-pattern because the instantiation of these formats is expensive and causes unnecessary overhead during rapid re-renders.
+**Action:** Centralize caching utilities `getCachedDateTimeFormat` and `getCachedNumberFormat` in `src/lib/utils.ts` and ensure all components and utility functions use these singletons to avoid repeated instantiation costs.
