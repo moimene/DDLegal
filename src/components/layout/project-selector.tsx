@@ -321,6 +321,7 @@ export default function ProjectSelector({ collapsed }: Props) {
             <button
                 onClick={toggleOpen}
                 aria-expanded={open}
+                aria-controls={open ? 'project-selector-panel' : undefined}
                 aria-haspopup="listbox"
                 aria-label={currentProject ? currentProject.name : 'Seleccionar Proyecto'}
                 style={{
@@ -402,6 +403,7 @@ export default function ProjectSelector({ collapsed }: Props) {
             {/* Dropdown panel */}
             {open && (
                 <div
+                    id="project-selector-panel"
                     role="listbox"
                     aria-label="Lista de proyectos"
                     style={{
