@@ -1,5 +1,7 @@
 'use client';
 
+// ⚡ Bolt: Using cached Intl formatters for performance
+import { getCachedDateTimeFormat } from '@/lib/utils';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Play,
@@ -112,7 +114,7 @@ function timeAgo(dateStr: string): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `Hace ${days} ${days === 1 ? 'dia' : 'dias'}`;
 
-  return new Intl.DateTimeFormat('es-ES', {
+  return getCachedDateTimeFormat('es-ES', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',

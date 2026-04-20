@@ -1,5 +1,7 @@
 'use client';
 
+// ⚡ Bolt: Using cached Intl formatters for performance
+import { getCachedDateTimeFormat } from '@/lib/utils';
 import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -197,7 +199,7 @@ function formatTimestamp(ts: string): string {
     if (diffHours < 24) return `hace ${diffHours}h`;
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `hace ${diffDays}d`;
-    return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short' }).format(d);
+    return getCachedDateTimeFormat('es-ES', { day: '2-digit', month: 'short' }).format(d);
 }
 
 type SortKey = 'area_code' | 'name' | 'category' | 'is_mandatory' | 'review_depth' | 'status';
