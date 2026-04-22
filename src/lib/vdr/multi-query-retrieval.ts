@@ -1,5 +1,6 @@
-import { semanticSearch, type SemanticSearchResult } from './semantic-search';
+import { semanticSearchWithEmbedding, type SemanticSearchResult } from './semantic-search';
 import { REPORT_TEMPLATES } from '@/lib/reporting/templates';
+import { generateEmbeddings } from '@/lib/embeddings';
 
 /**
  * Section-to-query mapping.
@@ -159,15 +160,27 @@ export async function multiQueryRetrieval(opts: {
   const allResults: SemanticSearchResult[] = [];
   const seenChunkIds = new Set<string>();
 
-  for (const section of sections) {
-    const query = SECTION_QUERY_MAP[section] || SECTION_QUERY_MAP._default;
+  // 1. Gather all queries
+  const queries = sections.map(
+    section => SECTION_QUERY_MAP[section] || SECTION_QUERY_MAP._default
+  );
 
-    const sectionResults = await semanticSearch(projectId, query, {
+  // 2. Batch generate embeddings for all queries at once
+  const embeddings = await generateEmbeddings(queries);
+
+  // 3. Run all vector searches in parallel
+  const searchPromises = embeddings.map(embedding =>
+    semanticSearchWithEmbedding(projectId, embedding, {
       threshold: 0.6,
       limit: topKPerQuery,
       areaCode: areaCode || undefined,
-    });
+    })
+  );
 
+  const resultsArrays = await Promise.all(searchPromises);
+
+  // 4. De-duplicate results
+  for (const sectionResults of resultsArrays) {
     for (const result of sectionResults) {
       if (!seenChunkIds.has(result.chunk_id)) {
         seenChunkIds.add(result.chunk_id);

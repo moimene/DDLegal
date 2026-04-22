@@ -1,0 +1,3 @@
+## 2024-05-24 - Batching Embeddings Generation
+**Learning:** Generating embeddings sequentially in a loop inside a VDR (Vector Database Retrieval) function leads to N+1 network requests to the embedding service, which severely impacts performance for multi-query operations like report generation.
+**Action:** Extract the vector search execution logic into a function (`semanticSearchWithEmbedding`) that accepts pre-generated embeddings. Use a batch embedding generation utility (`generateEmbeddings`) to fetch all embeddings in a single network request, and then run the vector database queries in parallel using `Promise.all`.
