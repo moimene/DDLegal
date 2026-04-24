@@ -1,0 +1,3 @@
+## 2024-04-24 - Batch embeddings and DB queries to avoid N+1 bottlenecks
+**Learning:** Performing multiple independent `semanticSearch` queries in a loop (like for sections of a report) creates a significant N+1 bottleneck, making redundant calls to generate embeddings individually and querying the vector database sequentially.
+**Action:** Extract all required search strings, batch them together into a single `generateEmbeddings` call to the OpenAI API, and then run all Postgres pgvector matches concurrently using `Promise.all` with a refactored `semanticSearchWithEmbedding` helper. This minimizes network round-trips and maximizes database throughput.

@@ -1,5 +1,6 @@
-import { semanticSearch, type SemanticSearchResult } from './semantic-search';
+import { semanticSearchWithEmbedding, type SemanticSearchResult } from './semantic-search';
 import { REPORT_TEMPLATES } from '@/lib/reporting/templates';
+import { generateEmbeddings } from '@/lib/embeddings';
 
 /**
  * Section-to-query mapping.
@@ -159,15 +160,29 @@ export async function multiQueryRetrieval(opts: {
   const allResults: SemanticSearchResult[] = [];
   const seenChunkIds = new Set<string>();
 
-  for (const section of sections) {
-    const query = SECTION_QUERY_MAP[section] || SECTION_QUERY_MAP._default;
+  const queries = sections.map(section => SECTION_QUERY_MAP[section] || SECTION_QUERY_MAP._default);
 
-    const sectionResults = await semanticSearch(projectId, query, {
+  // PERFORMANCE OPTIMIZATION:
+  // We batch all queries here to generate embeddings in a single OpenAI API call
+  // instead of making N sequential network requests inside the loop.
+  // Expected impact: Reduces API latency significantly (e.g., from N seconds to ~1 second).
+  const queryEmbeddings = await generateEmbeddings(queries);
+
+  // PERFORMANCE OPTIMIZATION:
+  // By using the pre-generated embeddings, we can run all N pgvector semantic
+  // database queries concurrently via Promise.all.
+  // Expected impact: Eliminates the N+1 query bottleneck, maximizing DB throughput.
+  const searchPromises = queryEmbeddings.map(queryEmbedding =>
+    semanticSearchWithEmbedding(projectId, queryEmbedding, {
       threshold: 0.6,
       limit: topKPerQuery,
       areaCode: areaCode || undefined,
-    });
+    })
+  );
 
+  const resultsArrays = await Promise.all(searchPromises);
+
+  for (const sectionResults of resultsArrays) {
     for (const result of sectionResults) {
       if (!seenChunkIds.has(result.chunk_id)) {
         seenChunkIds.add(result.chunk_id);
