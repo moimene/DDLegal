@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { FolderKanban, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 
@@ -45,6 +45,7 @@ interface Props {
 /* ------------------------------------------------------------------ */
 
 export default function ProjectSelector({ collapsed }: Props) {
+    const listboxId = useId();
     const [projects, setProjects] = useState<ProjectItem[]>([]);
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -321,6 +322,7 @@ export default function ProjectSelector({ collapsed }: Props) {
             <button
                 onClick={toggleOpen}
                 aria-expanded={open}
+                aria-controls={open ? listboxId : undefined}
                 aria-haspopup="listbox"
                 aria-label={currentProject ? currentProject.name : 'Seleccionar Proyecto'}
                 style={{
@@ -402,6 +404,7 @@ export default function ProjectSelector({ collapsed }: Props) {
             {/* Dropdown panel */}
             {open && (
                 <div
+                    id={listboxId}
                     role="listbox"
                     aria-label="Lista de proyectos"
                     style={{
