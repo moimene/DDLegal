@@ -1,0 +1,3 @@
+## 2024-03-24 - Avoid N+1 queries and sequential await in Semantic Search Multi-Query Retrieval
+**Learning:** Sequential embedding generation and N+1 sequential database vector queries are a massive anti-pattern in semantic search, resulting in significant bottlenecks, especially during report generation requiring multi-section queries.
+**Action:** Always extract all queries and use `generateEmbeddings` from `@/lib/embeddings` to fetch embeddings in a single batch. Introduce and leverage a `semanticSearchWithEmbedding` helper to then execute the database queries concurrently via `Promise.all`.
