@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import {
   Play,
   CheckCircle2,
@@ -155,6 +155,7 @@ export default function EventFeed({
   const [newCount, setNewCount] = useState(0);
   const [isAutoScroll, setIsAutoScroll] = useState(true);
   const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const panelId = useId();
 
   const feedRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -283,6 +284,9 @@ export default function EventFeed({
       {/* Header */}
       <button
         onClick={toggleCollapse}
+        aria-expanded={!collapsed}
+        aria-controls={collapsed ? undefined : panelId}
+        aria-label={collapsed ? 'Expandir panel de eventos' : 'Contraer panel de eventos'}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -336,7 +340,7 @@ export default function EventFeed({
 
       {/* Feed body */}
       {!collapsed && (
-        <div style={{ position: 'relative' }}>
+        <div id={panelId} style={{ position: 'relative' }}>
           {/* New events badge */}
           {newCount > 0 && (
             <button
