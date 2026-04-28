@@ -1,0 +1,3 @@
+## 2026-04-28 - Conditional ARIA Controls Rendering
+**Learning:** When creating custom collapsible components that completely unmount their content (via conditional rendering like `{!collapsed && <div id={panelId}>}`) rather than hiding it with CSS (`display: none`), the `aria-controls` attribute on the toggle button will temporarily point to an invalid DOM ID when the content is removed. This causes accessibility issues or validation warnings in screen readers since the referenced element doesn't exist.
+**Action:** When conditionally rendering collapsible content, conditionally bind `aria-controls={collapsed ? undefined : panelId}` so that it doesn't reference a non-existent element when closed. Additionally, always generate dynamic unique IDs using React's `useId()`.
