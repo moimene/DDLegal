@@ -316,6 +316,7 @@ export default function UploadDropzone({ folderId, areaCode, onUpload }: UploadD
                                     onClick={() => removeFile(qf.id)}
                                     disabled={isUploading}
                                     title="Eliminar"
+                                    aria-label={`Eliminar archivo ${qf.file.name}`}
                                     style={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
@@ -381,6 +382,8 @@ export default function UploadDropzone({ folderId, areaCode, onUpload }: UploadD
                                     onClick={() => toggleConfidential(qf.id)}
                                     disabled={isUploading}
                                     title={qf.isConfidential ? 'Confidencial' : 'No confidencial'}
+                                    aria-pressed={qf.isConfidential}
+                                    aria-label={`Marcar como ${qf.isConfidential ? 'no confidencial' : 'confidencial'} el archivo ${qf.file.name}`}
                                     style={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
