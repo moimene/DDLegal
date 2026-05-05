@@ -53,15 +53,17 @@ function jsonResponse(body: unknown, status = 200, statusText = 'OK'): Response 
 
 describe('HarveyGateway', () => {
   let fetchSpy: ReturnType<typeof vi.fn>;
+  let originalFetch: typeof globalThis.fetch;
 
   beforeEach(() => {
+    originalFetch = globalThis.fetch;
     fetchSpy = vi.fn();
-    vi.stubGlobal('fetch', fetchSpy);
+    globalThis.fetch = fetchSpy as any;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    vi.unstubAllGlobals();
+    globalThis.fetch = originalFetch;
   });
 
   // -----------------------------------------------------------------------
