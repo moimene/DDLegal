@@ -1,0 +1,3 @@
+## 2024-05-06 - O(N^2) Bottlenecks in Deal Risk Scoring
+**Learning:** The Deal Risk Scoring engine (`src/lib/scoring/deal-risk-score.ts`) used multiple sequential array traversals (`filter`, `map`, `reduce`) combined with an inner `find` inside a loop, resulting in O(N^2) time complexity. For large VDR document pipelines where thousands of findings might be generated, this creates a severe bottleneck that can crash worker cycles or timeout the API.
+**Action:** When refactoring array mappings into a single O(N) pass, always consolidate separate aggregations (like `.reduce` for totals or `.find` for lookups) into the same loop to minimize iteration overhead and ensure scalable performance.
