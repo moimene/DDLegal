@@ -1,4 +1,5 @@
 'use client';
+import { getCachedDateTimeFormat } from '@/lib/utils';
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -110,7 +111,7 @@ function formatGroupDate(dateStr: string): string {
 
     if (diffDays === 0) return 'Hoy';
     if (diffDays === 1) return 'Ayer';
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormat('es-ES', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -118,7 +119,7 @@ function formatGroupDate(dateStr: string): string {
 }
 
 function formatTime(dateStr: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormat('es-ES', {
         hour: '2-digit',
         minute: '2-digit',
     }).format(new Date(dateStr));
