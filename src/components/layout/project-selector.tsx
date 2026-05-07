@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { FolderKanban, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 
@@ -47,6 +47,7 @@ interface Props {
 export default function ProjectSelector({ collapsed }: Props) {
     const [projects, setProjects] = useState<ProjectItem[]>([]);
     const [open, setOpen] = useState(false);
+    const baseId = useId();
     const [loading, setLoading] = useState(true);
     const pathname = usePathname();
     const router = useRouter();
@@ -149,6 +150,8 @@ export default function ProjectSelector({ collapsed }: Props) {
                 <button
                     onClick={toggleOpen}
                     title={currentProject ? currentProject.name : 'Seleccionar Proyecto'}
+                    aria-expanded={open}
+                    aria-controls={open ? `${baseId}-project-list` : undefined}
                     aria-label={currentProject ? currentProject.name : 'Seleccionar Proyecto'}
                     style={{
                         display: 'flex',
@@ -198,6 +201,7 @@ export default function ProjectSelector({ collapsed }: Props) {
                 {/* Popover dropdown (positioned to the right) */}
                 {open && (
                     <div
+                        id={`${baseId}-project-list`}
                         style={{
                             position: 'absolute',
                             top: 0,
@@ -322,6 +326,7 @@ export default function ProjectSelector({ collapsed }: Props) {
                 onClick={toggleOpen}
                 aria-expanded={open}
                 aria-haspopup="listbox"
+                aria-controls={open ? `${baseId}-project-list` : undefined}
                 aria-label={currentProject ? currentProject.name : 'Seleccionar Proyecto'}
                 style={{
                     display: 'flex',
@@ -402,6 +407,7 @@ export default function ProjectSelector({ collapsed }: Props) {
             {/* Dropdown panel */}
             {open && (
                 <div
+                    id={`${baseId}-project-list`}
                     role="listbox"
                     aria-label="Lista de proyectos"
                     style={{
