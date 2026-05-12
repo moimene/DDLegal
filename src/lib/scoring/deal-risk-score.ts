@@ -174,18 +174,27 @@ export function calculateDealRiskScore(
 ): DealRiskScoreOutput {
   const weights = { ...DEFAULT_AREA_WEIGHTS, ...(areaWeights ?? {}) };
 
-  // Filter out HITL-rejected findings
-  const activeFindingsAll = findings.filter(
-    (f) => f.hitl_decision?.toLowerCase() !== 'reject' && f.hitl_decision?.toLowerCase() !== 'rejected',
-  );
+  const activeFindingsAll: ScoringInput[] = [];
+  const scoredFindings: ScoredFinding[] = [];
+  const areaScores: Record<string, AreaScore> = {};
+  const dealBreakers: ScoredFinding[] = [];
+  let totalEconomicExposure = 0;
 
-  // Score each finding
-  const scoredFindings: ScoredFinding[] = activeFindingsAll.map((f) => {
+  // ⚡ Bolt: Consolidated O(N) pass for filtering, scoring, area grouping, and exposure reduction
+  // Eliminates O(N^2) inner lookup bottleneck
+  for (const f of findings) {
+    const hitl = f.hitl_decision?.toLowerCase();
+    if (hitl === 'reject' || hitl === 'rejected') continue;
+
+    activeFindingsAll.push(f);
+    totalEconomicExposure += f.economic_impact_amount ?? 0;
+
     const areaCode = f.area_code?.toUpperCase() || 'GENERAL';
     const rawScore = scoreFinding(f);
     const areaWeight = weights[areaCode] ?? weights['GENERAL'] ?? 0.5;
     const weightedScore = rawScore * areaWeight;
-    return {
+
+    const sf: ScoredFinding = {
       id: f.id,
       title: f.title,
       raw_score: Math.round(rawScore * 100) / 100,
@@ -193,20 +202,19 @@ export function calculateDealRiskScore(
       is_deal_breaker: isDealBreaker(f),
       area_code: areaCode,
     };
-  });
+    scoredFindings.push(sf);
 
-  // Group by area
-  const areaScores: Record<string, AreaScore> = {};
-  for (const sf of scoredFindings) {
-    if (!areaScores[sf.area_code]) {
-      areaScores[sf.area_code] = { score: 0, finding_count: 0, critical_count: 0 };
+    if (sf.is_deal_breaker) {
+      dealBreakers.push(sf);
     }
-    const area = areaScores[sf.area_code];
+
+    if (!areaScores[areaCode]) {
+      areaScores[areaCode] = { score: 0, finding_count: 0, critical_count: 0 };
+    }
+    const area = areaScores[areaCode];
     area.score += sf.weighted_score;
     area.finding_count += 1;
-    // Check original severity from the input
-    const original = activeFindingsAll.find((f) => f.id === sf.id);
-    if (original?.severity?.toLowerCase() === 'critical') {
+    if (f.severity?.toLowerCase() === 'critical') {
       area.critical_count += 1;
     }
   }
@@ -231,18 +239,10 @@ export function calculateDealRiskScore(
     ? Math.round(clamp(totalWeightedScore / totalWeight, 0, 100) * 100) / 100
     : 0;
 
-  // Deal breakers
-  const dealBreakers = scoredFindings.filter((sf) => sf.is_deal_breaker);
-
   // Top 10 risks by weighted_score descending
   const topRisks = [...scoredFindings]
     .sort((a, b) => b.weighted_score - a.weighted_score)
     .slice(0, 10);
-
-  // Total economic exposure
-  const totalEconomicExposure = activeFindingsAll.reduce((sum, f) => {
-    return sum + (f.economic_impact_amount ?? 0);
-  }, 0);
 
   // Sensitivity analysis: best, base, worst
   const bestCaseScore = computeSensitivityScore(activeFindingsAll, weights, 'remote');
