@@ -288,6 +288,8 @@ export default function ReportCompare({
                 </div>
                 <button
                     onClick={onClose}
+                    aria-label="Cerrar comparación"
+                    title="Cerrar comparación"
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
