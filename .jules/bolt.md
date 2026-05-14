@@ -1,0 +1,3 @@
+## 2024-05-14 - Refactor calculateDealRiskScore to single pass O(N)
+**Learning:** Found a severe performance bottleneck in `calculateDealRiskScore` where nested array iteration (using `.find` inside a loop) caused `O(N^2)` time complexity, taking ~13 seconds for 50,000 items. Grouping operations, deal breaker filtering, and aggregate operations were also separated out, causing multiple `O(N)` scans.
+**Action:** Always combine array operations (scoring, filtering, grouping, aggregating) into a single pass loop (`O(N)`) and avoid using `.find()` inside a loop to look up items from the same array.
