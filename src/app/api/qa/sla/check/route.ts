@@ -23,18 +23,22 @@ export async function GET(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // Mark breached threads
-    for (const sla of breached || []) {
-        await supabaseAdmin
-            .from('qa_slas')
-            .update({ is_met: false })
-            .eq('id', sla.id)
-            .is('is_met', null);
+    // Mark breached threads (Optimized: N+1 to 2 queries)
+    if (breached && breached.length > 0) {
+        const slaIds = breached.map(sla => sla.id);
+        const threadIds = [...new Set(breached.map(sla => sla.thread_id))];
 
-        await supabaseAdmin
-            .from('qa_threads')
-            .update({ sla_breached: true })
-            .eq('id', sla.thread_id);
+        await Promise.all([
+            supabaseAdmin
+                .from('qa_slas')
+                .update({ is_met: false })
+                .in('id', slaIds)
+                .is('is_met', null),
+            supabaseAdmin
+                .from('qa_threads')
+                .update({ sla_breached: true })
+                .in('id', threadIds)
+        ]);
     }
 
     return NextResponse.json({
