@@ -295,6 +295,8 @@ export default function EventFeed({
           width: '100%',
           textAlign: 'left',
         }}
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? "Expandir eventos" : "Colapsar eventos"}
       >
         {collapsed ? (
           <ChevronRight style={{ width: 14, height: 14, color: 'var(--g-text-muted)' }} />
@@ -360,6 +362,7 @@ export default function EventFeed({
                 cursor: 'pointer',
                 boxShadow: 'var(--g-shadow-dropdown)',
               }}
+              aria-label="Cargar nuevos eventos"
             >
               <RefreshCw style={{ width: 10, height: 10 }} />
               {newCount} {newCount === 1 ? 'nuevo evento' : 'nuevos eventos'}
