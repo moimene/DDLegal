@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FileBarChart, Plus, Search, ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { DDReport } from '@/lib/supabase';
@@ -70,6 +71,7 @@ export default function ReportsPage() {
     const [search, setSearch] = useState('');
     const [familyFilter, setFamilyFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const router = useRouter();
 
     useEffect(() => {
         supabase
@@ -261,11 +263,21 @@ export default function ReportsPage() {
                                 <tr
                                     key={r.id}
                                     className="transition-colors cursor-pointer"
+                                    onClick={() => router.push(`/reports/${r.id}`)}
+                                    tabIndex={0}
+                                    role="button"
+                                    aria-label={`Ver informe ${r.report_type}`}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            router.push(`/reports/${r.id}`);
+                                        }
+                                    }}
                                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--g-surface-subtle)'; }}
                                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                                 >
                                     <td className="px-5 py-4">
-                                        <Link href={`/reports/${r.id}`} className="flex items-center gap-3">
+                                        <Link href={`/reports/${r.id}`} className="flex items-center gap-3" tabIndex={-1}>
                                             <FileBarChart className="h-5 w-5 shrink-0" style={{ color: 'var(--g-brand-3308)' }} />
                                             <span className="font-medium text-sm" style={{ color: 'var(--g-text-primary)' }}>
                                                 {r.report_type.replace(/_/g, ' ')}
@@ -308,7 +320,7 @@ export default function ReportsPage() {
                                         {formatDate(r.created_at)}
                                     </td>
                                     <td className="px-5 py-4 text-right">
-                                        <Link href={`/reports/${r.id}`} aria-label={`Ver informe ${r.report_type}`}>
+                                        <Link href={`/reports/${r.id}`} aria-label={`Ver informe ${r.report_type}`} tabIndex={-1}>
                                             <ArrowRight className="h-4 w-4" style={{ color: 'var(--g-link)' }} />
                                         </Link>
                                     </td>

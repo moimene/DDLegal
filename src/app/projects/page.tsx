@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FolderKanban, Plus, Search, ArrowRight, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { DDProject } from '@/lib/supabase';
@@ -11,6 +12,7 @@ export default function ProjectsPage() {
     const [projects, setProjects] = useState<DDProject[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('');
+    const router = useRouter();
 
     useEffect(() => {
         supabase.from('dd_projects').select('*').order('created_at', { ascending: false })
@@ -120,6 +122,16 @@ export default function ProjectsPage() {
                             <tr
                                 key={p.id}
                                 className="transition-colors cursor-pointer"
+                                onClick={() => router.push(`/projects/${p.id}`)}
+                                tabIndex={0}
+                                role="button"
+                                aria-label={`Ver proyecto ${p.name}`}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        router.push(`/projects/${p.id}`);
+                                    }
+                                }}
                                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--g-surface-subtle)'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                             >
@@ -153,7 +165,7 @@ export default function ProjectsPage() {
                                     {formatDate(p.created_at)}
                                 </td>
                                 <td className="px-5 py-4 text-right">
-                                    <Link href={`/projects/${p.id}`} aria-label={`Ver proyecto ${p.name}`}>
+                                    <Link href={`/projects/${p.id}`} aria-label={`Ver proyecto ${p.name}`} tabIndex={-1}>
                                         <ArrowRight className="h-4 w-4" style={{ color: 'var(--g-link)' }} />
                                     </Link>
                                 </td>

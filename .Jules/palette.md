@@ -1,0 +1,4 @@
+
+## 2024-05-17 - Table row accessibility and clickability
+**Learning:** Using `cursor-pointer` on table rows (or any element) without an actual `onClick` handler and keyboard support (`tabIndex={0}`, `onKeyDown` with `Enter`/`Space`) is a misleading and inaccessible UX pattern. It visually suggests interactivity that isn't functionally complete, breaking expectations for both mouse and keyboard users.
+**Action:** Always ensure that elements styled as interactive (e.g., with `cursor-pointer`) implement full interactivity, including an `onClick` handler, proper ARIA roles (like `role="button"`), `tabIndex={0}`, and an `onKeyDown` listener. Additionally, if the row contains nested focusable elements (like `Link`s) that point to the same destination, apply `tabIndex={-1}` to them to prevent redundant tab stops and confusing double-focusing.
