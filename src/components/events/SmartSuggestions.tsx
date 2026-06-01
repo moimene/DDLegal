@@ -270,6 +270,7 @@ export default function SmartSuggestions({
             opacity: refreshing ? 0.5 : 1,
           }}
           title="Actualizar sugerencias"
+          aria-label="Actualizar sugerencias"
         >
           <RefreshCw
             style={{
@@ -463,6 +464,7 @@ export default function SmartSuggestions({
                     transition: 'var(--g-transition-fast)',
                   }}
                   title="Descartar sugerencia"
+                  aria-label="Descartar sugerencia"
                 >
                   <X style={{ width: 12, height: 12, color: 'var(--g-text-muted)' }} />
                 </button>
