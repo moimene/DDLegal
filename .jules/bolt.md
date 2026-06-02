@@ -1,0 +1,3 @@
+## 2024-05-24 - Deal Risk Score Bottleneck
+**Learning:** In `calculateDealRiskScore`, an O(N²) bottleneck was found where a `.map` iterates over findings, and a subsequent loop iterates over the mapped results to group them, using a nested `.find` on the original array (`activeFindingsAll.find((f) => f.id === sf.id)`) to check severity. This scales poorly for large arrays of findings.
+**Action:** Extend the intermediate `ScoredFinding` type (or add the severity info inline) during the initial `.map` so that the original array doesn't need to be searched during the grouping loop, reducing complexity from O(N²) to O(N).
