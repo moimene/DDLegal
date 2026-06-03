@@ -1,0 +1,7 @@
+💡 What: Refactored O(N²) nested `.find()` and `.filter()` operations into O(1) Map lookups and single-pass aggregations.
+
+🎯 Why: The previous implementation iterated over all tasks, scores, and workflows for every project, creating a performance bottleneck as the dataset grows (e.g. iterating over the entire dataset inside the `.map` of another dataset).
+
+📊 Impact: Changes time complexity from O(N*M) to O(N), improving API response time and reducing CPU overhead on the backend. This drastically improves the efficiency of the dashboard data aggregation, preventing slow responses as more items are added to the platform.
+
+🔬 Measurement: Ensure `pnpm test:unit` passes and observe reduced execution times for the `/api/dashboard/aggregate` route.
