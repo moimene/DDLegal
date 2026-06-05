@@ -179,13 +179,21 @@ export function calculateDealRiskScore(
     (f) => f.hitl_decision?.toLowerCase() !== 'reject' && f.hitl_decision?.toLowerCase() !== 'rejected',
   );
 
-  // Score each finding
+  const areaScores: Record<string, AreaScore> = {};
+  let totalEconomicExposure = 0;
+
+  // Score each finding, group by area, and accumulate economic exposure in a single pass
   const scoredFindings: ScoredFinding[] = activeFindingsAll.map((f) => {
     const areaCode = f.area_code?.toUpperCase() || 'GENERAL';
     const rawScore = scoreFinding(f);
     const areaWeight = weights[areaCode] ?? weights['GENERAL'] ?? 0.5;
     const weightedScore = rawScore * areaWeight;
-    return {
+
+    // Aggregate total economic exposure
+    totalEconomicExposure += f.economic_impact_amount ?? 0;
+
+    // Build scored finding object
+    const sf: ScoredFinding = {
       id: f.id,
       title: f.title,
       raw_score: Math.round(rawScore * 100) / 100,
@@ -193,23 +201,20 @@ export function calculateDealRiskScore(
       is_deal_breaker: isDealBreaker(f),
       area_code: areaCode,
     };
-  });
 
-  // Group by area
-  const areaScores: Record<string, AreaScore> = {};
-  for (const sf of scoredFindings) {
-    if (!areaScores[sf.area_code]) {
-      areaScores[sf.area_code] = { score: 0, finding_count: 0, critical_count: 0 };
+    // Group by area on the fly
+    if (!areaScores[areaCode]) {
+      areaScores[areaCode] = { score: 0, finding_count: 0, critical_count: 0 };
     }
-    const area = areaScores[sf.area_code];
+    const area = areaScores[areaCode];
     area.score += sf.weighted_score;
     area.finding_count += 1;
-    // Check original severity from the input
-    const original = activeFindingsAll.find((f) => f.id === sf.id);
-    if (original?.severity?.toLowerCase() === 'critical') {
+    if (f.severity?.toLowerCase() === 'critical') {
       area.critical_count += 1;
     }
-  }
+
+    return sf;
+  });
 
   // Normalize area scores: average per area (score / finding_count), then clamp 0-100
   for (const code of Object.keys(areaScores)) {
@@ -238,11 +243,6 @@ export function calculateDealRiskScore(
   const topRisks = [...scoredFindings]
     .sort((a, b) => b.weighted_score - a.weighted_score)
     .slice(0, 10);
-
-  // Total economic exposure
-  const totalEconomicExposure = activeFindingsAll.reduce((sum, f) => {
-    return sum + (f.economic_impact_amount ?? 0);
-  }, 0);
 
   // Sensitivity analysis: best, base, worst
   const bestCaseScore = computeSensitivityScore(activeFindingsAll, weights, 'remote');
