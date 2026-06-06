@@ -70,6 +70,16 @@ export async function GET(req: NextRequest) {
     const allScores = scoresRes.data || [];
     const allWorkflows = workflowsRes.data || [];
 
+    // Pre-compute maps for O(1) lookups to avoid O(N²) .find() calls
+    const projectsMap = new Map((projectsRes.data || []).map(p => [p.id, p]));
+    const scoresMap = new Map();
+    // allScores is sorted DESC by created_at, so first occurrence is the latest
+    for (const score of allScores) {
+      if (!scoresMap.has(score.project_id)) {
+        scoresMap.set(score.project_id, score);
+      }
+    }
+
     // 4. Look up the user's email for assigned_to matching
     let userEmail = '';
     try {
@@ -88,7 +98,7 @@ export async function GET(req: NextRequest) {
       const pending = pTasks.filter(t => !['done', 'closed', 'blocked'].includes(t.state)).length;
 
       // Latest score for this project (scores are ordered by created_at DESC)
-      const score = allScores.find(s => s.project_id === p.id);
+      const score = scoresMap.get(p.id);
 
       // Active workflows for this project
       const activeWf = allWorkflows.filter(w => w.project_id === p.id && w.status === 'in_progress').length;
@@ -122,7 +132,7 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4))
       .slice(0, 20)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projectsMap.get(t.project_id);
         return {
           id: t.id,
           title: t.title,
@@ -146,7 +156,7 @@ export async function GET(req: NextRequest) {
       })
       .slice(0, 10)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projectsMap.get(t.project_id);
         const daysInState = Math.floor((now - new Date(t.entered_state_at).getTime()) / 86400000);
         return {
           type: t.state === 'blocked' ? 'blocker' : 'stale_task',

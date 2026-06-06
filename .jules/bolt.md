@@ -1,0 +1,3 @@
+## 2024-06-06 - Replacing O(N²) nested `.find()` with Map lookups
+**Learning:** In arrays containing data that can be efficiently mapped by ID (e.g. `projects` and `allScores`), replacing `.find()` inside a `.map()` prevents massive CPU spikes on large datasets without adding much memory overhead. Specifically, creating Maps upfront transforms O(N²) operations into O(N) operations. When replicating an ordered `.find()`, manually populate the map and skip overriding existing keys to preserve the first occurrence.
+**Action:** Always check loop contents for `.find()` lookups on non-trivial datasets. Pre-compute O(1) maps using `.map()` for unique datasets, or manual iteration for ordered/duplicate-filtered datasets.
