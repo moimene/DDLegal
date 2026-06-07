@@ -70,6 +70,32 @@ export async function GET(req: NextRequest) {
     const allScores = scoresRes.data || [];
     const allWorkflows = workflowsRes.data || [];
 
+    // Pre-process O(N) structures for faster O(1) lookups
+    const projectsData = projectsRes.data || [];
+    const projectsMap = new Map(projectsData.map(p => [p.id, p]));
+
+    const scoresMap = new Map<string, any>();
+    for (const score of allScores) {
+      if (!scoresMap.has(score.project_id)) {
+        scoresMap.set(score.project_id, score);
+      }
+    }
+
+    const workflowsCountMap = new Map<string, number>();
+    for (const wf of allWorkflows) {
+      if (wf.status === 'in_progress') {
+        workflowsCountMap.set(wf.project_id, (workflowsCountMap.get(wf.project_id) || 0) + 1);
+      }
+    }
+
+    const tasksByProject = new Map<string, any[]>();
+    for (const task of allTasks) {
+      if (!tasksByProject.has(task.project_id)) {
+        tasksByProject.set(task.project_id, []);
+      }
+      tasksByProject.get(task.project_id)!.push(task);
+    }
+
     // 4. Look up the user's email for assigned_to matching
     let userEmail = '';
     try {
@@ -81,17 +107,17 @@ export async function GET(req: NextRequest) {
     }
 
     // 5. Build per-project metrics
-    const projects = (projectsRes.data || []).map(p => {
-      const pTasks = allTasks.filter(t => t.project_id === p.id);
+    const projects = projectsData.map(p => {
+      const pTasks = tasksByProject.get(p.id) || [];
       const completed = pTasks.filter(t => t.state === 'done' || t.state === 'closed').length;
       const blocked = pTasks.filter(t => t.state === 'blocked').length;
       const pending = pTasks.filter(t => !['done', 'closed', 'blocked'].includes(t.state)).length;
 
       // Latest score for this project (scores are ordered by created_at DESC)
-      const score = allScores.find(s => s.project_id === p.id);
+      const score = scoresMap.get(p.id);
 
       // Active workflows for this project
-      const activeWf = allWorkflows.filter(w => w.project_id === p.id && w.status === 'in_progress').length;
+      const activeWf = workflowsCountMap.get(p.id) || 0;
 
       return {
         id: p.id,
@@ -122,7 +148,7 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4))
       .slice(0, 20)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projectsMap.get(t.project_id);
         return {
           id: t.id,
           title: t.title,
@@ -146,7 +172,7 @@ export async function GET(req: NextRequest) {
       })
       .slice(0, 10)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projectsMap.get(t.project_id);
         const daysInState = Math.floor((now - new Date(t.entered_state_at).getTime()) / 86400000);
         return {
           type: t.state === 'blocked' ? 'blocker' : 'stale_task',
