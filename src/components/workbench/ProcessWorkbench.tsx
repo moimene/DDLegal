@@ -413,6 +413,7 @@ export default function ProcessWorkbench({ projectId, areaCode, areaName }: Proc
                                     {/* Checkbox */}
                                     <button
                                         onClick={() => handleToggle(item.id)}
+                                        aria-label={item.received ? "Marcar como no recibido" : "Marcar como recibido"}
                                         style={{
                                             width: '18px',
                                             height: '18px',

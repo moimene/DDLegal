@@ -283,6 +283,7 @@ export default function EventFeed({
       {/* Header */}
       <button
         onClick={toggleCollapse}
+        aria-label={collapsed ? "Expandir notificaciones" : "Colapsar notificaciones"}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -341,6 +342,7 @@ export default function EventFeed({
           {newCount > 0 && (
             <button
               onClick={jumpToLatest}
+              aria-label="Saltar a los eventos mas recientes"
               style={{
                 position: 'absolute',
                 top: 'var(--g-space-2)',
