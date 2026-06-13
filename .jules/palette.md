@@ -1,0 +1,3 @@
+## 2025-01-24 - Accessibility Pattern: Semantic Tree Nodes
+**Learning:** In complex interactive list structures like tree navigation (e.g., FolderTree), developers often default to using `<span>` with `onClick` handlers for toggling expansion. This creates an accessibility gap as these elements lack native keyboard focus, semantic meaning for screen readers, and expected ARIA attributes.
+**Action:** When creating or reviewing interactive list items that act as tree nodes or toggles, always use semantic `<button type="button">` elements instead of `<span>`. Include both `aria-expanded` and `aria-label` attributes to guarantee keyboard and screen reader navigability. Apply `disabled` state when the node does not have interactive children.

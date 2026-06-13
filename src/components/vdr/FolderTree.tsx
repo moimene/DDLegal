@@ -84,7 +84,11 @@ function FolderNode({
                 }}
             >
                 {/* Expand/collapse toggle */}
-                <span
+                <button
+                    type="button"
+                    disabled={!hasChildren}
+                    aria-expanded={isExpanded}
+                    aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
                     onClick={(e) => {
                         e.stopPropagation();
                         if (hasChildren) onToggle(folder.id);
@@ -98,6 +102,9 @@ function FolderNode({
                         flexShrink: 0,
                         opacity: hasChildren ? 1 : 0,
                         cursor: hasChildren ? 'pointer' : 'default',
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
                     }}
                 >
                     {isExpanded ? (
@@ -105,7 +112,7 @@ function FolderNode({
                     ) : (
                         <ChevronRight style={{ width: 12, height: 12, color: 'var(--g-text-secondary)' }} />
                     )}
-                </span>
+                </button>
 
                 {/* Folder icon */}
                 {isExpanded ? (
