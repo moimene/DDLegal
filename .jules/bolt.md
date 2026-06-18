@@ -1,0 +1,3 @@
+## 2025-02-18 - Avoid committing auto-generated lockfiles during targeted fixes
+**Learning:** Running `pnpm install` during troubleshooting may silently generate untracked `pnpm-lock.yaml` updates. A generic `git add .` (if used externally) or uncareful staging could include this massive diff (5000+ lines), which bloats small, targeted PRs (<50 lines).
+**Action:** Explicitly remove untracked `pnpm-lock.yaml` from staging and working directory (`git rm --cached pnpm-lock.yaml && rm pnpm-lock.yaml`) after resolving installation issues and before running code reviews or creating a PR to ensure the patch remains strictly scoped.
