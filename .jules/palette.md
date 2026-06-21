@@ -1,0 +1,3 @@
+## 2024-05-24 - Explicitly disabling hidden interactive toggles
+**Learning:** When using interactive elements (like a toggle `<button>`) that are visually hidden or logically inactive (e.g. a folder toggle button when it has no children), it is crucial to explicitly disable them (`disabled={true}`) instead of just relying on visual opacity changes (`opacity: 0.3`). This prevents them from remaining focusable and acting as invisible tab stops, which breaks keyboard navigation and confuses screen readers.
+**Action:** Always verify that interactive elements intended to be inactive or hidden have proper `disabled` attributes or `tabIndex="-1"` depending on their semantics to ensure predictable keyboard accessibility.
