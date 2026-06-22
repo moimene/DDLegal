@@ -178,15 +178,28 @@ export async function generateWorkflowReport(
       hitlStatus = anyRejected ? 'rejected' : anyPending ? 'pending' : allApproved ? 'approved' : 'pending';
     }
 
+    // ⚡ Bolt: Build O(1) Map for HITL decisions outside loop
+    const hitlDecisionMap = new Map<string, string>();
+    for (const h of phaseHitl) {
+      if (h.finding_title && !hitlDecisionMap.has(h.finding_title)) {
+        hitlDecisionMap.set(h.finding_title, h.status);
+      }
+    }
+
+    // ⚡ Bolt: Hoist evidence resolving outside loop since it is the same for all findings in the phase
+    const phaseEvidenceRefs = phaseTasks
+      .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
+      .slice(0, 10);
+
+    // ⚡ Bolt: Precompute total evidence count once
+    const phaseEvidenceCount = phaseTasks.reduce((acc, t) => acc + ((t.evidence_refs as unknown[])?.length ?? 0), 0);
+
     // Build report findings with evidence
     const reportFindings: ReportFinding[] = phaseFindings.map(f => {
-      const evidenceRefs = phaseTasks
-        .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
-        .slice(0, 10);
+      if (phaseEvidenceRefs.length > 0) findingsWithEvidence++;
 
-      if (evidenceRefs.length > 0) findingsWithEvidence++;
-
-      const hitlDecision = phaseHitl.find(h => h.finding_title === f.title);
+      // ⚡ Bolt: O(1) lookup instead of O(N) array search inside map
+      const hitlDecisionStatus = hitlDecisionMap.get(f.title);
 
       return {
         title: f.title,
@@ -194,8 +207,8 @@ export async function generateWorkflowReport(
         probability: f.probability,
         timing: f.timing,
         mitigation: f.mitigation,
-        evidence_refs: evidenceRefs,
-        hitl_decision: hitlDecision?.status,
+        evidence_refs: phaseEvidenceRefs,
+        hitl_decision: hitlDecisionStatus,
       };
     });
 
@@ -204,7 +217,7 @@ export async function generateWorkflowReport(
     criticalCount += reportFindings.filter(f => f.severity === 'critical').length;
     highCount += reportFindings.filter(f => f.severity === 'high').length;
     hitlPending += phaseHitl.filter(h => h.status === 'pending_review').length;
-    totalEvidence += phaseTasks.reduce((acc, t) => acc + ((t.evidence_refs as unknown[])?.length ?? 0), 0);
+    totalEvidence += phaseEvidenceCount;
 
     // Build summary
     const phaseResults = metadata[`phase_results_${phaseDef.phase}`] as Record<string, unknown> | undefined;
@@ -217,7 +230,7 @@ export async function generateWorkflowReport(
       title: phaseDef.name,
       summary,
       findings: reportFindings,
-      evidence_count: phaseTasks.reduce((acc, t) => acc + ((t.evidence_refs as unknown[])?.length ?? 0), 0),
+      evidence_count: phaseEvidenceCount,
       hitl_status: hitlStatus,
     });
   }
