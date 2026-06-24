@@ -327,8 +327,16 @@ export default function FolderTree({
 
         return (
             <div key={folder.id}>
-                <button
+                <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onSelectFolder(folder.id)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onSelectFolder(folder.id);
+                        }
+                    }}
                     onContextMenu={(e) => handleContextMenu(e, folder.id)}
                     onDragOver={(e) => handleDragOver(e, folder.id)}
                     onDragLeave={() => handleDragLeave(folder.id)}
@@ -356,7 +364,10 @@ export default function FolderTree({
                         color: 'var(--g-text-primary)',
                     }}
                 >
-                    <span
+                    <button
+                        type="button"
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? 'Colapsar carpeta' : 'Expandir carpeta'}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (hasChildren) handleToggle(folder.id);
@@ -370,6 +381,9 @@ export default function FolderTree({
                             flexShrink: 0,
                             opacity: hasChildren ? 1 : 0.3,
                             cursor: hasChildren ? 'pointer' : 'default',
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
                         }}
                     >
                         {isExpanded ? (
@@ -377,7 +391,7 @@ export default function FolderTree({
                         ) : (
                             <ChevronRight style={{ width: 12, height: 12, color: 'var(--g-text-secondary)' }} />
                         )}
-                    </span>
+                    </button>
 
                     {isExpanded ? (
                         <FolderOpen style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--g-brand-3308)' }} />
@@ -422,7 +436,7 @@ export default function FolderTree({
                             {docCountMap[folder.id]}
                         </span>
                     )}
-                </button>
+                </div>
 
                 {isExpanded && children.map((child) => renderFolder(child, depth + 1))}
 
@@ -495,6 +509,7 @@ export default function FolderTree({
                         setInlineValue('');
                     }}
                     title="Nueva carpeta raiz"
+                    aria-label="Nueva carpeta principal"
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
