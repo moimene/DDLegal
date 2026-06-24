@@ -1,0 +1,3 @@
+## 2024-11-13 - [Dashboard API Data Lookup Optimizations]
+**Learning:** When eliminating O(N²) nested array lookups (like `.find()`) using Map lookups, if the array is ordered in descending order (DESC) (like 'latest' metrics, where you only want the first item matching), creating a Map directly (e.g. `new Map(arr.map(x => [key, x]))`) will overwrite the earlier (latest) items with the later (older) ones.
+**Action:** When populating O(1) Maps for DESC-sorted arrays, iterate through the array using a `for...of` loop and conditionally add keys ONLY if they are not already present (`if (!map.has(key)) map.set(key, item)`).
