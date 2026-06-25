@@ -360,14 +360,22 @@ async function resolveFindingIds(
   if (findings.length === 0) return result;
 
   // Build the external_ref patterns that match how persistFindings generates them
-  const slugs = findings.map((f) => {
+  // and precompute a map of normalized title slug to the finding for O(1) lookups
+  // This eliminates the N+1 regex executions during the iteration of dd_finding rows below.
+  const slugs: string[] = [];
+  const slugToFinding = new Map<string, WorkflowFinding>();
+
+  for (const f of findings) {
     const titleSlug = f.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 64) || 'untitled';
-    return `${instanceId}:${phase}:${titleSlug}`;
-  });
+    slugs.push(`${instanceId}:${phase}:${titleSlug}`);
+    if (!slugToFinding.has(titleSlug)) {
+      slugToFinding.set(titleSlug, f);
+    }
+  }
 
   const { data: rows } = await supabaseAdmin
     .from('dd_findings')
@@ -384,15 +392,8 @@ async function resolveFindingIds(
       // Match by finding any finding_ref that ends with the same titleSlug
       const parts = extRef.split(':');
       const titleSlug = parts.slice(2).join(':');
-      // Find the matching finding to get its severity for full finding_ref
-      const matchingFinding = findings.find((f) => {
-        const fSlug = f.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-          .slice(0, 64) || 'untitled';
-        return fSlug === titleSlug;
-      });
+      // Look up matching finding via precomputed O(1) map
+      const matchingFinding = slugToFinding.get(titleSlug);
       if (matchingFinding) {
         const findingRef = buildFindingRef(instanceId, phase, matchingFinding);
         result.set(findingRef, row.id as string);
