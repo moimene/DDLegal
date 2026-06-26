@@ -1,0 +1,3 @@
+## 2024-11-23 - Eliminate N+1 loop recalculations
+**Learning:** Found an N+1 execution trap in mapping iterations. Repeating `.flatMap` arrays and mapping out O(N) `.find()` items for identical cross-referencing inside nested loops creates exponential complexity across extensive lists. Using O(1) maps avoids repeating data generation.
+**Action:** Extract static recalculations (like `.flatMap` extractions) outside loops whenever possible and pre-compute O(1) lookup map tables using `.set` with conditionals for cross-loop dependencies to circumvent `O(N^2)` lookups.
