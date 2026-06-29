@@ -1,0 +1,3 @@
+## 2024-06-29 - O(N^2) Removal in Maps
+**Learning:** When replacing .find() lookups on descending-ordered (DESC) arrays with Map-based O(1) lookups to improve performance, do not instantiate the Map using .map() directly (e.g., new Map(array.map(...))), as this causes older elements to overwrite newer ones, resulting in a functional regression.
+**Action:** Instead, manually iterate over the array and conditionally set keys only if they do not already exist.
