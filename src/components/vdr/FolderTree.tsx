@@ -84,7 +84,11 @@ function FolderNode({
                 }}
             >
                 {/* Expand/collapse toggle */}
-                <span
+                <button
+                    type="button"
+                    disabled={!hasChildren}
+                    aria-expanded={isExpanded}
+                    aria-label={isExpanded ? 'Contraer carpeta' : 'Expandir carpeta'}
                     onClick={(e) => {
                         e.stopPropagation();
                         if (hasChildren) onToggle(folder.id);
@@ -98,6 +102,9 @@ function FolderNode({
                         flexShrink: 0,
                         opacity: hasChildren ? 1 : 0,
                         cursor: hasChildren ? 'pointer' : 'default',
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
                     }}
                 >
                     {isExpanded ? (
@@ -105,7 +112,7 @@ function FolderNode({
                     ) : (
                         <ChevronRight style={{ width: 12, height: 12, color: 'var(--g-text-secondary)' }} />
                     )}
-                </span>
+                </button>
 
                 {/* Folder icon */}
                 {isExpanded ? (
@@ -356,7 +363,11 @@ export default function FolderTree({
                         color: 'var(--g-text-primary)',
                     }}
                 >
-                    <span
+                    <button
+                        type="button"
+                        disabled={!hasChildren}
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? 'Contraer carpeta' : 'Expandir carpeta'}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (hasChildren) handleToggle(folder.id);
@@ -370,6 +381,9 @@ export default function FolderTree({
                             flexShrink: 0,
                             opacity: hasChildren ? 1 : 0.3,
                             cursor: hasChildren ? 'pointer' : 'default',
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
                         }}
                     >
                         {isExpanded ? (
@@ -377,7 +391,7 @@ export default function FolderTree({
                         ) : (
                             <ChevronRight style={{ width: 12, height: 12, color: 'var(--g-text-secondary)' }} />
                         )}
-                    </span>
+                    </button>
 
                     {isExpanded ? (
                         <FolderOpen style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--g-brand-3308)' }} />

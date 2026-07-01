@@ -1,0 +1,3 @@
+## 2024-07-01 - Accessible Tree Node Toggles
+**Learning:** When using interactive icon toggles (like arrows in a folder tree) that conditionally don't do anything (like when a folder is empty), keeping them as natively focusable and accessible elements but disabling them (`disabled={!hasChildren}`) is better for accessibility than using non-semantic `<span>` tags. Non-semantic tags hide structure from screen readers, while disabled buttons properly communicate state.
+**Action:** Replace `<span>` toggles in tree/list components with `<button type="button">`, including `aria-expanded` and `aria-label` attributes. Reset styles inline or via classes to match original design.
