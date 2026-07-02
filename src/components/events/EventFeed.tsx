@@ -283,6 +283,8 @@ export default function EventFeed({
       {/* Header */}
       <button
         onClick={toggleCollapse}
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? "Expandir actividad en tiempo real" : "Contraer actividad en tiempo real"}
         style={{
           display: 'flex',
           alignItems: 'center',
