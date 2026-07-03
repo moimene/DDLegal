@@ -1,0 +1,3 @@
+## 2024-07-03 - Optimize O(N^2) lookups with title slugs and nested map evaluation
+**Learning:** Found nested `.find()` operations recalculating formatted string title slugs inside mapping functions, leading to an architecture-specific performance bottleneck where string regex substitution and array looping compounds processing times exponentially.
+**Action:** Always extract invariant complex data calculations (like evidence `flatMap` resolving references) outside of iteration blocks and convert `O(N)` inner loop `.find()` into O(1) map pre-computations, ensuring the original iteration condition logic is functionally preserved (e.g., using `!map.has(key)` when setting keys to act like `.find()`).

@@ -359,6 +359,9 @@ async function resolveFindingIds(
   const result = new Map<string, string>();
   if (findings.length === 0) return result;
 
+  // Optimization: O(1) lookup map to prevent O(N^2) inner loop lookups and redundant string manipulation
+  const findingSlugMap = new Map<string, WorkflowFinding>();
+
   // Build the external_ref patterns that match how persistFindings generates them
   const slugs = findings.map((f) => {
     const titleSlug = f.title
@@ -366,6 +369,12 @@ async function resolveFindingIds(
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 64) || 'untitled';
+
+    // Store in O(1) map for quick lookup later
+    if (!findingSlugMap.has(titleSlug)) {
+      findingSlugMap.set(titleSlug, f);
+    }
+
     return `${instanceId}:${phase}:${titleSlug}`;
   });
 
@@ -384,15 +393,10 @@ async function resolveFindingIds(
       // Match by finding any finding_ref that ends with the same titleSlug
       const parts = extRef.split(':');
       const titleSlug = parts.slice(2).join(':');
-      // Find the matching finding to get its severity for full finding_ref
-      const matchingFinding = findings.find((f) => {
-        const fSlug = f.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-          .slice(0, 64) || 'untitled';
-        return fSlug === titleSlug;
-      });
+
+      // Optimization: use O(1) Map lookup instead of O(N) array search inside a loop
+      const matchingFinding = findingSlugMap.get(titleSlug);
+
       if (matchingFinding) {
         const findingRef = buildFindingRef(instanceId, phase, matchingFinding);
         result.set(findingRef, row.id as string);
