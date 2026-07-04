@@ -178,6 +178,14 @@ export async function generateWorkflowReport(
       hitlStatus = anyRejected ? 'rejected' : anyPending ? 'pending' : allApproved ? 'approved' : 'pending';
     }
 
+    // Pre-compute HITL decisions into a Map for O(1) lookup
+    const hitlDecisionByTitle = new Map<string, typeof phaseHitl[0]>();
+    for (const h of phaseHitl) {
+      if (h.finding_title && !hitlDecisionByTitle.has(h.finding_title)) {
+        hitlDecisionByTitle.set(h.finding_title, h);
+      }
+    }
+
     // Build report findings with evidence
     const reportFindings: ReportFinding[] = phaseFindings.map(f => {
       const evidenceRefs = phaseTasks
@@ -186,7 +194,7 @@ export async function generateWorkflowReport(
 
       if (evidenceRefs.length > 0) findingsWithEvidence++;
 
-      const hitlDecision = phaseHitl.find(h => h.finding_title === f.title);
+      const hitlDecision = hitlDecisionByTitle.get(f.title);
 
       return {
         title: f.title,
