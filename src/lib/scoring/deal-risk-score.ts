@@ -179,12 +179,27 @@ export function calculateDealRiskScore(
     (f) => f.hitl_decision?.toLowerCase() !== 'reject' && f.hitl_decision?.toLowerCase() !== 'rejected',
   );
 
+  // Group by area
+  const areaScores: Record<string, AreaScore> = {};
+
   // Score each finding
   const scoredFindings: ScoredFinding[] = activeFindingsAll.map((f) => {
     const areaCode = f.area_code?.toUpperCase() || 'GENERAL';
     const rawScore = scoreFinding(f);
     const areaWeight = weights[areaCode] ?? weights['GENERAL'] ?? 0.5;
     const weightedScore = rawScore * areaWeight;
+
+    if (!areaScores[areaCode]) {
+      areaScores[areaCode] = { score: 0, finding_count: 0, critical_count: 0 };
+    }
+
+    const area = areaScores[areaCode];
+    area.score += Math.round(weightedScore * 100) / 100;
+    area.finding_count += 1;
+    if (f.severity?.toLowerCase() === 'critical') {
+      area.critical_count += 1;
+    }
+
     return {
       id: f.id,
       title: f.title,
@@ -194,22 +209,6 @@ export function calculateDealRiskScore(
       area_code: areaCode,
     };
   });
-
-  // Group by area
-  const areaScores: Record<string, AreaScore> = {};
-  for (const sf of scoredFindings) {
-    if (!areaScores[sf.area_code]) {
-      areaScores[sf.area_code] = { score: 0, finding_count: 0, critical_count: 0 };
-    }
-    const area = areaScores[sf.area_code];
-    area.score += sf.weighted_score;
-    area.finding_count += 1;
-    // Check original severity from the input
-    const original = activeFindingsAll.find((f) => f.id === sf.id);
-    if (original?.severity?.toLowerCase() === 'critical') {
-      area.critical_count += 1;
-    }
-  }
 
   // Normalize area scores: average per area (score / finding_count), then clamp 0-100
   for (const code of Object.keys(areaScores)) {
