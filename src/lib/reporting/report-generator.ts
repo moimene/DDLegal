@@ -179,14 +179,21 @@ export async function generateWorkflowReport(
     }
 
     // Build report findings with evidence
+    // Bolt: Hoist static evidenceRefs computation outside the loop
+    const evidenceRefs = phaseTasks
+      .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
+      .slice(0, 10);
+
+    // Bolt: Pre-compute HITL decisions into an O(1) map
+    const hitlDecisionMap = new Map<string, string>();
+    for (const h of phaseHitl) {
+      if (!hitlDecisionMap.has(h.finding_title)) {
+        hitlDecisionMap.set(h.finding_title, h.status);
+      }
+    }
+
     const reportFindings: ReportFinding[] = phaseFindings.map(f => {
-      const evidenceRefs = phaseTasks
-        .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
-        .slice(0, 10);
-
       if (evidenceRefs.length > 0) findingsWithEvidence++;
-
-      const hitlDecision = phaseHitl.find(h => h.finding_title === f.title);
 
       return {
         title: f.title,
@@ -195,7 +202,7 @@ export async function generateWorkflowReport(
         timing: f.timing,
         mitigation: f.mitigation,
         evidence_refs: evidenceRefs,
-        hitl_decision: hitlDecision?.status,
+        hitl_decision: hitlDecisionMap.get(f.title),
       };
     });
 
