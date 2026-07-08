@@ -1,0 +1,4 @@
+## 2024-07-08 - O(N²) Performance bottlenecks from string normalization inside loops
+
+**Learning:** When matching findings or other references (e.g. `finding_ref`, `hitlDecision`) against collections inside loops, using `.find()` inside a `.map()` or `for` loop causes severe O(N*M) performance bottlenecks. This is especially problematic in this architecture when nested `.find()` iterations involve repetitive string allocations or regexes (e.g. `replace(/[^a-z0-9]+/g, '-')`, `.toLowerCase()`) to normalize keys like titles or slugs.
+**Action:** When mapping or looking up data, pre-compute normalized title slugs or keys into an O(1) `Map` outside the iteration *before* looping. Never perform regex string replacements or `.toLowerCase()` operations inside nested `.find()` loops or `.map()` loops. This prevents redundant processing overhead, avoiding repetitive string and memory allocation overhead.
