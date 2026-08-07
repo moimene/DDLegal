@@ -181,6 +181,12 @@ async function linkEvidenceToWorkflowTasks(
 
   if (!tasks || tasks.length === 0) return 0;
 
+  // Pre-compute lowercase titles to avoid N*M string operations
+  const lowerCaseTasks = tasks.map(t => ({
+    ...t,
+    lowerTitle: t.title.toLowerCase()
+  }));
+
   let totalLinked = 0;
 
   for (const finding of findings) {
@@ -195,9 +201,11 @@ async function linkEvidenceToWorkflowTasks(
       if (chunks.length === 0) continue;
 
       // Find the best matching task for this finding
-      const matchingTask = tasks.find(t =>
-        t.title.toLowerCase().includes(finding.title.toLowerCase().slice(0, 30))
-      ) || tasks[0];
+      const findingLowerStart = finding.title.toLowerCase().slice(0, 30);
+      const matchingTaskLower = lowerCaseTasks.find(t =>
+        t.lowerTitle.includes(findingLowerStart)
+      ) || lowerCaseTasks[0];
+      const matchingTask = tasks.find(t => t.id === matchingTaskLower.id) || tasks[0];
 
       // Build new evidence refs
       const existingRefs = (matchingTask.evidence_refs ?? []) as Array<{ source_id: string }>;

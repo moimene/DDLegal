@@ -1,0 +1,3 @@
+## 2025-02-23 - Avoiding N*M string manipulations in partial matches
+**Learning:** While O(1) Maps are standard for exact-match lookups inside nested loops, they can't always be used for `string.includes()` partial match searches. In these cases (e.g., `tasks.find(t => t.title.toLowerCase().includes(...))`), the overhead comes from allocating and lowercasing strings N*M times.
+**Action:** If a Map can't be used due to partial matching, pre-compute the transformed strings (e.g. `.toLowerCase()`) onto the array objects prior to the loop. This reduces string allocation complexity from O(N*M) to O(N).
