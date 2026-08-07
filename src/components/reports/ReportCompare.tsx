@@ -288,6 +288,9 @@ export default function ReportCompare({
                 </div>
                 <button
                     onClick={onClose}
+                    aria-label="Cerrar comparacion"
+                    title="Cerrar comparacion"
+                    className="transition-colors hover:opacity-80"
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
