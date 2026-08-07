@@ -178,15 +178,25 @@ export async function generateWorkflowReport(
       hitlStatus = anyRejected ? 'rejected' : anyPending ? 'pending' : allApproved ? 'approved' : 'pending';
     }
 
+    // Optimization: Pre-compute evidenceRefs outside the loop since they only depend on phaseTasks
+    const evidenceRefs = phaseTasks
+      .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
+      .slice(0, 10);
+
+    // Optimization: O(1) lookup map to prevent O(N^2) inner loop lookups
+    const hitlDecisionMap = new Map();
+    for (const h of phaseHitl) {
+      if (!hitlDecisionMap.has(h.finding_title)) {
+        hitlDecisionMap.set(h.finding_title, h);
+      }
+    }
+
     // Build report findings with evidence
     const reportFindings: ReportFinding[] = phaseFindings.map(f => {
-      const evidenceRefs = phaseTasks
-        .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
-        .slice(0, 10);
-
       if (evidenceRefs.length > 0) findingsWithEvidence++;
 
-      const hitlDecision = phaseHitl.find(h => h.finding_title === f.title);
+      // Use O(1) lookup instead of O(N) .find()
+      const hitlDecision = hitlDecisionMap.get(f.title);
 
       return {
         title: f.title,
