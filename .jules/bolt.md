@@ -1,0 +1,3 @@
+## 2024-06-21 - [O(N^2) Array Lookups in Dashboard Aggregation]
+**Learning:** [When dealing with cross-project data aggregation in Next.js API routes, nesting array operations like `.filter()` and `.find()` inside a `.map()` iteration over a primary collection (e.g., projects) creates severe O(N^2) CPU bottlenecks that scale poorly with data growth.]
+**Action:** [Always pre-compute O(1) `Map` instances for related collections (e.g., `tasks`, `scores`, `workflows`) before mapping over the primary collection. Group items by `project_id` in the Map to achieve linear O(N) time complexity across the entire aggregation.]

@@ -81,17 +81,45 @@ export async function GET(req: NextRequest) {
     }
 
     // 5. Build per-project metrics
-    const projects = (projectsRes.data || []).map(p => {
-      const pTasks = allTasks.filter(t => t.project_id === p.id);
+    // O(1) Maps for dashboard aggregation to avoid O(N^2) nested lookups
+    const projectsData = projectsRes.data || [];
+    const projMap = new Map(projectsData.map(p => [p.id, p]));
+
+    const pTasksMap = new Map<string, typeof allTasks>();
+    for (const t of allTasks) {
+      let arr = pTasksMap.get(t.project_id);
+      if (!arr) {
+        arr = [];
+        pTasksMap.set(t.project_id, arr);
+      }
+      arr.push(t);
+    }
+
+    const latestScoreMap = new Map<string, typeof allScores[0]>();
+    for (const s of allScores) {
+      if (!latestScoreMap.has(s.project_id)) {
+        latestScoreMap.set(s.project_id, s);
+      }
+    }
+
+    const activeWfMap = new Map<string, number>();
+    for (const w of allWorkflows) {
+      if (w.status === 'in_progress') {
+        activeWfMap.set(w.project_id, (activeWfMap.get(w.project_id) || 0) + 1);
+      }
+    }
+
+    const projects = projectsData.map(p => {
+      const pTasks = pTasksMap.get(p.id) || [];
       const completed = pTasks.filter(t => t.state === 'done' || t.state === 'closed').length;
       const blocked = pTasks.filter(t => t.state === 'blocked').length;
       const pending = pTasks.filter(t => !['done', 'closed', 'blocked'].includes(t.state)).length;
 
       // Latest score for this project (scores are ordered by created_at DESC)
-      const score = allScores.find(s => s.project_id === p.id);
+      const score = latestScoreMap.get(p.id);
 
       // Active workflows for this project
-      const activeWf = allWorkflows.filter(w => w.project_id === p.id && w.status === 'in_progress').length;
+      const activeWf = activeWfMap.get(p.id) || 0;
 
       return {
         id: p.id,
@@ -122,7 +150,7 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4))
       .slice(0, 20)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projMap.get(t.project_id);
         return {
           id: t.id,
           title: t.title,
@@ -146,7 +174,7 @@ export async function GET(req: NextRequest) {
       })
       .slice(0, 10)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projMap.get(t.project_id);
         const daysInState = Math.floor((now - new Date(t.entered_state_at).getTime()) / 86400000);
         return {
           type: t.state === 'blocked' ? 'blocker' : 'stale_task',
