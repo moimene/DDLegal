@@ -327,7 +327,15 @@ export default function FolderTree({
 
         return (
             <div key={folder.id}>
-                <button
+                <div
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onSelectFolder(folder.id);
+                        }
+                    }}
                     onClick={() => onSelectFolder(folder.id)}
                     onContextMenu={(e) => handleContextMenu(e, folder.id)}
                     onDragOver={(e) => handleDragOver(e, folder.id)}
@@ -356,12 +364,19 @@ export default function FolderTree({
                         color: 'var(--g-text-primary)',
                     }}
                 >
-                    <span
+                    <button
+                        type="button"
+                        aria-expanded={hasChildren ? isExpanded : undefined}
+                        aria-label={isExpanded ? 'Contraer carpeta' : 'Expandir carpeta'}
+                        disabled={!hasChildren}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (hasChildren) handleToggle(folder.id);
                         }}
                         style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -377,7 +392,7 @@ export default function FolderTree({
                         ) : (
                             <ChevronRight style={{ width: 12, height: 12, color: 'var(--g-text-secondary)' }} />
                         )}
-                    </span>
+                    </button>
 
                     {isExpanded ? (
                         <FolderOpen style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--g-brand-3308)' }} />
@@ -422,7 +437,7 @@ export default function FolderTree({
                             {docCountMap[folder.id]}
                         </span>
                     )}
-                </button>
+                </div>
 
                 {isExpanded && children.map((child) => renderFolder(child, depth + 1))}
 
