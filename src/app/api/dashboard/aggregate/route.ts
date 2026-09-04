@@ -80,18 +80,51 @@ export async function GET(req: NextRequest) {
       userEmail = '';
     }
 
-    // 5. Build per-project metrics
+    // 5. Build lookup maps and calculate single-pass aggregations to avoid O(N^2) loops
+    const projMap = new Map((projectsRes.data || []).map(p => [p.id, p]));
+
+    const scoreMap = new Map();
+    for (const s of allScores) {
+      if (!scoreMap.has(s.project_id)) {
+        scoreMap.set(s.project_id, s);
+      }
+    }
+
+    const workflowCountMap = new Map();
+    for (const w of allWorkflows) {
+      if (w.status === 'in_progress') {
+        workflowCountMap.set(w.project_id, (workflowCountMap.get(w.project_id) || 0) + 1);
+      }
+    }
+
+    const taskMetrics = new Map();
+    let totalBlockers = 0;
+    let hitlPending = 0;
+
+    for (const t of allTasks) {
+      if (t.state === 'blocked') totalBlockers++;
+      if (t.hitl_required && t.state === 'hitl_revision') hitlPending++;
+
+      if (!taskMetrics.has(t.project_id)) {
+        taskMetrics.set(t.project_id, { total: 0, pending: 0, blocked: 0, completed: 0 });
+      }
+
+      const metrics = taskMetrics.get(t.project_id);
+      metrics.total++;
+      if (t.state === 'done' || t.state === 'closed') {
+        metrics.completed++;
+      } else if (t.state === 'blocked') {
+        metrics.blocked++;
+      } else {
+        metrics.pending++;
+      }
+    }
+
+    // 6. Build per-project metrics
     const projects = (projectsRes.data || []).map(p => {
-      const pTasks = allTasks.filter(t => t.project_id === p.id);
-      const completed = pTasks.filter(t => t.state === 'done' || t.state === 'closed').length;
-      const blocked = pTasks.filter(t => t.state === 'blocked').length;
-      const pending = pTasks.filter(t => !['done', 'closed', 'blocked'].includes(t.state)).length;
-
-      // Latest score for this project (scores are ordered by created_at DESC)
-      const score = allScores.find(s => s.project_id === p.id);
-
-      // Active workflows for this project
-      const activeWf = allWorkflows.filter(w => w.project_id === p.id && w.status === 'in_progress').length;
+      const metrics = taskMetrics.get(p.id) || { total: 0, pending: 0, blocked: 0, completed: 0 };
+      const score = scoreMap.get(p.id);
+      const activeWf = workflowCountMap.get(p.id) || 0;
 
       return {
         id: p.id,
@@ -102,11 +135,11 @@ export async function GET(req: NextRequest) {
         deadline: p.deadline,
         user_role: roleMap.get(p.id) || 'unknown',
         metrics: {
-          total_tasks: pTasks.length,
-          pending_tasks: pending,
-          blocked_tasks: blocked,
-          completed_tasks: completed,
-          completion_pct: pTasks.length > 0 ? Math.round((completed / pTasks.length) * 100) : 0,
+          total_tasks: metrics.total,
+          pending_tasks: metrics.pending,
+          blocked_tasks: metrics.blocked,
+          completed_tasks: metrics.completed,
+          completion_pct: metrics.total > 0 ? Math.round((metrics.completed / metrics.total) * 100) : 0,
         },
         risk_score: score?.overall_score ?? null,
         risk_recommendation: score?.recommendation ?? null,
@@ -114,7 +147,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // 6. Build "my tasks" list (assigned to current user, not done/closed, sorted by priority)
+    // 7. Build "my tasks" list (assigned to current user, not done/closed, sorted by priority)
     const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
     const myTasks = allTasks
@@ -122,7 +155,7 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4))
       .slice(0, 20)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projMap.get(t.project_id);
         return {
           id: t.id,
           title: t.title,
@@ -135,7 +168,7 @@ export async function GET(req: NextRequest) {
         };
       });
 
-    // 7. Build alerts (blockers + stale tasks)
+    // 8. Build alerts (blockers + stale tasks)
     const now = Date.now();
 
     const alerts = allTasks
@@ -146,7 +179,7 @@ export async function GET(req: NextRequest) {
       })
       .slice(0, 10)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projMap.get(t.project_id);
         const daysInState = Math.floor((now - new Date(t.entered_state_at).getTime()) / 86400000);
         return {
           type: t.state === 'blocked' ? 'blocker' : 'stale_task',
@@ -160,13 +193,13 @@ export async function GET(req: NextRequest) {
         };
       });
 
-    // 8. Aggregate KPIs
+    // 9. Aggregate KPIs
     const kpis = {
       total_projects: projects.length,
       active_projects: projects.filter(p => p.status === 'active').length,
       my_pending_tasks: myTasks.length,
-      total_blockers: allTasks.filter(t => t.state === 'blocked').length,
-      hitl_pending: allTasks.filter(t => t.hitl_required && t.state === 'hitl_revision').length,
+      total_blockers: totalBlockers,
+      hitl_pending: hitlPending,
     };
 
     return NextResponse.json({

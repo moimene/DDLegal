@@ -1,0 +1,3 @@
+## 2024-05-24 - O(N²) array lookups in aggregation loops
+**Learning:** Nested array loop functions like `filter` and `find` inside a `.map` run on a dataset will quickly cause O(N²) bottlenecks as data sizes grow. Ordering requirements for latest items when migrating to maps must be carefully maintained by ensuring only the first entry (assuming initial list is DESC sorted) sets the key in the Map, thus preserving ordering.
+**Action:** When performing cross-entity aggregation, pre-calculate entity maps and aggregate metrics via a single O(N) loop before running any O(N) mapping functions for the return object, avoiding all nested array lookups.
