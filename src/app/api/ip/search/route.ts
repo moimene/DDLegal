@@ -204,45 +204,52 @@ export async function POST(req: NextRequest) {
             allResults.push(...esResults);
         }
 
+        // Optimization: Resolve N+1 query bottlenecks by batching records into arrays
+        // for Supabase .upsert() and .insert() instead of sequential loop operations.
+
         // Upsert results into ip_marcas
         let insertedCount = 0;
-        for (const result of allResults) {
-            if (!result.numero_expediente || !result.signo) continue;
+        const validRecords = allResults
+            .filter(r => r.numero_expediente && r.signo)
+            .map(result => ({
+                titular_id,
+                jurisdiccion: result.jurisdiccion,
+                signo: result.signo,
+                tipo: result.tipo || 'denominativa',
+                clases_niza: result.clases_niza,
+                estado_legal: result.estado_legal,
+                numero_expediente: result.numero_expediente,
+                fecha_solicitud: result.fecha_solicitud,
+                fecha_concesion: result.fecha_concesion,
+                fecha_vencimiento: result.fecha_vencimiento,
+                source_url: result.source_url,
+                evidence_ref: `SRC-SEARCH-${result.jurisdiccion}`,
+            }));
 
+        if (validRecords.length > 0) {
             const { error } = await supabaseAdmin
                 .from('ip_marcas')
-                .upsert({
-                    titular_id,
-                    jurisdiccion: result.jurisdiccion,
-                    signo: result.signo,
-                    tipo: result.tipo || 'denominativa',
-                    clases_niza: result.clases_niza,
-                    estado_legal: result.estado_legal,
-                    numero_expediente: result.numero_expediente,
-                    fecha_solicitud: result.fecha_solicitud,
-                    fecha_concesion: result.fecha_concesion,
-                    fecha_vencimiento: result.fecha_vencimiento,
-                    source_url: result.source_url,
-                    evidence_ref: `SRC-SEARCH-${result.jurisdiccion}`,
-                }, {
+                .upsert(validRecords, {
                     onConflict: 'jurisdiccion,numero_expediente',
                     ignoreDuplicates: true,
                 });
 
-            if (!error) insertedCount++;
+            if (!error) insertedCount = validRecords.length;
         }
 
         // Log searches to ip_sources_log
-        for (const jur of jurisdicciones) {
+        const logRecords = jurisdicciones.map(jur => ({
+            ip_request_id: request_id,
+            source_registry: jur === 'ES' ? 'OEPM' : jur === 'EU' ? 'EUIPO' : 'WIPO',
+            query_params: { holderName: titular.nombre_oficial, jurisdiccion: jur },
+            results_count: allResults.filter(r => r.jurisdiccion === jur).length,
+            http_status: 200,
+        }));
+
+        if (logRecords.length > 0) {
             await supabaseAdmin
                 .from('ip_sources_log')
-                .insert({
-                    ip_request_id: request_id,
-                    source_registry: jur === 'ES' ? 'OEPM' : jur === 'EU' ? 'EUIPO' : 'WIPO',
-                    query_params: { holderName: titular.nombre_oficial, jurisdiccion: jur },
-                    results_count: allResults.filter(r => r.jurisdiccion === jur).length,
-                    http_status: 200,
-                });
+                .insert(logRecords);
         }
 
         // Update pipeline step
