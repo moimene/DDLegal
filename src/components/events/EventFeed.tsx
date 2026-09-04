@@ -283,6 +283,8 @@ export default function EventFeed({
       {/* Header */}
       <button
         onClick={toggleCollapse}
+        aria-expanded={!collapsed}
+        aria-label="Alternar feed de eventos"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -341,6 +343,7 @@ export default function EventFeed({
           {newCount > 0 && (
             <button
               onClick={jumpToLatest}
+              aria-label="Desplazarse a nuevos eventos"
               style={{
                 position: 'absolute',
                 top: 'var(--g-space-2)',
@@ -497,6 +500,7 @@ export default function EventFeed({
             >
               <button
                 onClick={loadInitialEvents}
+                aria-label="Cargar más eventos"
                 style={{
                   background: 'none',
                   border: 'none',
