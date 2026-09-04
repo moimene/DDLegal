@@ -1,0 +1,3 @@
+## 2024-05-18 - Avoid O(N²) String Replacements in Nested Loops
+**Learning:** Performing regex-based string normalization (`.toLowerCase().replace(/[^a-z0-9]+/g, '-')`) inside nested `.find()` iterations over mapped arrays severely degraded performance, turning what should have been a quick ID matching process into a slow O(N²) bottleneck. This is an architecture-specific issue where many components rely heavily on finding matching references.
+**Action:** When matching workflow finding references across arrays, pre-compute normalized title slugs into an O(1) Map *outside* the iteration to avoid recalculating the string replacements inside nested loops.
