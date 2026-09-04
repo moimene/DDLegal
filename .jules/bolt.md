@@ -1,0 +1,3 @@
+## 2024-06-14 - Fix O(N²) Performance Bottleneck in Array Grouping
+**Learning:** Nested array `.find()` lookups inside iterations over mapped arrays create severe O(N²) performance bottlenecks, especially detrimental when datasets grow large. This often happens when mapping an array and then looping over the mapped result while needing original array properties.
+**Action:** Consolidate array mappings, property lookups, aggregations, and groupings into a single O(N) pass. When iterating over the original array directly, all properties (both original and calculated) remain accessible without requiring costly nested lookups.
