@@ -1,0 +1,3 @@
+## 2024-06-24 - Accessibility improvements on icon-only buttons
+**Learning:** Found several icon-only buttons missing `aria-label` or `title` attributes, particularly in components like `DocumentPreview.tsx`, `UploadDropzone.tsx`, `ReportCompare.tsx`, and `ReportExportPanel.tsx`, which impedes screen reader usability and general accessibility.
+**Action:** When adding or reviewing buttons that only contain icons, always ensure they have descriptive `aria-label` or `title` attributes (preferably in Spanish to match the app's localization). For `<button>`s acting as dismissals, "Cerrar" or "Eliminar" are good standards.
