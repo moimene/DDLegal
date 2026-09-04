@@ -1,0 +1,3 @@
+## 2025-02-12 - Replacing O(N^2) Array Methods with Maps
+**Learning:** Using `Array.prototype.find()` or `.filter()` inside `.map()` creates an O(N^2) operation, causing severe bottlenecks on larger datasets like dashboard aggregations where hundreds of tasks are scanned per project.
+**Action:** Always refactor these into an O(N) pre-computation phase using `Map` lookups. For array iterations, keep immutability semantics and avoid overwriting earlier elements by checking `!map.has(key)` when processing arrays like `allScores` ordered by `created_at DESC` to retain the latest item. Combine mapping and data tracking into single loops to minimize iteration overhead.
