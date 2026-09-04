@@ -1,0 +1,3 @@
+## 2024-07-01 - Architecture-specific Performance Bottleneck
+**Learning:** Found deep nested `.find()` loops calling architecture-specific slugification (regex replaces, lowercasing) on every array element, multiple times per workflow execution. This leads to heavy string processing overhead blocking the event loop. In `resolveFindingIds`, this O(N^2) operation happens with `findings` elements mapped to regex operations on every database row lookup.
+**Action:** Always pre-compute normalized lookups like slugs or IDs into an O(1) Map *outside* of the loop, using `if (!map.has(key)) map.set(key, val)` to preserve the original first-occurrence logic in `.find()`. Never do complex string manipulation inside a loop finding operation.
