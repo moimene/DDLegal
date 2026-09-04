@@ -1,0 +1,3 @@
+## 2024-03-20 - Array Lookups in Loops
+**Learning:** Nested array `.find()` and `.filter()` operations inside `.map()` iterations create O(N²) complexity, which becomes a major bottleneck for API routes like the dashboard aggregator. When replacing `.find()` on DESC-ordered queries, using `new Map(array.map(...))` creates a functional regression by keeping the oldest (last) element.
+**Action:** Use O(1) Map lookups for related data. When dealing with DESC-ordered data where the first item is the most recent, iterate and insert using `if (!map.has(key)) map.set(key, item)` to preserve the most recent item.
