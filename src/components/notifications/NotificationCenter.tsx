@@ -1,4 +1,5 @@
 'use client';
+import { getCachedDateTimeFormat } from '@/lib/utils';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -97,7 +98,7 @@ function relativeTime(dateStr: string): string {
     if (diffHour < 24) return `hace ${diffHour}h`;
     if (diffDay === 1) return 'ayer';
     if (diffDay < 7) return `hace ${diffDay} dias`;
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormat('es-ES', {
         day: '2-digit',
         month: 'short',
     }).format(new Date(dateStr));

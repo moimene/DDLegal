@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useResolvedParams } from '@/lib/utils';
+import { useResolvedParams , getCachedDateTimeFormat } from "@/lib/utils";
 import Link from 'next/link';
 import {
     ArrowLeft, FolderOpen, FolderPlus, FileText, Upload, ChevronRight,
@@ -208,7 +208,7 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
-    const formatDate = (d: string) => new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(d));
+    const formatDate = (d: string) => getCachedDateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(d));
 
     const rootFolders = folders.filter(f => !f.parent_id);
     const getChildFolders = (parentId: string) => folders.filter(f => f.parent_id === parentId);
