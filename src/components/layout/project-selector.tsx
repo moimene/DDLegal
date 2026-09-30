@@ -150,6 +150,9 @@ export default function ProjectSelector({ collapsed }: Props) {
                     onClick={toggleOpen}
                     title={currentProject ? currentProject.name : 'Seleccionar Proyecto'}
                     aria-label={currentProject ? currentProject.name : 'Seleccionar Proyecto'}
+                    className={open
+                        ? "bg-[var(--g-sidebar-surface-selected)]"
+                        : "bg-[var(--g-sidebar-surface-hover)] hover:bg-[var(--g-sidebar-surface-active-hover)]"}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -158,17 +161,10 @@ export default function ProjectSelector({ collapsed }: Props) {
                         height: '36px',
                         margin: '0 auto',
                         borderRadius: 'var(--g-radius-md)',
-                        backgroundColor: open ? 'var(--g-sidebar-surface-selected)' : 'var(--g-sidebar-surface-hover)',
                         border: 'none',
                         cursor: 'pointer',
                         position: 'relative',
                         transition: 'background-color var(--g-transition-fast)',
-                    }}
-                    onMouseEnter={(e) => {
-                        if (!open) e.currentTarget.style.backgroundColor = 'var(--g-sidebar-surface-active-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                        if (!open) e.currentTarget.style.backgroundColor = 'var(--g-sidebar-surface-hover)';
                     }}
                 >
                     <FolderKanban
@@ -236,21 +232,18 @@ export default function ProjectSelector({ collapsed }: Props) {
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' || e.key === ' ') selectProject(project.id);
                                     }}
+                                    className={isActive
+                                        ? "bg-[var(--g-sidebar-surface-selected)]"
+                                        : "bg-transparent hover:bg-[var(--g-sidebar-surface-active-hover)]"
+                                    }
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '10px',
                                         padding: 'var(--g-space-2) 10px',
                                         borderRadius: 'var(--g-radius-md)',
-                                        backgroundColor: isActive ? 'var(--g-sidebar-surface-selected)' : 'transparent',
                                         cursor: 'pointer',
                                         transition: 'background-color var(--g-transition-fast)',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!isActive) e.currentTarget.style.backgroundColor = 'var(--g-sidebar-surface-active-hover)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
                                     }}
                                 >
                                     {/* Status dot */}
@@ -323,6 +316,10 @@ export default function ProjectSelector({ collapsed }: Props) {
                 aria-expanded={open}
                 aria-haspopup="listbox"
                 aria-label={currentProject ? currentProject.name : 'Seleccionar Proyecto'}
+                className={open
+                    ? "bg-[var(--g-sidebar-surface-selected)]"
+                    : "bg-[var(--g-sidebar-surface-hover)] hover:bg-[var(--g-sidebar-surface-active-hover)]"
+                }
                 style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -330,17 +327,10 @@ export default function ProjectSelector({ collapsed }: Props) {
                     width: '100%',
                     padding: 'var(--g-space-2) 10px',
                     borderRadius: 'var(--g-radius-md)',
-                    backgroundColor: open ? 'var(--g-sidebar-surface-selected)' : 'var(--g-sidebar-surface-hover)',
                     border: 'none',
                     cursor: 'pointer',
                     textAlign: 'left',
                     transition: 'background-color var(--g-transition-fast)',
-                }}
-                onMouseEnter={(e) => {
-                    if (!open) e.currentTarget.style.backgroundColor = 'var(--g-sidebar-surface-active-hover)';
-                }}
-                onMouseLeave={(e) => {
-                    if (!open) e.currentTarget.style.backgroundColor = open ? 'var(--g-sidebar-surface-selected)' : 'var(--g-sidebar-surface-hover)';
                 }}
             >
                 <FolderKanban
@@ -431,21 +421,18 @@ export default function ProjectSelector({ collapsed }: Props) {
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' || e.key === ' ') selectProject(project.id);
                                 }}
+                                className={isActive
+                                    ? "bg-[var(--g-sidebar-surface-selected)]"
+                                    : "bg-transparent hover:bg-[var(--g-sidebar-surface-active-hover)]"
+                                }
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '10px',
                                     padding: 'var(--g-space-2) 10px',
                                     borderRadius: 'var(--g-radius-md)',
-                                    backgroundColor: isActive ? 'var(--g-sidebar-surface-selected)' : 'transparent',
                                     cursor: 'pointer',
                                     transition: 'background-color var(--g-transition-fast)',
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (!isActive) e.currentTarget.style.backgroundColor = 'var(--g-sidebar-surface-active-hover)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (!isActive) e.currentTarget.style.backgroundColor = isActive ? 'var(--g-sidebar-surface-selected)' : 'transparent';
                                 }}
                             >
                                 {/* Status dot */}
