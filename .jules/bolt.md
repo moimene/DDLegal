@@ -1,0 +1,3 @@
+## 2024-09-30 - Optimize nested loop finding references
+**Learning:** Performing regex string replacements or lowercasing inside nested `.find()` loops or nested `.map()` loops causes severe performance bottlenecks due to O(N²) array searches combined with N*M string manipulations.
+**Action:** Always pre-compute normalized title slugs or keys into an O(1) Map outside the iteration. When doing this, ensure to only set the key if it doesn't already exist to preserve the first-occurrence logic of `.find()`.
