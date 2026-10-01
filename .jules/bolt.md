@@ -1,0 +1,3 @@
+## 2025-02-14 - Eliminated O(N²) Lookups in API Route
+**Learning:** Found nested `.filter()` and `.find()` operations inside a `.map()` mapping over database results in `src/app/api/dashboard/aggregate/route.ts`. This classic N+1 lookup problem leads to O(N²) time complexity, unnecessarily stalling the dashboard load times, specifically as task volumes grow.
+**Action:** Replaced the array lookups inside the loop with pre-computed Map structures generated via a single pass (O(N)), reducing the `.map()` iteration to O(1) lookups. No surprises in optimization, but highlighting importance of checking array iterations against larger sets.
