@@ -1,0 +1,3 @@
+## 2024-05-18 - Optimized mapping workflow findings to external_ref
+**Learning:** In `src/lib/workflows/instance-runner.ts`, there is an O(N*M) nested loop inside `mapFindingsToSupabaseIds` where it loops over database rows and then performs an O(N) `.find()` lookup inside that loop, doing a lowercase + regex replacement dynamically for every element! This causes unnecessary repetitive overhead.
+**Action:** When matching finding references using normalized slugs in arrays, pre-compute the normalized title slugs into an O(1) Map mapping `titleSlug` to the finding. This avoids O(N*M) lookups and redundant string processing.
