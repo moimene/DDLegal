@@ -354,7 +354,7 @@ export default function Sidebar() {
                 {/* Group header button */}
                 <button
                     onClick={() => toggle(group.id)}
-                    className="w-full flex items-center gap-2 transition-all"
+                    className="w-full flex items-center gap-2 transition-all hover:opacity-80"
                     style={{
                         padding: '6px 12px',
                         borderRadius: 'var(--g-radius-md)',
@@ -611,7 +611,7 @@ export default function Sidebar() {
             {/* Collapse toggle */}
             <button
                 onClick={() => setCollapsed(!collapsed)}
-                className="flex items-center justify-center h-10 border-t transition-colors shrink-0"
+                className="flex items-center justify-center h-10 border-t transition-colors shrink-0 hover:opacity-80"
                 style={{
                     color: 'var(--g-text-inverse)',
                     borderColor: 'var(--g-sidebar-border)',
