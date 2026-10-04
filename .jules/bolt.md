@@ -1,0 +1,3 @@
+## 2025-02-23 - [Eliminating O(N²) Lookups & Hoisting Static Calculations]
+**Learning:** In report generation, placing static `.flatMap()` array aggregations and `.find()` string lookups inside high-iteration `.map()` loops creates severe performance bottlenecks. Doing redundant static processing or lookup loops in each iteration grows exponentially with finding count.
+**Action:** When working on loops (like iterating findings), always isolate static calculations to pre-compute outside the loop, and use an O(1) Map pre-computed lookup instead of O(N) `.find()` lookups. This scales much better especially on potentially large datasets.
