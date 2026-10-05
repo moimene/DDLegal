@@ -1,0 +1,3 @@
+## 2025-05-18 - Nested array lookups in route handlers
+**Learning:** Found O(N²) bottlenecks in `src/app/api/dashboard/aggregate/route.ts` where we were calling `.filter()` and `.find()` inside `.map()` functions to group and lookup related data (tasks by project, scores by project).
+**Action:** When grouping multiple items by a shared key to eliminate O(N²) `.filter()` lookups inside loops, pre-compute a Map that associates the key with an array of items. Iterate the source data once, initialize an empty array if the key is missing (`if (!map.has(key)) map.set(key, [])`), and then push the item to the array. Use similar single-iteration Map construction for 1:1 `.find()` replacements.
