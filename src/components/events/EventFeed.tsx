@@ -282,6 +282,7 @@ export default function EventFeed({
     >
       {/* Header */}
       <button
+        aria-expanded={!collapsed}
         onClick={toggleCollapse}
         style={{
           display: 'flex',

@@ -55,6 +55,7 @@ function FolderNode({
     return (
         <div>
             <button
+                aria-expanded={isExpanded}
                 onClick={() => onSelect(folder.id)}
                 onContextMenu={(e) => onContextMenu(e, folder.id)}
                 onDragOver={(e) => onDragOver(e, folder.id)}
@@ -328,6 +329,7 @@ export default function FolderTree({
         return (
             <div key={folder.id}>
                 <button
+                    aria-expanded={isExpanded}
                     onClick={() => onSelectFolder(folder.id)}
                     onContextMenu={(e) => handleContextMenu(e, folder.id)}
                     onDragOver={(e) => handleDragOver(e, folder.id)}
