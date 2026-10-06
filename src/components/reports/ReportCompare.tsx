@@ -288,6 +288,9 @@ export default function ReportCompare({
                 </div>
                 <button
                     onClick={onClose}
+                    aria-label="Cerrar comparación"
+                    title="Cerrar comparación"
+                    className="bg-[var(--g-surface-card)] border border-[var(--g-border-default)] transition-colors hover:bg-[var(--g-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--g-brand-3308)]"
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -295,8 +298,6 @@ export default function ReportCompare({
                         width: '28px',
                         height: '28px',
                         borderRadius: 'var(--g-radius-md)',
-                        border: '1px solid var(--g-border-default)',
-                        backgroundColor: 'var(--g-surface-card)',
                         color: 'var(--g-text-secondary)',
                         cursor: 'pointer',
                     }}
