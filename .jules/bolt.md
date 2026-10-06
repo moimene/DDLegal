@@ -1,0 +1,3 @@
+## 2024-05-19 - Pre-computing Normalized Slugs to Eliminate O(N²) Lookups
+**Learning:** Found a severe bottleneck in data cross-referencing logic where matching records were being found using a nested `.find()` with expensive regex replacements and `.toLowerCase()` operations on every single iteration inside a loop over fetched rows. This architecture-specific pattern scales terribly as the dataset grows.
+**Action:** Always pre-compute normalized keys or slugs into an O(1) Map *outside* of the loop over data. This consolidates mapping and normalisation to a single O(N) pass, enabling cheap O(1) lookups during the main dataset iteration.
