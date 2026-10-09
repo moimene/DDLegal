@@ -1,0 +1,3 @@
+## 2024-05-24 - Expensive string manipulations in nested loops
+**Learning:** Found a severe performance bottleneck where O(N*M) nested loops were redundantly recalculating expensive string normalizations (regex replace, toLowerCase) and allocating static arrays (`flatMap`).
+**Action:** When working with nested loops over arrays, pre-calculate normalized data structures (like O(1) Maps) outside the loop to transform O(N*M) time complexity into O(N), and hoist static array allocations out of map loops.
