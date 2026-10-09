@@ -375,6 +375,19 @@ async function resolveFindingIds(
     .in('external_ref', slugs);
 
   if (rows) {
+    // Pre-compute normalized finding titles to eliminate O(N*M) nested loop with expensive regex/string operations
+    const normalizedFindings = new Map<string, WorkflowFinding>();
+    for (const f of findings) {
+      const fSlug = f.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 64) || 'untitled';
+      if (!normalizedFindings.has(fSlug)) {
+        normalizedFindings.set(fSlug, f);
+      }
+    }
+
     for (const row of rows) {
       // Map finding_ref (instance:phase:severity:slug) → dd_findings.id
       // We need to map via title slug which is shared between external_ref and finding_ref
@@ -385,14 +398,7 @@ async function resolveFindingIds(
       const parts = extRef.split(':');
       const titleSlug = parts.slice(2).join(':');
       // Find the matching finding to get its severity for full finding_ref
-      const matchingFinding = findings.find((f) => {
-        const fSlug = f.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-          .slice(0, 64) || 'untitled';
-        return fSlug === titleSlug;
-      });
+      const matchingFinding = normalizedFindings.get(titleSlug);
       if (matchingFinding) {
         const findingRef = buildFindingRef(instanceId, phase, matchingFinding);
         result.set(findingRef, row.id as string);
