@@ -99,8 +99,9 @@ export default function UserIndicator() {
                     {/* Logout button */}
                     <button
                         onClick={handleLogout}
-                        title="Cerrar sesion"
-                        aria-label="Cerrar sesion"
+                        title="Cerrar sesión"
+                        aria-label="Cerrar sesión"
+                        className="bg-transparent border-[var(--g-border-subtle)] hover:bg-[var(--g-error-surface)] hover:border-[var(--g-error-border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--g-brand-3308)]"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -108,18 +109,10 @@ export default function UserIndicator() {
                             width: '28px',
                             height: '28px',
                             borderRadius: 'var(--g-radius-md, 8px)',
-                            border: '1px solid var(--g-border-subtle, #e5e7eb)',
-                            backgroundColor: 'transparent',
+                            borderWidth: '1px',
+                            borderStyle: 'solid',
                             cursor: 'pointer',
                             transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--g-error-surface)';
-                            e.currentTarget.style.borderColor = 'var(--g-error-border)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.borderColor = 'var(--g-border-subtle, #e5e7eb)';
                         }}
                     >
                         <LogOut style={{ width: '14px', height: '14px', color: 'var(--g-text-muted, #9ca3af)' }} />
@@ -128,29 +121,24 @@ export default function UserIndicator() {
             ) : (
                 <button
                     onClick={handleLoginRedirect}
+                    className="bg-transparent border-[var(--g-border-default)] hover:bg-[var(--g-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--g-brand-3308)]"
                     style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: 'var(--g-space-2)',
                         padding: 'var(--g-space-1) var(--g-space-3)',
                         borderRadius: 'var(--g-radius-md, 8px)',
-                        border: '1px solid var(--g-border-default, #d1d5db)',
-                        backgroundColor: 'transparent',
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
                         color: 'var(--g-text-secondary, #6b7280)',
                         fontSize: 'var(--g-text-small, 0.8125rem)',
                         fontWeight: 500,
                         cursor: 'pointer',
                         transition: 'all 0.15s',
                     }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--g-surface-subtle, #f8f9fa)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
                 >
                     <User style={{ width: '14px', height: '14px' }} />
-                    Iniciar sesion
+                    Iniciar sesión
                 </button>
             )}
         </div>

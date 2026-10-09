@@ -1,0 +1,3 @@
+## 2025-05-18 - Migrated inline hover events to Tailwind classes
+**Learning:** Using React `onMouseEnter` and `onMouseLeave` for hover state styling creates messy components and makes keyboard focus indicators (`:focus-visible`) difficult or impossible to apply securely via CSS. Components using inline style state for mouse hovering completely ignore keyboard navigation.
+**Action:** When adding or fixing visual hover states, always prefer CSS pseudo-classes via Tailwind (`hover:`, `focus-visible:`) over explicit React mouse event handlers. This ensures complete keyboard navigability and simpler markup.
