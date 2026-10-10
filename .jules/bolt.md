@@ -1,0 +1,3 @@
+## 2025-10-10 - Dashboard Aggregation Performance
+**Learning:** In dashboard aggregation loops (like mapping over `projectsRes.data`), doing repeated `.filter()` or `.find()` on large datasets like `allTasks` or `allScores` leads to massive performance degradation (O(N*M) or O(N²) time complexity). We can hit massive bottlenecks as active deals and tasks increase.
+**Action:** When filtering or finding across arrays inside loop iterations, always pre-compute a dictionary (`Map`) outside of the loop mapping `[foreign_key]` -> `Data_Item_or_Array`. Then use a constant O(1) lookup `map.get(key)` inside the loop, transforming multiple O(N*M) array iterations into a fast O(N+M) pass.
