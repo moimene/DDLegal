@@ -267,7 +267,10 @@ function ToggleOption({
                 cursor: 'pointer',
             }}
         >
-            <div
+            <button
+                type="button"
+                role="switch"
+                aria-checked={checked}
                 onClick={() => onChange(!checked)}
                 style={{
                     width: '34px',
@@ -279,6 +282,8 @@ function ToggleOption({
                     flexShrink: 0,
                     marginTop: '2px',
                     cursor: 'pointer',
+                    border: 'none',
+                    padding: 0,
                 }}
             >
                 <div
@@ -294,7 +299,7 @@ function ToggleOption({
                         boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
                     }}
                 />
-            </div>
+            </button>
             <div>
                 <span
                     style={{
