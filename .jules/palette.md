@@ -1,0 +1,3 @@
+## YYYY-MM-DD - Interactive Divs with toggle role missing keyboard events
+**Learning:** Found custom `div` switches in `ReportExportPanel.tsx` that are intended to be accessible switches, acting like a checkbox. In React, placing `onClick` on a custom `div` meant to act like an input without `role="switch"` or equivalent keyboard handlers (`onKeyDown` for Space/Enter) causes it to be inaccessible to keyboard users and screen readers. We must either use native elements or add keyboard accessibility.
+**Action:** Replace `div` based toggles with native `<button role="switch">` or accessible `ToggleSwitch` components, or add correct roles, `tabIndex`, and key down handlers.
