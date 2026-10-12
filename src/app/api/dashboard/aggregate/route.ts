@@ -81,17 +81,46 @@ export async function GET(req: NextRequest) {
     }
 
     // 5. Build per-project metrics
+    // Performance optimization: Replace O(N^2) nested loops with O(1) Map pre-computation
+    const tasksByProject = new Map();
+    for (const task of allTasks) {
+      if (!tasksByProject.has(task.project_id)) {
+        tasksByProject.set(task.project_id, {
+          total: 0,
+          completed: 0,
+          blocked: 0,
+          pending: 0,
+        });
+      }
+      const stats = tasksByProject.get(task.project_id);
+      stats.total++;
+      if (task.state === 'done' || task.state === 'closed') stats.completed++;
+      else if (task.state === 'blocked') stats.blocked++;
+      else stats.pending++;
+    }
+
+    const scoreByProject = new Map();
+    for (const score of allScores) {
+      // First match per project is latest since they are ordered by created_at DESC
+      if (!scoreByProject.has(score.project_id)) {
+        scoreByProject.set(score.project_id, score);
+      }
+    }
+
+    const activeWorkflowsByProject = new Map();
+    for (const workflow of allWorkflows) {
+      if (workflow.status === 'in_progress') {
+        activeWorkflowsByProject.set(workflow.project_id, (activeWorkflowsByProject.get(workflow.project_id) || 0) + 1);
+      }
+    }
+
+    const projectsMap = new Map();
+    (projectsRes.data || []).forEach(p => projectsMap.set(p.id, p));
+
     const projects = (projectsRes.data || []).map(p => {
-      const pTasks = allTasks.filter(t => t.project_id === p.id);
-      const completed = pTasks.filter(t => t.state === 'done' || t.state === 'closed').length;
-      const blocked = pTasks.filter(t => t.state === 'blocked').length;
-      const pending = pTasks.filter(t => !['done', 'closed', 'blocked'].includes(t.state)).length;
-
-      // Latest score for this project (scores are ordered by created_at DESC)
-      const score = allScores.find(s => s.project_id === p.id);
-
-      // Active workflows for this project
-      const activeWf = allWorkflows.filter(w => w.project_id === p.id && w.status === 'in_progress').length;
+      const stats = tasksByProject.get(p.id) || { total: 0, completed: 0, blocked: 0, pending: 0 };
+      const score = scoreByProject.get(p.id);
+      const activeWf = activeWorkflowsByProject.get(p.id) || 0;
 
       return {
         id: p.id,
@@ -102,11 +131,11 @@ export async function GET(req: NextRequest) {
         deadline: p.deadline,
         user_role: roleMap.get(p.id) || 'unknown',
         metrics: {
-          total_tasks: pTasks.length,
-          pending_tasks: pending,
-          blocked_tasks: blocked,
-          completed_tasks: completed,
-          completion_pct: pTasks.length > 0 ? Math.round((completed / pTasks.length) * 100) : 0,
+          total_tasks: stats.total,
+          pending_tasks: stats.pending,
+          blocked_tasks: stats.blocked,
+          completed_tasks: stats.completed,
+          completion_pct: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0,
         },
         risk_score: score?.overall_score ?? null,
         risk_recommendation: score?.recommendation ?? null,
@@ -122,7 +151,7 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4))
       .slice(0, 20)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projectsMap.get(t.project_id);
         return {
           id: t.id,
           title: t.title,
@@ -146,7 +175,7 @@ export async function GET(req: NextRequest) {
       })
       .slice(0, 10)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projectsMap.get(t.project_id);
         const daysInState = Math.floor((now - new Date(t.entered_state_at).getTime()) / 86400000);
         return {
           type: t.state === 'blocked' ? 'blocker' : 'stale_task',
