@@ -1,0 +1,3 @@
+## 2024-10-12 - Fixing Nested Interactive Elements
+**Learning:** In React, nesting interactive elements (like a `<button>` inside another `<button>`) violates HTML specifications and breaks accessibility, causing screen readers and keyboard navigation to behave unpredictably.
+**Action:** When a clickable container (like a folder row) also contains nested interactive elements (like an expand/collapse toggle), convert the outer container to a semantic `<div role="button" tabIndex={0}>` with an `onKeyDown` handler listening for 'Enter' and ' ' (Space). Convert inner toggles from `<span>` to accessible `<button type="button">` with `disabled` attributes and reset styles (`background: 'none'`, `border: 'none'`, `padding: 0`).
