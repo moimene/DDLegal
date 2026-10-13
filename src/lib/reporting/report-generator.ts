@@ -178,15 +178,24 @@ export async function generateWorkflowReport(
       hitlStatus = anyRejected ? 'rejected' : anyPending ? 'pending' : allApproved ? 'approved' : 'pending';
     }
 
+    // Hoist static evidence calculation outside the O(N) map loop
+    const evidenceRefs = phaseTasks
+      .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
+      .slice(0, 10);
+
+    // Build O(1) lookup map for HITL decisions to eliminate nested O(N) loop
+    const hitlDecisionMap = new Map<string, (typeof phaseHitl)[0]>();
+    for (const h of phaseHitl) {
+      if (!hitlDecisionMap.has(h.finding_title)) {
+        hitlDecisionMap.set(h.finding_title, h);
+      }
+    }
+
     // Build report findings with evidence
     const reportFindings: ReportFinding[] = phaseFindings.map(f => {
-      const evidenceRefs = phaseTasks
-        .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
-        .slice(0, 10);
-
       if (evidenceRefs.length > 0) findingsWithEvidence++;
 
-      const hitlDecision = phaseHitl.find(h => h.finding_title === f.title);
+      const hitlDecision = hitlDecisionMap.get(f.title);
 
       return {
         title: f.title,
