@@ -1,0 +1,3 @@
+## 2025-02-20 - Inline hover states vs Tailwind CSS variables
+**Learning:** When refactoring interactive elements (like buttons) to use Tailwind classes for hover/focus states, inline styles for `backgroundColor` or `borderColor` MUST be removed. If left as inline styles, they retain higher CSS specificity and will override the newly applied Tailwind pseudo-classes (like `hover:bg-[var(...)]`).
+**Action:** Always completely remove the corresponding inline style properties and migrate their base values to the `className` attribute before applying hover/focus states using Tailwind.
