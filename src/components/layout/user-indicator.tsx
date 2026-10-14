@@ -101,25 +101,11 @@ export default function UserIndicator() {
                         onClick={handleLogout}
                         title="Cerrar sesion"
                         aria-label="Cerrar sesion"
+                        className="flex items-center justify-center bg-transparent border border-[var(--g-border-subtle,#e5e7eb)] hover:bg-[var(--g-error-surface)] hover:border-[var(--g-error-border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--g-brand-3308)] focus-visible:ring-offset-1 transition-all duration-150 cursor-pointer"
                         style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
                             width: '28px',
                             height: '28px',
                             borderRadius: 'var(--g-radius-md, 8px)',
-                            border: '1px solid var(--g-border-subtle, #e5e7eb)',
-                            backgroundColor: 'transparent',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--g-error-surface)';
-                            e.currentTarget.style.borderColor = 'var(--g-error-border)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.borderColor = 'var(--g-border-subtle, #e5e7eb)';
                         }}
                     >
                         <LogOut style={{ width: '14px', height: '14px', color: 'var(--g-text-muted, #9ca3af)' }} />
@@ -128,25 +114,14 @@ export default function UserIndicator() {
             ) : (
                 <button
                     onClick={handleLoginRedirect}
+                    className="flex items-center bg-transparent border border-[var(--g-border-default,#d1d5db)] hover:bg-[var(--g-surface-subtle,#f8f9fa)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--g-brand-3308)] focus-visible:ring-offset-1 transition-all duration-150 cursor-pointer"
                     style={{
-                        display: 'flex',
-                        alignItems: 'center',
                         gap: 'var(--g-space-2)',
                         padding: 'var(--g-space-1) var(--g-space-3)',
                         borderRadius: 'var(--g-radius-md, 8px)',
-                        border: '1px solid var(--g-border-default, #d1d5db)',
-                        backgroundColor: 'transparent',
                         color: 'var(--g-text-secondary, #6b7280)',
                         fontSize: 'var(--g-text-small, 0.8125rem)',
                         fontWeight: 500,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--g-surface-subtle, #f8f9fa)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                 >
                     <User style={{ width: '14px', height: '14px' }} />
