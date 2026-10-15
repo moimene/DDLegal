@@ -101,6 +101,7 @@ export default function UserIndicator() {
                         onClick={handleLogout}
                         title="Cerrar sesion"
                         aria-label="Cerrar sesion"
+                        className="border border-[var(--g-border-subtle)] bg-transparent hover:bg-[var(--g-error-surface)] hover:border-[var(--g-error-border)] transition-all duration-150"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -108,18 +109,7 @@ export default function UserIndicator() {
                             width: '28px',
                             height: '28px',
                             borderRadius: 'var(--g-radius-md, 8px)',
-                            border: '1px solid var(--g-border-subtle, #e5e7eb)',
-                            backgroundColor: 'transparent',
                             cursor: 'pointer',
-                            transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--g-error-surface)';
-                            e.currentTarget.style.borderColor = 'var(--g-error-border)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.borderColor = 'var(--g-border-subtle, #e5e7eb)';
                         }}
                     >
                         <LogOut style={{ width: '14px', height: '14px', color: 'var(--g-text-muted, #9ca3af)' }} />
@@ -128,6 +118,7 @@ export default function UserIndicator() {
             ) : (
                 <button
                     onClick={handleLoginRedirect}
+                    className="hover:bg-[var(--g-surface-subtle)] transition-all duration-150"
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -140,13 +131,6 @@ export default function UserIndicator() {
                         fontSize: 'var(--g-text-small, 0.8125rem)',
                         fontWeight: 500,
                         cursor: 'pointer',
-                        transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--g-surface-subtle, #f8f9fa)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                 >
                     <User style={{ width: '14px', height: '14px' }} />
