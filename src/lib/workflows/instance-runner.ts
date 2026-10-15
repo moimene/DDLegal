@@ -375,6 +375,19 @@ async function resolveFindingIds(
     .in('external_ref', slugs);
 
   if (rows) {
+    // ⚡ Bolt: Build O(1) lookup map for finding slugs instead of regex parsing on every loop iteration
+    const findingsBySlug = new Map<string, WorkflowFinding>();
+    for (const f of findings) {
+      const fSlug = f.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 64) || 'untitled';
+      if (!findingsBySlug.has(fSlug)) {
+        findingsBySlug.set(fSlug, f);
+      }
+    }
+
     for (const row of rows) {
       // Map finding_ref (instance:phase:severity:slug) → dd_findings.id
       // We need to map via title slug which is shared between external_ref and finding_ref
@@ -384,15 +397,10 @@ async function resolveFindingIds(
       // Match by finding any finding_ref that ends with the same titleSlug
       const parts = extRef.split(':');
       const titleSlug = parts.slice(2).join(':');
-      // Find the matching finding to get its severity for full finding_ref
-      const matchingFinding = findings.find((f) => {
-        const fSlug = f.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-          .slice(0, 64) || 'untitled';
-        return fSlug === titleSlug;
-      });
+
+      // ⚡ Bolt: O(1) Map lookup
+      const matchingFinding = findingsBySlug.get(titleSlug);
+
       if (matchingFinding) {
         const findingRef = buildFindingRef(instanceId, phase, matchingFinding);
         result.set(findingRef, row.id as string);
