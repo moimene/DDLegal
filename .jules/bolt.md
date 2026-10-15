@@ -1,0 +1,3 @@
+## 2024-03-20 - Replace O(N²) nested loop lookups with O(1) Maps
+**Learning:** When matching items across arrays using `.find()`, placing string operations like `.toLowerCase()` or regex `.replace()` inside the `.find()` predicate creates a severe O(N*M) performance bottleneck, especially for large arrays. The architecture-specific finding reference lookup (`f.title.toLowerCase().replace(...)`) was executing on every iteration for every finding.
+**Action:** When eliminating O(N²) nested `.find()` lookups, always pre-compute a Map or Set that associates the normalized key with the object in a single O(N) pass outside the iteration loop, then use an O(1) Map `.get()` inside the loop.
