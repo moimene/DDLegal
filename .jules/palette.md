@@ -1,0 +1,3 @@
+## 2024-10-16 - Tailwind Hover States for React Inline Styles
+**Learning:** In a codebase using Tailwind v4 and CSS variables for theming, using explicit JavaScript `onMouseEnter` and `onMouseLeave` handlers to manage hover states creates unnecessary React re-renders and violates Tailwind utility patterns.
+**Action:** When adding hover states to elements that primarily use inline styles, replace `onMouseEnter`/`onMouseLeave` state-driven styling with Tailwind arbitrary values using CSS variables (e.g., `className="hover:bg-[var(--g-surface-subtle)]"`). Remember to remove any inline `transition` property if it conflicts with Tailwind's transition utilities.
