@@ -54,8 +54,7 @@ function FolderNode({
 
     return (
         <div>
-            <button
-                onClick={() => onSelect(folder.id)}
+            <div
                 onContextMenu={(e) => onContextMenu(e, folder.id)}
                 onDragOver={(e) => onDragOver(e, folder.id)}
                 onDragLeave={() => onDragLeave(folder.id)}
@@ -65,7 +64,6 @@ function FolderNode({
                     alignItems: 'center',
                     gap: 'var(--g-space-1)',
                     width: '100%',
-                    textAlign: 'left',
                     padding: '6px 8px',
                     paddingLeft: `${8 + depth * 16}px`,
                     borderRadius: 'var(--g-radius-sm)',
@@ -75,7 +73,6 @@ function FolderNode({
                             ? 'var(--g-sec-100)'
                             : 'transparent',
                     border: isDragOver ? '1px dashed var(--g-brand-3308)' : '1px solid transparent',
-                    cursor: 'pointer',
                     transition: 'background-color 0.15s, border-color 0.15s',
                     fontSize: '12px',
                     lineHeight: '1.4',
@@ -84,12 +81,19 @@ function FolderNode({
                 }}
             >
                 {/* Expand/collapse toggle */}
-                <span
+                <button
+                    type="button"
+                    aria-expanded={isExpanded}
+                    aria-label={isExpanded ? "Colapsar carpeta" : "Expandir carpeta"}
+                    disabled={!hasChildren}
                     onClick={(e) => {
                         e.stopPropagation();
                         if (hasChildren) onToggle(folder.id);
                     }}
                     style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -105,61 +109,82 @@ function FolderNode({
                     ) : (
                         <ChevronRight style={{ width: 12, height: 12, color: 'var(--g-text-secondary)' }} />
                     )}
-                </span>
+                </button>
 
-                {/* Folder icon */}
-                {isExpanded ? (
-                    <FolderOpen style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--g-brand-3308)' }} />
-                ) : (
-                    <Folder style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--g-brand-3308)' }} />
-                )}
-
-                {/* Folder name */}
-                <span style={{
-                    flex: 1,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                }}>
-                    {folder.name}
-                </span>
-
-                {/* Area code color dot */}
-                {folder.area_code && (
-                    <span
-                        title={folder.area_code}
-                        style={{
-                            display: 'inline-block',
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            backgroundColor: 'var(--g-brand-3308)',
-                            flexShrink: 0,
-                            opacity: 0.7,
-                        }}
-                    />
-                )}
-
-                {/* Doc count badge */}
-                {docCount > 0 && (
-                    <span style={{
-                        display: 'inline-flex',
+                {/* Folder Selection Button */}
+                <button
+                    type="button"
+                    onClick={() => onSelect(folder.id)}
+                    style={{
+                        display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        minWidth: 18,
-                        height: 16,
-                        padding: '0 4px',
-                        borderRadius: 'var(--g-radius-sm)',
-                        backgroundColor: 'var(--g-surface-muted)',
-                        color: 'var(--g-text-secondary)',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        flexShrink: 0,
+                        gap: 'var(--g-space-1)',
+                        flex: 1,
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        color: 'inherit',
+                        fontWeight: 'inherit',
+                        fontSize: 'inherit',
+                        minWidth: 0,
+                    }}
+                >
+                    {/* Folder icon */}
+                    {isExpanded ? (
+                        <FolderOpen style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--g-brand-3308)' }} />
+                    ) : (
+                        <Folder style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--g-brand-3308)' }} />
+                    )}
+
+                    {/* Folder name */}
+                    <span style={{
+                        flex: 1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
                     }}>
-                        {docCount}
+                        {folder.name}
                     </span>
-                )}
-            </button>
+
+                    {/* Area code color dot */}
+                    {folder.area_code && (
+                        <span
+                            title={folder.area_code}
+                            style={{
+                                display: 'inline-block',
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                backgroundColor: 'var(--g-brand-3308)',
+                                flexShrink: 0,
+                                opacity: 0.7,
+                            }}
+                        />
+                    )}
+
+                    {/* Doc count badge */}
+                    {docCount > 0 && (
+                        <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: 18,
+                            height: 16,
+                            padding: '0 4px',
+                            borderRadius: 'var(--g-radius-sm)',
+                            backgroundColor: 'var(--g-surface-muted)',
+                            color: 'var(--g-text-secondary)',
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            flexShrink: 0,
+                        }}>
+                            {docCount}
+                        </span>
+                    )}
+                </button>
+            </div>
 
             {/* Children */}
             {isExpanded && hasChildren && (

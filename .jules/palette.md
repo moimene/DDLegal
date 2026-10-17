@@ -1,0 +1,3 @@
+## 2024-05-24 - Interactive list items using generic elements
+**Learning:** Found interactive list items acting as tree nodes/toggles implemented as `<span>` instead of native `<button type="button">`. This breaks keyboard navigation, prevents `aria-expanded` from being fully utilized by screen readers, and is a recurring accessibility violation for tree components.
+**Action:** Replace `<span>` toggle with `<button type="button">`, adding `aria-expanded` and semantic roles or attributes as needed. Explicitly remove inline styles if migrating to Tailwind, and apply CSS resets (`background: 'none'`, `border: 'none'`, `padding: 0`) if inline styling is retained to preserve visual appearance.
