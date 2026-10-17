@@ -1,0 +1,3 @@
+## 2024-10-17 - Avoid regex string manipulations inside nested `.find()` loops
+**Learning:** Performing multiple string replacements and lowercasing inside a nested `.find()` loop across arrays causes O(N*M) performance bottlenecks and severe memory allocation overhead. This pattern is particularly dangerous when resolving workflow findings (`dd_findings`) IDs using shared title slugs.
+**Action:** Always pre-compute normalized title slugs or keys into an O(1) Map outside the iteration (`if (!map.has(key)) map.set(key, item)`) and perform lookups against the Map instead of using nested `.find()`.
