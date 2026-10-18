@@ -50,6 +50,8 @@ function calculateTierForManualFinding(input: CreateFindingInput): number {
   return 3;
 }
 
+// ⚡ Bolt: Optimize performance by replacing multiple O(N) array loops (.filter().length)
+// with a single O(N) pass to calculate all metrics, reducing iterations from ~23x to 1x.
 function buildSummaryFromRows(
   rows: Array<{
     relevance_tier: number;
@@ -63,49 +65,95 @@ function buildSummaryFromRows(
     hitl_decision: string | null;
   }>,
 ) {
-  const totalEconomicExposure = rows
-    .filter(r => !['dismissed', 'resolved'].includes(r.status) && [1, 2].includes(r.relevance_tier))
-    .reduce((sum, r) => sum + Number(r.economic_impact_amount || 0), 0);
+  let totalEconomicExposure = 0;
+  let deal_breakers_count = 0;
+  let red_flags_count = 0;
+  let pending_hitl = 0;
+  let active_count = 0;
 
-  const byArea: Record<string, number> = {};
-  for (const row of rows) {
-    if (row.status === 'dismissed') continue;
-    const area = row.area_code || 'GENERAL';
-    byArea[area] = (byArea[area] || 0) + 1;
+  const by_tier = { '1': 0, '2': 0, '3': 0 };
+  const by_status = {
+    identified: 0,
+    under_review: 0,
+    validated: 0,
+    contested: 0,
+    accepted: 0,
+    mitigated: 0,
+    reported: 0,
+    negotiated: 0,
+    resolved: 0,
+    dismissed: 0,
+  };
+  const by_severity = {
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    informational: 0,
+  };
+  const by_area: Record<string, number> = {};
+
+  for (const r of rows) {
+    const isDismissed = r.status === 'dismissed';
+    const isResolved = r.status === 'resolved';
+
+    // Total Economic Exposure
+    if (!isDismissed && !isResolved && (r.relevance_tier === 1 || r.relevance_tier === 2)) {
+      totalEconomicExposure += Number(r.economic_impact_amount || 0);
+    }
+
+    // By Area
+    if (!isDismissed) {
+      const area = r.area_code || 'GENERAL';
+      by_area[area] = (by_area[area] || 0) + 1;
+    }
+
+    // By Tier
+    if (r.relevance_tier === 1) by_tier['1']++;
+    else if (r.relevance_tier === 2) by_tier['2']++;
+    else if (r.relevance_tier === 3) by_tier['3']++;
+
+    // By Status
+    switch (r.status) {
+      case 'identified': by_status.identified++; break;
+      case 'under_review': by_status.under_review++; break;
+      case 'validated': by_status.validated++; break;
+      case 'contested': by_status.contested++; break;
+      case 'accepted': by_status.accepted++; break;
+      case 'mitigated': by_status.mitigated++; break;
+      case 'reported': by_status.reported++; break;
+      case 'negotiated': by_status.negotiated++; break;
+      case 'resolved': by_status.resolved++; break;
+      case 'dismissed': by_status.dismissed++; break;
+    }
+
+    // By Severity
+    switch (r.severity) {
+      case 'critical': by_severity.critical++; break;
+      case 'high': by_severity.high++; break;
+      case 'medium': by_severity.medium++; break;
+      case 'low': by_severity.low++; break;
+      case 'informational': by_severity.informational++; break;
+    }
+
+    // Additional metrics
+    if (r.is_deal_breaker && !isDismissed) deal_breakers_count++;
+    if (r.is_red_flag && !isDismissed) red_flags_count++;
+    if (r.hitl_required && !r.hitl_decision && !isDismissed) pending_hitl++;
+    if (!isDismissed && !isResolved) active_count++;
   }
 
   return {
     total: rows.length,
-    by_tier: {
-      '1': rows.filter(r => r.relevance_tier === 1).length,
-      '2': rows.filter(r => r.relevance_tier === 2).length,
-      '3': rows.filter(r => r.relevance_tier === 3).length,
-    },
-    by_status: {
-      identified: rows.filter(r => r.status === 'identified').length,
-      under_review: rows.filter(r => r.status === 'under_review').length,
-      validated: rows.filter(r => r.status === 'validated').length,
-      contested: rows.filter(r => r.status === 'contested').length,
-      accepted: rows.filter(r => r.status === 'accepted').length,
-      mitigated: rows.filter(r => r.status === 'mitigated').length,
-      reported: rows.filter(r => r.status === 'reported').length,
-      negotiated: rows.filter(r => r.status === 'negotiated').length,
-      resolved: rows.filter(r => r.status === 'resolved').length,
-      dismissed: rows.filter(r => r.status === 'dismissed').length,
-    },
-    by_severity: {
-      critical: rows.filter(r => r.severity === 'critical').length,
-      high: rows.filter(r => r.severity === 'high').length,
-      medium: rows.filter(r => r.severity === 'medium').length,
-      low: rows.filter(r => r.severity === 'low').length,
-      informational: rows.filter(r => r.severity === 'informational').length,
-    },
-    by_area: byArea,
-    deal_breakers_count: rows.filter(r => r.is_deal_breaker && r.status !== 'dismissed').length,
-    red_flags_count: rows.filter(r => r.is_red_flag && r.status !== 'dismissed').length,
+    by_tier,
+    by_status,
+    by_severity,
+    by_area,
+    deal_breakers_count,
+    red_flags_count,
     total_economic_exposure: totalEconomicExposure,
-    pending_hitl: rows.filter(r => r.hitl_required && !r.hitl_decision && r.status !== 'dismissed').length,
-    active_count: rows.filter(r => !['resolved', 'dismissed'].includes(r.status)).length,
+    pending_hitl,
+    active_count,
   };
 }
 
