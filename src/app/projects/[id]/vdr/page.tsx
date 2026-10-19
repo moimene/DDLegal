@@ -342,13 +342,18 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
 
     const handleBulkArchive = async () => {
         const count = selectedIds.size;
-        for (const docId of Array.from(selectedIds)) {
-            await fetch(`/api/vdr/documents/${docId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'archived' }),
-            });
-        }
+        // ⚡ Bolt: Batch multiple API calls into concurrent requests instead of awaiting them sequentially
+        // This avoids N+1 blocking network calls from the frontend when archiving many documents at once
+        await Promise.all(
+            Array.from(selectedIds).map(docId =>
+                fetch(`/api/vdr/documents/${docId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'archived' }),
+                })
+            )
+        );
+
         setSelectedIds(new Set());
         fetchData();
         toast.success(`${count} documento(s) archivados`);
