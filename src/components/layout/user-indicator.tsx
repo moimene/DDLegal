@@ -38,6 +38,7 @@ export default function UserIndicator() {
         >
             {loading ? (
                 <Loader2
+                    aria-label="Cargando estado del usuario"
                     style={{
                         width: '16px',
                         height: '16px',
@@ -101,6 +102,7 @@ export default function UserIndicator() {
                         onClick={handleLogout}
                         title="Cerrar sesion"
                         aria-label="Cerrar sesion"
+                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-red-500"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -122,12 +124,13 @@ export default function UserIndicator() {
                             e.currentTarget.style.borderColor = 'var(--g-border-subtle, #e5e7eb)';
                         }}
                     >
-                        <LogOut style={{ width: '14px', height: '14px', color: 'var(--g-text-muted, #9ca3af)' }} />
+                        <LogOut aria-hidden="true" style={{ width: '14px', height: '14px', color: 'var(--g-text-muted, #9ca3af)' }} />
                     </button>
                 </div>
             ) : (
                 <button
                     onClick={handleLoginRedirect}
+                    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-gray-300"
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -149,7 +152,7 @@ export default function UserIndicator() {
                         e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                 >
-                    <User style={{ width: '14px', height: '14px' }} />
+                    <User aria-hidden="true" style={{ width: '14px', height: '14px' }} />
                     Iniciar sesion
                 </button>
             )}
