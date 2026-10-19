@@ -178,15 +178,33 @@ export async function generateWorkflowReport(
       hitlStatus = anyRejected ? 'rejected' : anyPending ? 'pending' : allApproved ? 'approved' : 'pending';
     }
 
+    // Hoist static operations and pre-compute O(1) Maps
+    const hitlByFindingTitle = new Map<string, any>();
+    let phaseHitlPending = 0;
+    for (const h of phaseHitl) {
+      if (!hitlByFindingTitle.has(h.finding_title)) {
+        hitlByFindingTitle.set(h.finding_title, h);
+      }
+      if (h.status === 'pending_review') {
+        phaseHitlPending++;
+      }
+    }
+
+    const precomputedEvidenceRefs = phaseTasks
+      .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
+      .slice(0, 10);
+
+    let phaseCriticalCount = 0;
+    let phaseHighCount = 0;
+
     // Build report findings with evidence
     const reportFindings: ReportFinding[] = phaseFindings.map(f => {
-      const evidenceRefs = phaseTasks
-        .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
-        .slice(0, 10);
+      if (precomputedEvidenceRefs.length > 0) findingsWithEvidence++;
 
-      if (evidenceRefs.length > 0) findingsWithEvidence++;
+      const hitlDecision = hitlByFindingTitle.get(f.title);
 
-      const hitlDecision = phaseHitl.find(h => h.finding_title === f.title);
+      if (f.severity === 'critical') phaseCriticalCount++;
+      if (f.severity === 'high') phaseHighCount++;
 
       return {
         title: f.title,
@@ -194,16 +212,16 @@ export async function generateWorkflowReport(
         probability: f.probability,
         timing: f.timing,
         mitigation: f.mitigation,
-        evidence_refs: evidenceRefs,
+        evidence_refs: precomputedEvidenceRefs,
         hitl_decision: hitlDecision?.status,
       };
     });
 
     // Count totals
     totalFindings += reportFindings.length;
-    criticalCount += reportFindings.filter(f => f.severity === 'critical').length;
-    highCount += reportFindings.filter(f => f.severity === 'high').length;
-    hitlPending += phaseHitl.filter(h => h.status === 'pending_review').length;
+    criticalCount += phaseCriticalCount;
+    highCount += phaseHighCount;
+    hitlPending += phaseHitlPending;
     totalEvidence += phaseTasks.reduce((acc, t) => acc + ((t.evidence_refs as unknown[])?.length ?? 0), 0);
 
     // Build summary
