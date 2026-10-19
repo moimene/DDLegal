@@ -1,4 +1,5 @@
 'use client';
+import { getCachedDateTimeFormat } from '@/lib/utils';
 
 import { useEffect, useState, useCallback } from 'react';
 import {
@@ -48,7 +49,7 @@ function relativeTime(dateStr: string): string {
 
 function formatDateShort(dateStr: string): string {
     try {
-        return new Intl.DateTimeFormat('es-ES', {
+        return getCachedDateTimeFormat('es-ES', {
             day: '2-digit',
             month: 'short',
             year: 'numeric',

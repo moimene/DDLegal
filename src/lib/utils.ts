@@ -13,16 +13,36 @@ export function cn(...classes: (string | boolean | undefined | null)[]): string 
     return classes.filter(Boolean).join(' ');
 }
 
+
+const dateTimeFormatCache = new Map<string, Intl.DateTimeFormat>();
+const numberFormatCache = new Map<string, Intl.NumberFormat>();
+
+export function getCachedDateTimeFormat(locale: string | string[], options?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+    const key = JSON.stringify({ locale, options });
+    if (!dateTimeFormatCache.has(key)) {
+        dateTimeFormatCache.set(key, new Intl.DateTimeFormat(locale, options));
+    }
+    return dateTimeFormatCache.get(key)!;
+}
+
+export function getCachedNumberFormat(locale: string | string[], options?: Intl.NumberFormatOptions): Intl.NumberFormat {
+    const key = JSON.stringify({ locale, options });
+    if (!numberFormatCache.has(key)) {
+        numberFormatCache.set(key, new Intl.NumberFormat(locale, options));
+    }
+    return numberFormatCache.get(key)!;
+}
+
 export function formatDate(date: string | null): string {
     if (!date) return '—';
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormat('es-ES', {
         day: '2-digit', month: 'short', year: 'numeric'
     }).format(new Date(date));
 }
 
 export function formatCurrency(amount: number | null, currency = 'EUR'): string {
     if (amount === null) return '—';
-    return new Intl.NumberFormat('es-ES', {
+    return getCachedNumberFormat('es-ES', {
         style: 'currency', currency, maximumFractionDigits: 0
     }).format(amount);
 }

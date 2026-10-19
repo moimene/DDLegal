@@ -1,4 +1,5 @@
 'use client';
+import { getCachedNumberFormat } from '@/lib/utils';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -663,7 +664,7 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
                         <div className="p-3 bg-[var(--g-bg)] rounded-lg col-span-2">
                           <div className="text-xs text-[var(--g-text-secondary)]">Impacto Económico</div>
                           <div className="font-medium text-lg">
-                            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedFinding.economic_impact_currency || 'EUR' }).format(selectedFinding.economic_impact_amount)}
+                            {getCachedNumberFormat('es-ES', { style: 'currency', currency: selectedFinding.economic_impact_currency || 'EUR' }).format(selectedFinding.economic_impact_amount)}
                           </div>
                         </div>
                       )}

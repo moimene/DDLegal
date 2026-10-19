@@ -1,4 +1,5 @@
 'use client';
+import { getCachedDateTimeFormat } from '@/lib/utils';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
@@ -72,7 +73,7 @@ function getActionColor(action: string): { bg: string; fg: string } {
 
 function formatTimestamp(dateStr: string): string {
     const d = new Date(dateStr);
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormat('es-ES', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -83,7 +84,7 @@ function formatTimestamp(dateStr: string): string {
 }
 
 function formatDateShort(dateStr: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormat('es-ES', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
