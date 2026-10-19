@@ -1,0 +1,3 @@
+## 2024-03-14 - Avoid Inline Intl Instantiations in Render Loops
+**Learning:** Instantiating `Intl.DateTimeFormat` and `Intl.NumberFormat` inside React render loops or frequent execution paths causes significant performance degradation as the browser recalculates locale data constantly.
+**Action:** Always extract `Intl` formatters to the module scope outside the component, or use a `Map` to cache dynamic formats (e.g., currency) so that instances are reused rather than recreated.

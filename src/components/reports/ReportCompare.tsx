@@ -43,13 +43,15 @@ interface ReportCompareProps {
     onClose: () => void;
 }
 
+const shortDateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+});
+
 function formatDateShort(dateStr: string): string {
     try {
-        return new Intl.DateTimeFormat('es-ES', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-        }).format(new Date(dateStr));
+        return shortDateFormatter.format(new Date(dateStr));
     } catch {
         return dateStr;
     }
