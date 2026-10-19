@@ -1,0 +1,3 @@
+## 2024-05-18 - Missing ARIA labels in custom component interactive elements
+**Learning:** Found multiple interactive `<button>` elements in VDR components acting as icon-only actions or toggles without proper accessibility roles, `aria-label`, or `aria-pressed` where necessary. Also found non-button interactive elements like `<span>` used for folder expand/collapse without any accessible attributes.
+**Action:** Ensure all icon-only buttons include `aria-label` attributes describing their action, replace interactive `<span>` toggles with button semantics (or add `role="button"` and keyboard support, though native `button` is better), and use `aria-pressed` for boolean toggles to provide context to screen reader users.
