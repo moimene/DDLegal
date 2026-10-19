@@ -14,6 +14,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { getCachedDateTimeFormat } from '@/lib/utils';
 import {
   ArrowLeft,
   Clock,
@@ -123,7 +124,7 @@ function formatDuration(ms: number): string {
 
 function formatDate(date: string | null): string {
   if (!date) return '-';
-  return new Intl.DateTimeFormat('es-ES', {
+  return getCachedDateTimeFormat({
     day: '2-digit',
     month: 'short',
     hour: '2-digit',

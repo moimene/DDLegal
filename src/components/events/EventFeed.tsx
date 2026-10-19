@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { getCachedDateTimeFormat } from '@/lib/utils';
 import {
   Play,
   CheckCircle2,
@@ -112,7 +113,7 @@ function timeAgo(dateStr: string): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `Hace ${days} ${days === 1 ? 'dia' : 'dias'}`;
 
-  return new Intl.DateTimeFormat('es-ES', {
+  return getCachedDateTimeFormat({
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
