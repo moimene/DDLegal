@@ -1,0 +1,3 @@
+## 2024-05-17 - O(N) Maps vs Nested Iteration in Dashboard Metrics
+**Learning:** Replacing O(n^2) nested array iterations (`.filter`, `.find`) inside `map` with `O(n)` dictionary lookups and grouped metric counters drastically reduces JS thread time when displaying cross-project dashboard metrics, where `allTasks` might contain thousands of tasks across multiple `projectIds`.
+**Action:** When aggregating large datasets on the backend or in Next.js APIs, especially when merging multiple database query results arrays together, calculate Map-based `O(1)` lookups (or counters) in single passes (`O(N)`) before constructing the final aggregated output.
