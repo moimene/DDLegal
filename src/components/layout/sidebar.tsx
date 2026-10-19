@@ -348,6 +348,7 @@ export default function Sidebar() {
         const isGroupCollapsed = !!collapsedGroups[group.id];
         const hasActive = groupHasActiveItem(group, pathname);
         const GroupIcon = group.icon;
+        const contentId = `group-${group.id}-content`;
 
         return (
             <div key={group.id} style={{ marginTop: '4px' }}>
@@ -364,6 +365,7 @@ export default function Sidebar() {
                         borderLeft: hasActive ? '2px solid var(--g-brand-bright)' : '2px solid transparent',
                     }}
                     aria-expanded={!isGroupCollapsed}
+                    aria-controls={contentId}
                     aria-label={`${group.header} grupo`}
                 >
                     <GroupIcon
@@ -417,6 +419,7 @@ export default function Sidebar() {
                 {/* Group items */}
                 {!isGroupCollapsed && !collapsed && (
                     <div
+                        id={contentId}
                         style={{
                             display: 'flex',
                             flexDirection: 'column',
