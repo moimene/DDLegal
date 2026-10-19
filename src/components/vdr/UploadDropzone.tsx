@@ -316,6 +316,7 @@ export default function UploadDropzone({ folderId, areaCode, onUpload }: UploadD
                                     onClick={() => removeFile(qf.id)}
                                     disabled={isUploading}
                                     title="Eliminar"
+                                    aria-label="Eliminar documento"
                                     style={{
                                         display: 'inline-flex',
                                         alignItems: 'center',

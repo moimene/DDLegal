@@ -439,6 +439,7 @@ export default function DocumentPreview({ document: doc, versions, onAction }: D
                     <button
                         key={action.key}
                         onClick={() => onAction(action.key, doc.id)}
+                        aria-label={action.label}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
