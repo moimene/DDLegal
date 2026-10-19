@@ -1,0 +1,3 @@
+## 2024-05-08 - Optimize calculateDealRiskScore with Single O(N) Pass
+**Learning:** The deal risk scoring algorithm originally suffered from an O(N^2) performance penalty because it executed an `Array.find` inside a loop over the same array to verify original severity. It also executed multiple separate passes (`filter`, `map`, `reduce`) to calculate different aggregations.
+**Action:** When calculating complex multi-dimensional aggregates (e.g., base score, best/worst case scenarios, economic exposure) from a single list, always consolidate the filtering, mapping, and grouping into a single O(N) loop to eliminate redundant passes and expensive nested array lookups.
