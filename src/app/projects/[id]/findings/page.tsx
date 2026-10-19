@@ -80,6 +80,17 @@ type FilterTier = 'all' | '1' | '2' | '3';
 
 // ── Config ─────────────────────────────────────────────────────────
 
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
+const formatEconomicImpact = (amount: number, currency: string) => {
+  let formatter = currencyFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('es-ES', { style: 'currency', currency });
+    currencyFormatters.set(currency, formatter);
+  }
+  return formatter.format(amount);
+};
+
 const SEVERITY_ICONS: Record<string, typeof AlertOctagon> = {
   critical: AlertOctagon,
   high: AlertTriangle,
@@ -663,7 +674,7 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
                         <div className="p-3 bg-[var(--g-bg)] rounded-lg col-span-2">
                           <div className="text-xs text-[var(--g-text-secondary)]">Impacto Económico</div>
                           <div className="font-medium text-lg">
-                            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedFinding.economic_impact_currency || 'EUR' }).format(selectedFinding.economic_impact_amount)}
+                            {formatEconomicImpact(selectedFinding.economic_impact_amount, selectedFinding.economic_impact_currency || 'EUR')}
                           </div>
                         </div>
                       )}
