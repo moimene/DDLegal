@@ -1,0 +1,3 @@
+## 2024-03-08 - Intl.DateTimeFormat Instantiation Bottleneck
+**Learning:** Instantiating `Intl.DateTimeFormat` or `Intl.NumberFormat` repeatedly within functions or render loops is a severe performance bottleneck. Benchmarks show that creating new instances takes ~150x longer than using a cached instance (~26s vs ~180ms for 100k operations). In a React application, where render functions run frequently, this overhead compounds rapidly.
+**Action:** Always extract `Intl.DateTimeFormat` and `Intl.NumberFormat` instances to the module scope as constants, or cache them using a `Map` when dynamic parameters (like currency) are required.
