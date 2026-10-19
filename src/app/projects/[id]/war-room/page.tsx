@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useResolvedParams } from '@/lib/utils';
+// ⚡ Bolt: Using cached Intl formatters for performance
+import { useResolvedParams , getCachedDateTimeFormat} from '@/lib/utils';
 import Link from 'next/link';
 import {
     ArrowLeft, RefreshCw, Download, Shield, AlertTriangle, TrendingUp,
@@ -216,7 +217,7 @@ function authHeaders(): Record<string, string> {
 }
 
 function formatDateTime(ts: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
+    return getCachedDateTimeFormat('es-ES', {
         day: '2-digit', month: 'short', year: 'numeric',
         hour: '2-digit', minute: '2-digit',
     }).format(new Date(ts));

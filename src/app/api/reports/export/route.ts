@@ -1,3 +1,5 @@
+// ⚡ Bolt: Using cached Intl formatters for performance
+import { getCachedDateTimeFormat } from '@/lib/utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/auth/require-permission';
@@ -35,7 +37,7 @@ function escapeHtml(text: string): string {
 function formatDateEs(dateStr: string): string {
     if (!dateStr) return '--';
     try {
-        return new Intl.DateTimeFormat('es-ES', {
+        return getCachedDateTimeFormat('es-ES', {
             day: '2-digit',
             month: 'long',
             year: 'numeric',
