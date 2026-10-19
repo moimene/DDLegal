@@ -48,8 +48,8 @@ export async function getEffectiveThreshold(
   }
 }
 
-export async function semanticSearch(
-  projectId: string, query: string,
+export async function semanticSearchWithEmbedding(
+  projectId: string, queryEmbedding: number[],
   options?: { threshold?: number; limit?: number; areaCode?: string; objectiveKey?: string }
 ): Promise<SemanticSearchResult[]> {
   // If objectiveKey is provided, get effective threshold from DB
@@ -59,8 +59,6 @@ export async function semanticSearch(
   }
   threshold = threshold ?? 0.7;
   const limit = options?.limit ?? 10;
-
-  const queryEmbedding = await generateEmbedding(query);
 
   const { data, error } = await supabaseAdmin.rpc('match_vdr_chunks', {
     query_embedding: JSON.stringify(queryEmbedding),
@@ -82,4 +80,12 @@ export async function semanticSearch(
     section_title: row.section_title as string | null,
     category: row.category as string | null,
   }));
+}
+
+export async function semanticSearch(
+  projectId: string, query: string,
+  options?: { threshold?: number; limit?: number; areaCode?: string; objectiveKey?: string }
+): Promise<SemanticSearchResult[]> {
+  const queryEmbedding = await generateEmbedding(query);
+  return semanticSearchWithEmbedding(projectId, queryEmbedding, options);
 }
