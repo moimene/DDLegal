@@ -71,6 +71,7 @@ export interface ScoredFinding {
   weighted_score: number;
   is_deal_breaker: boolean;
   area_code: string;
+  original_severity?: string;
 }
 
 export interface AreaScore {
@@ -179,34 +180,44 @@ export function calculateDealRiskScore(
     (f) => f.hitl_decision?.toLowerCase() !== 'reject' && f.hitl_decision?.toLowerCase() !== 'rejected',
   );
 
-  // Score each finding
-  const scoredFindings: ScoredFinding[] = activeFindingsAll.map((f) => {
+  const scoredFindings: ScoredFinding[] = [];
+  const areaScores: Record<string, AreaScore> = {};
+  const dealBreakers: ScoredFinding[] = [];
+  let totalEconomicExposure = 0;
+
+  // Single pass to score, group, and calculate total exposure
+  for (const f of activeFindingsAll) {
     const areaCode = f.area_code?.toUpperCase() || 'GENERAL';
     const rawScore = scoreFinding(f);
     const areaWeight = weights[areaCode] ?? weights['GENERAL'] ?? 0.5;
     const weightedScore = rawScore * areaWeight;
-    return {
+
+    const isDB = isDealBreaker(f);
+    const scoredFinding: ScoredFinding = {
       id: f.id,
       title: f.title,
       raw_score: Math.round(rawScore * 100) / 100,
       weighted_score: Math.round(weightedScore * 100) / 100,
-      is_deal_breaker: isDealBreaker(f),
+      is_deal_breaker: isDB,
       area_code: areaCode,
+      original_severity: f.severity,
     };
-  });
 
-  // Group by area
-  const areaScores: Record<string, AreaScore> = {};
-  for (const sf of scoredFindings) {
-    if (!areaScores[sf.area_code]) {
-      areaScores[sf.area_code] = { score: 0, finding_count: 0, critical_count: 0 };
+    scoredFindings.push(scoredFinding);
+    if (isDB) {
+      dealBreakers.push(scoredFinding);
     }
-    const area = areaScores[sf.area_code];
-    area.score += sf.weighted_score;
+
+    totalEconomicExposure += (f.economic_impact_amount ?? 0);
+
+    if (!areaScores[areaCode]) {
+      areaScores[areaCode] = { score: 0, finding_count: 0, critical_count: 0 };
+    }
+    const area = areaScores[areaCode];
+    area.score += scoredFinding.weighted_score;
     area.finding_count += 1;
-    // Check original severity from the input
-    const original = activeFindingsAll.find((f) => f.id === sf.id);
-    if (original?.severity?.toLowerCase() === 'critical') {
+
+    if (f.severity?.toLowerCase() === 'critical') {
       area.critical_count += 1;
     }
   }
@@ -231,18 +242,10 @@ export function calculateDealRiskScore(
     ? Math.round(clamp(totalWeightedScore / totalWeight, 0, 100) * 100) / 100
     : 0;
 
-  // Deal breakers
-  const dealBreakers = scoredFindings.filter((sf) => sf.is_deal_breaker);
-
   // Top 10 risks by weighted_score descending
   const topRisks = [...scoredFindings]
     .sort((a, b) => b.weighted_score - a.weighted_score)
     .slice(0, 10);
-
-  // Total economic exposure
-  const totalEconomicExposure = activeFindingsAll.reduce((sum, f) => {
-    return sum + (f.economic_impact_amount ?? 0);
-  }, 0);
 
   // Sensitivity analysis: best, base, worst
   const bestCaseScore = computeSensitivityScore(activeFindingsAll, weights, 'remote');
