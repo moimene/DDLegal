@@ -258,6 +258,7 @@ export default function NotificationCenter() {
                 onClick={() => setOpen((prev) => !prev)}
                 aria-label={`Notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ''}`}
                 aria-expanded={open}
+                aria-controls="notification-dropdown"
                 style={{
                     position: 'relative',
                     display: 'flex',
@@ -315,6 +316,7 @@ export default function NotificationCenter() {
             {/* Dropdown Panel */}
             {open && (
                 <div
+                    id="notification-dropdown"
                     className="animate-scale-in"
                     style={{
                         position: 'absolute',
