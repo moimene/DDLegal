@@ -1,0 +1,3 @@
+## 2024-03-24 - Inline Intl formatters bottleneck
+**Learning:** Instantiating `Intl.DateTimeFormat` or `Intl.NumberFormat` inline within frequently called utility functions (like `formatDate` or `formatCurrency`) or React components causes significant performance overhead during rendering, as the instantiation cost is very high compared to the formatting itself.
+**Action:** When centralizing `Intl` formatters into a shared utility, use a caching mechanism (such as a `Map`) combined with `JSON.stringify(options)` as the cache key to dramatically reduce initialization overhead while safely preserving variable formatting options (like `maximumFractionDigits`).
