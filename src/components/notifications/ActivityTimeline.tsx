@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import {
     Zap,
     FileText,
@@ -411,146 +411,12 @@ export default function ActivityTimeline({ projectId }: ActivityTimelineProps) {
                                                     />
                                                 </div>
 
-                                                {/* Event Card */}
-                                                <div
-                                                    className="g-card"
-                                                    style={{
-                                                        marginLeft: 'var(--g-space-4)',
-                                                        padding: 'var(--g-space-3) var(--g-space-4)',
-                                                        borderLeft: `3px solid ${borderColor}`,
-                                                        cursor: event.details ? 'pointer' : 'default',
-                                                        transition: 'box-shadow var(--g-transition-fast)',
-                                                    }}
-                                                    onClick={() => {
-                                                        if (event.details) toggleExpand(event.id);
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        if (event.details)
-                                                            e.currentTarget.style.boxShadow =
-                                                                'var(--g-shadow-card-hover)';
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.boxShadow = 'var(--g-shadow-card)';
-                                                    }}
-                                                >
-                                                    <div
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'flex-start',
-                                                            justifyContent: 'space-between',
-                                                            gap: 'var(--g-space-3)',
-                                                        }}
-                                                    >
-                                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                                            {/* Title */}
-                                                            <div
-                                                                style={{
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: 'var(--g-space-2)',
-                                                                    marginBottom: '2px',
-                                                                }}
-                                                            >
-                                                                <span
-                                                                    style={{
-                                                                        fontSize: 'var(--g-text-small)',
-                                                                        fontWeight: 600,
-                                                                        color: 'var(--g-text-primary)',
-                                                                    }}
-                                                                >
-                                                                    {event.title}
-                                                                </span>
-                                                                {event.details && (
-                                                                    <ChevronDown
-                                                                        style={{
-                                                                            width: '14px',
-                                                                            height: '14px',
-                                                                            color: 'var(--g-text-muted)',
-                                                                            transform: isExpanded
-                                                                                ? 'rotate(180deg)'
-                                                                                : 'rotate(0deg)',
-                                                                            transition:
-                                                                                'transform var(--g-transition-fast)',
-                                                                            flexShrink: 0,
-                                                                        }}
-                                                                    />
-                                                                )}
-                                                            </div>
-
-                                                            {/* Description */}
-                                                            <p
-                                                                style={{
-                                                                    fontSize: 'var(--g-text-caption)',
-                                                                    color: 'var(--g-text-secondary)',
-                                                                    lineHeight: 'var(--g-leading-normal)',
-                                                                    margin: 0,
-                                                                }}
-                                                            >
-                                                                {event.description}
-                                                            </p>
-
-                                                            {/* Expanded Details */}
-                                                            {isExpanded && event.details && (
-                                                                <div
-                                                                    className="animate-fade-in"
-                                                                    style={{
-                                                                        marginTop: 'var(--g-space-2)',
-                                                                        padding: 'var(--g-space-2) var(--g-space-3)',
-                                                                        backgroundColor: 'var(--g-surface-page)',
-                                                                        borderRadius: 'var(--g-radius-sm)',
-                                                                        fontSize: 'var(--g-text-caption)',
-                                                                        color: 'var(--g-text-secondary)',
-                                                                        lineHeight: 'var(--g-leading-relaxed)',
-                                                                        whiteSpace: 'pre-wrap',
-                                                                    }}
-                                                                >
-                                                                    {event.details}
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        {/* Right side: time + user avatar */}
-                                                        <div
-                                                            style={{
-                                                                display: 'flex',
-                                                                flexDirection: 'column',
-                                                                alignItems: 'flex-end',
-                                                                gap: '4px',
-                                                                flexShrink: 0,
-                                                            }}
-                                                        >
-                                                            <span
-                                                                style={{
-                                                                    fontSize: '10px',
-                                                                    color: 'var(--g-text-muted)',
-                                                                    whiteSpace: 'nowrap',
-                                                                }}
-                                                            >
-                                                                {formatTime(event.created_at)}
-                                                            </span>
-                                                            {event.user_initials && (
-                                                                <div
-                                                                    title={event.user_name ?? ''}
-                                                                    style={{
-                                                                        width: '24px',
-                                                                        height: '24px',
-                                                                        borderRadius: 'var(--g-radius-full)',
-                                                                        backgroundColor: 'var(--g-brand-3308)',
-                                                                        color: 'var(--g-text-inverse)',
-                                                                        fontSize: '9px',
-                                                                        fontWeight: 700,
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        letterSpacing: '0.03em',
-                                                                    }}
-                                                                >
-                                                                    {event.user_initials}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                <EventCard
+                                                    event={event}
+                                                    isExpanded={isExpanded}
+                                                    borderColor={borderColor}
+                                                    toggleExpand={toggleExpand}
+                                                />
                                             </div>
                                         );
                                     })}
@@ -612,6 +478,187 @@ export default function ActivityTimeline({ projectId }: ActivityTimelineProps) {
                     )}
                 </div>
             )}
+        </div>
+    );
+}
+
+function EventCard({
+    event,
+    isExpanded,
+    borderColor,
+    toggleExpand,
+}: {
+    event: ActivityEvent;
+    isExpanded: boolean;
+    borderColor: string;
+    toggleExpand: (id: string) => void;
+}) {
+    const detailsId = useId();
+
+    return (
+        <div
+            className="g-card"
+            role={event.details ? 'button' : undefined}
+            tabIndex={event.details ? 0 : undefined}
+            aria-expanded={event.details ? isExpanded : undefined}
+            aria-controls={event.details ? detailsId : undefined}
+            style={{
+                marginLeft: 'var(--g-space-4)',
+                padding: 'var(--g-space-3) var(--g-space-4)',
+                borderLeft: `3px solid ${borderColor}`,
+                cursor: event.details ? 'pointer' : 'default',
+                transition: 'box-shadow var(--g-transition-fast), outline var(--g-transition-fast)',
+                outline: 'none',
+            }}
+            onClick={() => {
+                if (event.details) toggleExpand(event.id);
+            }}
+            onKeyDown={(e) => {
+                if (event.details && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    toggleExpand(event.id);
+                }
+            }}
+            onFocus={(e) => {
+                if (event.details) {
+                    e.currentTarget.style.boxShadow = 'var(--g-shadow-card-hover)';
+                    e.currentTarget.style.outline = '2px solid var(--g-brand-bright)';
+                }
+            }}
+            onBlur={(e) => {
+                if (event.details) {
+                    e.currentTarget.style.boxShadow = 'var(--g-shadow-card)';
+                    e.currentTarget.style.outline = 'none';
+                }
+            }}
+            onMouseEnter={(e) => {
+                if (event.details)
+                    e.currentTarget.style.boxShadow =
+                        'var(--g-shadow-card-hover)';
+            }}
+            onMouseLeave={(e) => {
+                if (event.details)
+                    e.currentTarget.style.boxShadow = 'var(--g-shadow-card)';
+            }}
+        >
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'flex-start',
+                                                            justifyContent: 'space-between',
+                                                            gap: 'var(--g-space-3)',
+                                                        }}
+                                                    >
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            {/* Title */}
+                                                            <div
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 'var(--g-space-2)',
+                                                                    marginBottom: '2px',
+                                                                }}
+                                                            >
+                                                                <span
+                                                                    style={{
+                                                                        fontSize: 'var(--g-text-small)',
+                                                                        fontWeight: 600,
+                                                                        color: 'var(--g-text-primary)',
+                                                                    }}
+                                                                >
+                                                                    {event.title}
+                                                                </span>
+                                                                {event.details && (
+                                                                    <ChevronDown
+                                                                        style={{
+                                                                            width: '14px',
+                                                                            height: '14px',
+                                                                            color: 'var(--g-text-muted)',
+                                                                            transform: isExpanded
+                                                                                ? 'rotate(180deg)'
+                                                                                : 'rotate(0deg)',
+                                                                            transition:
+                                                                                'transform var(--g-transition-fast)',
+                                                                            flexShrink: 0,
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                            </div>
+
+                                                            {/* Description */}
+                                                            <p
+                                                                style={{
+                                                                    fontSize: 'var(--g-text-caption)',
+                                                                    color: 'var(--g-text-secondary)',
+                                                                    lineHeight: 'var(--g-leading-normal)',
+                                                                    margin: 0,
+                                                                }}
+                                                            >
+                                                                {event.description}
+                                                            </p>
+
+                            {/* Expanded Details */}
+                            {isExpanded && event.details && (
+                                <div
+                                    id={detailsId}
+                                    className="animate-fade-in"
+                                    style={{
+                                        marginTop: 'var(--g-space-2)',
+                                        padding: 'var(--g-space-2) var(--g-space-3)',
+                                        backgroundColor: 'var(--g-surface-page)',
+                                        borderRadius: 'var(--g-radius-sm)',
+                                        fontSize: 'var(--g-text-caption)',
+                                        color: 'var(--g-text-secondary)',
+                                        lineHeight: 'var(--g-leading-relaxed)',
+                                        whiteSpace: 'pre-wrap',
+                                    }}
+                                >
+                                    {event.details}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Right side: time + user avatar */}
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-end',
+                                gap: '4px',
+                                flexShrink: 0,
+                            }}
+                        >
+                            <span
+                                style={{
+                                    fontSize: '10px',
+                                    color: 'var(--g-text-muted)',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                {formatTime(event.created_at)}
+                            </span>
+                            {event.user_initials && (
+                                <div
+                                    title={event.user_name ?? ''}
+                                    style={{
+                                        width: '24px',
+                                        height: '24px',
+                                        borderRadius: 'var(--g-radius-full)',
+                                        backgroundColor: 'var(--g-brand-3308)',
+                                        color: 'var(--g-text-inverse)',
+                                        fontSize: '9px',
+                                        fontWeight: 700,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        letterSpacing: '0.03em',
+                                    }}
+                                >
+                                    {event.user_initials}
+                                </div>
+                            )}
+                        </div>
+                    </div>
         </div>
     );
 }
