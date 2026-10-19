@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useId } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -235,6 +235,7 @@ export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const pathname = usePathname();
     const { sections, projectGroups, projectId } = useResolvedNav(pathname);
+    const idPrefix = useId();
     const { collapsedGroups, toggle } = useGroupCollapse(projectId, projectGroups, pathname);
     const badges = useProjectNavBadges(projectId);
     const activeAreas = useProjectAreas(projectId);
@@ -364,6 +365,7 @@ export default function Sidebar() {
                         borderLeft: hasActive ? '2px solid var(--g-brand-bright)' : '2px solid transparent',
                     }}
                     aria-expanded={!isGroupCollapsed}
+                    aria-controls={`${idPrefix}-${group.id}-items`}
                     aria-label={`${group.header} grupo`}
                 >
                     <GroupIcon
@@ -417,6 +419,7 @@ export default function Sidebar() {
                 {/* Group items */}
                 {!isGroupCollapsed && !collapsed && (
                     <div
+                        id={`${idPrefix}-${group.id}-items`}
                         style={{
                             display: 'flex',
                             flexDirection: 'column',

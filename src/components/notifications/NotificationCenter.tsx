@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
     Bell,
@@ -123,6 +123,7 @@ export default function NotificationCenter() {
     const [loading, setLoading] = useState(false);
     const [markingAll, setMarkingAll] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const dropdownId = useId();
 
     // Close on outside click
     useEffect(() => {
@@ -258,6 +259,7 @@ export default function NotificationCenter() {
                 onClick={() => setOpen((prev) => !prev)}
                 aria-label={`Notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ''}`}
                 aria-expanded={open}
+                aria-controls={dropdownId}
                 style={{
                     position: 'relative',
                     display: 'flex',
@@ -315,6 +317,7 @@ export default function NotificationCenter() {
             {/* Dropdown Panel */}
             {open && (
                 <div
+                    id={dropdownId}
                     className="animate-scale-in"
                     style={{
                         position: 'absolute',

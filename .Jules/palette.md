@@ -1,0 +1,4 @@
+
+## 2024-05-30 - aria-controls with React Conditional Rendering
+**Learning:** While attaching `aria-controls` to toggle buttons using `useId()` is crucial for screen reader accessibility, it is perfectly acceptable in modern React codebases to continue using standard conditional rendering (i.e. unmounting via `{open && <div id={id}>...</div>}`) instead of eagerly mounting elements and hiding them with CSS (`display: none`). Modern screen readers handle dynamically mounted targets well, and eagerly mounting complex components (like lists or project dropdowns) bloats the initial DOM unnecessarily.
+**Action:** When adding `aria-controls` to collapsible elements, prioritize using standard React conditional rendering unless the element is explicitly an accordion or tab system that requires immediate state transitions. Always bind the `aria-controls` value to the dynamically rendered `id`.
