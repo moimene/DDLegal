@@ -1,0 +1,3 @@
+## 2025-04-07 - [Intl Formatter Instantiation Performance]
+**Learning:** `Intl.DateTimeFormat` and `Intl.NumberFormat` instantiation is extremely slow. In a local benchmark, re-instantiating inside a loop of 100k operations took ~28 seconds, compared to ~260 ms when using a cached instance – an over 100x performance difference. This is especially impactful in tight loops or large list renderings in React (like lists of events, audit logs, or financial rows).
+**Action:** Always cache `Intl` formatters (using `JSON.stringify` on the options object as a highly effective cache key) instead of re-instantiating them inline.
