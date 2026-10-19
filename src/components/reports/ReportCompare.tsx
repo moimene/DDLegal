@@ -5,6 +5,7 @@ import {
     GitCompareArrows, X, Loader2, AlertCircle,
     Plus, Minus, Pencil, Lock, Unlock, ArrowRight
 } from 'lucide-react';
+import { formatDateWithOptions } from '@/lib/utils';
 
 interface ReportSummary {
     id: string;
@@ -45,11 +46,11 @@ interface ReportCompareProps {
 
 function formatDateShort(dateStr: string): string {
     try {
-        return new Intl.DateTimeFormat('es-ES', {
+        return formatDateWithOptions(dateStr, {
             day: '2-digit',
             month: 'short',
             year: 'numeric',
-        }).format(new Date(dateStr));
+        });
     } catch {
         return dateStr;
     }

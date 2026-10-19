@@ -17,6 +17,7 @@ import {
     X,
     Loader2,
 } from 'lucide-react';
+import { formatDateWithOptions } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,10 +98,10 @@ function relativeTime(dateStr: string): string {
     if (diffHour < 24) return `hace ${diffHour}h`;
     if (diffDay === 1) return 'ayer';
     if (diffDay < 7) return `hace ${diffDay} dias`;
-    return new Intl.DateTimeFormat('es-ES', {
+    return formatDateWithOptions(dateStr, {
         day: '2-digit',
         month: 'short',
-    }).format(new Date(dateStr));
+    });
 }
 
 function extractProjectId(pathname: string): string | null {

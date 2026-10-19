@@ -1,0 +1,3 @@
+## 2024-03-23 - Intl Formatter Instantiation Bottleneck
+**Learning:** `Intl.DateTimeFormat` and `Intl.NumberFormat` instantiation is notoriously slow in V8/JavaScript. Defining them repeatedly inline within React components or utility functions (like `formatDate` or inside map loops) is a massive performance bottleneck. Stringifying small configuration options objects (`JSON.stringify(options)`) takes practically 0 time, allowing them to serve as excellent cache keys for a standard `Map`.
+**Action:** When working on formatting utilities or highly-rendered list components, cache `Intl` formatter instances globally (or via a Map keyed by options) rather than instantiating them on every render or function call.
