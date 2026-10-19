@@ -1,5 +1,6 @@
-import { semanticSearch, type SemanticSearchResult } from './semantic-search';
+import { semanticSearchWithEmbedding, type SemanticSearchResult } from './semantic-search';
 import { REPORT_TEMPLATES } from '@/lib/reporting/templates';
+import { generateEmbeddings } from '@/lib/embeddings';
 
 /**
  * Section-to-query mapping.
@@ -159,15 +160,27 @@ export async function multiQueryRetrieval(opts: {
   const allResults: SemanticSearchResult[] = [];
   const seenChunkIds = new Set<string>();
 
-  for (const section of sections) {
-    const query = SECTION_QUERY_MAP[section] || SECTION_QUERY_MAP._default;
+  // ⚡ Bolt Optimization: Batch embedding generation and concurrent DB queries.
+  // Instead of sequentially awaiting embedding generation and DB queries for each section,
+  // we generate all embeddings in one batch and run the DB queries concurrently.
+  const queries = sections.map(section => SECTION_QUERY_MAP[section] || SECTION_QUERY_MAP._default);
 
-    const sectionResults = await semanticSearch(projectId, query, {
+  // 1. Generate all embeddings in a single batch
+  const embeddings = await generateEmbeddings(queries);
+
+  // 2. Execute vector database queries concurrently
+  const searchPromises = embeddings.map(embedding =>
+    semanticSearchWithEmbedding(projectId, embedding, {
       threshold: 0.6,
       limit: topKPerQuery,
       areaCode: areaCode || undefined,
-    });
+    })
+  );
 
+  const resultsArray = await Promise.all(searchPromises);
+
+  // 3. Flatten and deduplicate results
+  for (const sectionResults of resultsArray) {
     for (const result of sectionResults) {
       if (!seenChunkIds.has(result.chunk_id)) {
         seenChunkIds.add(result.chunk_id);
