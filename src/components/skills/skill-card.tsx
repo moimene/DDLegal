@@ -117,6 +117,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
                         }}
                         aria-label={expanded ? 'Colapsar detalle' : 'Expandir detalle'}
                         aria-expanded={expanded}
+                        aria-controls={`skill-detail-${skill.skill_key}`}
                     >
                         {expanded
                             ? <ChevronUp className="h-4 w-4" />
@@ -152,6 +153,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
             {/* Expanded detail */}
             {expanded && (
                 <div
+                    id={`skill-detail-${skill.skill_key}`}
                     className="px-4 pb-4 pt-0 animate-fade-in border-t"
                     style={{ borderColor: 'var(--g-border-subtle)' }}
                 >
