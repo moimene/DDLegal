@@ -21,6 +21,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
     const categoryConfig = SKILL_CATEGORY_CONFIG[skill.category] || SKILL_CATEGORY_CONFIG.verificacion;
     const areaColor = AREA_COLORS[skill.area_code] || AREA_COLORS.GENERAL;
     const priBadge = skill.priority ? PRIORITY_BADGE[skill.priority] : null;
+    const contentId = `skill-content-${skill.id}`;
 
     return (
         <div
@@ -117,6 +118,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
                         }}
                         aria-label={expanded ? 'Colapsar detalle' : 'Expandir detalle'}
                         aria-expanded={expanded}
+                        aria-controls={contentId}
                     >
                         {expanded
                             ? <ChevronUp className="h-4 w-4" />
@@ -152,6 +154,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
             {/* Expanded detail */}
             {expanded && (
                 <div
+                    id={contentId}
                     className="px-4 pb-4 pt-0 animate-fade-in border-t"
                     style={{ borderColor: 'var(--g-border-subtle)' }}
                 >
