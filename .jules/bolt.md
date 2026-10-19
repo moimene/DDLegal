@@ -1,0 +1,3 @@
+## 2024-06-25 - Consolidating array operations to eliminate O(N^2) bottlenecks
+**Learning:** In performance-critical aggregation functions (like Deal Risk Scoring), chaining multiple `.filter()`, `.map()`, and `.reduce()` operations with nested `.find()` lookups creates hidden O(N^2) bottlenecks.
+**Action:** When refactoring array mappings for performance, consolidate separate iterations and aggregations (e.g., `.reduce` for totals, grouping logic) into a single pass to achieve O(N) complexity and avoid unnecessary iteration overhead. Ensure original code immutability guarantees are preserved.
