@@ -1,0 +1,3 @@
+## 2024-05-04 - O(N^2) bottleneck in Deal Risk Scoring
+**Learning:** Found an $O(N^2)$ bottleneck in `calculateDealRiskScore` where an array was mapped, and then iterated over again with a nested `.find()` on the original array just to lookup a single property (severity).
+**Action:** Always combine iterative array operations into a single pass where possible when multiple lookups are required. When iterating over an array to construct a new object that needs both transformed and original data, build everything in a single `.map()` or loop to preserve scope access to the original object instead of re-finding it later.

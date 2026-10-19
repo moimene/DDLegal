@@ -179,13 +179,15 @@ export function calculateDealRiskScore(
     (f) => f.hitl_decision?.toLowerCase() !== 'reject' && f.hitl_decision?.toLowerCase() !== 'rejected',
   );
 
-  // Score each finding
+  // Score each finding and group by area in a single pass
+  const areaScores: Record<string, AreaScore> = {};
   const scoredFindings: ScoredFinding[] = activeFindingsAll.map((f) => {
     const areaCode = f.area_code?.toUpperCase() || 'GENERAL';
     const rawScore = scoreFinding(f);
     const areaWeight = weights[areaCode] ?? weights['GENERAL'] ?? 0.5;
     const weightedScore = rawScore * areaWeight;
-    return {
+
+    const sf = {
       id: f.id,
       title: f.title,
       raw_score: Math.round(rawScore * 100) / 100,
@@ -193,23 +195,23 @@ export function calculateDealRiskScore(
       is_deal_breaker: isDealBreaker(f),
       area_code: areaCode,
     };
-  });
 
-  // Group by area
-  const areaScores: Record<string, AreaScore> = {};
-  for (const sf of scoredFindings) {
-    if (!areaScores[sf.area_code]) {
-      areaScores[sf.area_code] = { score: 0, finding_count: 0, critical_count: 0 };
+    // ⚡ Bolt Performance Optimization: Combine scoring and area grouping into a single pass.
+    // This avoids iterating through the list again and eliminates an O(N^2) nested `.find()` lookup
+    // that was previously used to match the scored finding back to its original severity.
+    if (!areaScores[areaCode]) {
+      areaScores[areaCode] = { score: 0, finding_count: 0, critical_count: 0 };
     }
-    const area = areaScores[sf.area_code];
+    const area = areaScores[areaCode];
     area.score += sf.weighted_score;
     area.finding_count += 1;
-    // Check original severity from the input
-    const original = activeFindingsAll.find((f) => f.id === sf.id);
-    if (original?.severity?.toLowerCase() === 'critical') {
+
+    if (f.severity?.toLowerCase() === 'critical') {
       area.critical_count += 1;
     }
-  }
+
+    return sf;
+  });
 
   // Normalize area scores: average per area (score / finding_count), then clamp 0-100
   for (const code of Object.keys(areaScores)) {
