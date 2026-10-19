@@ -132,15 +132,26 @@ interface ResolvedNav {
 }
 
 function useResolvedNav(pathname: string): ResolvedNav {
-    return useMemo(() => {
+    // Optimization: Extract projectId independently to avoid rebuilding projectGroups
+    // when navigating between pages of the same project.
+    const projectId = useMemo(() => {
         const match = PROJECT_ID_RE.exec(pathname);
-        const projectId = match ? match[1] : null;
-        const sections: NavSection[] = [NAV_SECTION_NAVEGACION];
-        sections.push(NAV_SECTION_HERRAMIENTAS);
-        sections.push(NAV_SECTION_CONFIGURACION);
-        const projectGroups = projectId ? buildProjectGroups(projectId) : null;
-        return { sections, projectGroups, projectId };
+        return match ? match[1] : null;
     }, [pathname]);
+
+    // Optimization: Stable reference for static sections
+    const sections = useMemo(() => [
+        NAV_SECTION_NAVEGACION,
+        NAV_SECTION_HERRAMIENTAS,
+        NAV_SECTION_CONFIGURACION
+    ], []);
+
+    // Optimization: Only rebuild project groups if projectId changes
+    const projectGroups = useMemo(() => {
+        return projectId ? buildProjectGroups(projectId) : null;
+    }, [projectId]);
+
+    return { sections, projectGroups, projectId };
 }
 
 /* ------------------------------------------------------------------ */
