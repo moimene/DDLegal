@@ -1,0 +1,1 @@
+## 2026-03-09 - Cache Intl instantiations\n**Learning:** Instantiating `Intl.DateTimeFormat` and `Intl.NumberFormat` repeatedly inside formatting functions causes significant performance degradation. This is an anti-pattern.\n**Action:** Use a top-level cache (e.g., constant or `Map`) to instantiate them once per config and reuse them.
