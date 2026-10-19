@@ -1,0 +1,3 @@
+## 2024-05-18 - Single pass O(N) optimization for multiple array aggregations
+**Learning:** Found a severe O(N^2) performance bottleneck in `deal-risk-score.ts` where array.map was followed by an array iteration doing a nested `.find()` lookup on the original array, then a separate `.reduce()` pass.
+**Action:** Always combine operations into a single O(N) `for...of` loop when scoring/grouping/accumulating over the same list to eliminate performance bottlenecks from multiple passes and nested lookups.
