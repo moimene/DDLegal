@@ -1,0 +1,3 @@
+## 2024-05-30 - Added missing ARIA labels to interactive buttons in SmartSuggestions and EventFeed
+**Learning:** Found several icon-only or ambiguous interactive buttons in `SmartSuggestions.tsx` and `EventFeed.tsx` lacking `aria-label`. The expand/collapse button in `EventFeed.tsx` also missed the `aria-expanded` state, making it inaccessible to screen reader users tracking its state.
+**Action:** Always verify that every interactive icon-only button and dynamically changing container (like collapsibles) correctly applies `aria-label` and corresponding `aria-expanded` attributes during standard UI development.
