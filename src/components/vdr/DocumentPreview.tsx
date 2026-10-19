@@ -44,22 +44,26 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const documentDateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+});
+
+const documentDateTimeFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+});
+
 function formatDate(d: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-    }).format(new Date(d));
+    return documentDateFormatter.format(new Date(d));
 }
 
 function formatDateTime(d: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(new Date(d));
+    return documentDateTimeFormatter.format(new Date(d));
 }
 
 export default function DocumentPreview({ document: doc, versions, onAction }: DocumentPreviewProps) {

@@ -95,6 +95,13 @@ function getSeverityBg(severity: string | null): string {
 // Relative time ("Hace X minutos") in Spanish
 // ────────────────────────────────────────────────────────────
 
+const eventTimeFormatter = new Intl.DateTimeFormat('es-ES', {
+  day: '2-digit',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
 function timeAgo(dateStr: string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
@@ -112,12 +119,7 @@ function timeAgo(dateStr: string): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `Hace ${days} ${days === 1 ? 'dia' : 'dias'}`;
 
-  return new Intl.DateTimeFormat('es-ES', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(dateStr));
+  return eventTimeFormatter.format(new Date(dateStr));
 }
 
 // ────────────────────────────────────────────────────────────

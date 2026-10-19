@@ -32,14 +32,16 @@ function escapeHtml(text: string): string {
         .replace(/'/g, '&#039;');
 }
 
+const exportDateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+});
+
 function formatDateEs(dateStr: string): string {
     if (!dateStr) return '--';
     try {
-        return new Intl.DateTimeFormat('es-ES', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-        }).format(new Date(dateStr));
+        return exportDateFormatter.format(new Date(dateStr));
     } catch {
         return dateStr;
     }
