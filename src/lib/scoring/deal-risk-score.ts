@@ -174,79 +174,118 @@ export function calculateDealRiskScore(
 ): DealRiskScoreOutput {
   const weights = { ...DEFAULT_AREA_WEIGHTS, ...(areaWeights ?? {}) };
 
-  // Filter out HITL-rejected findings
-  const activeFindingsAll = findings.filter(
-    (f) => f.hitl_decision?.toLowerCase() !== 'reject' && f.hitl_decision?.toLowerCase() !== 'rejected',
-  );
+  const scoredFindings: ScoredFinding[] = [];
+  const dealBreakers: ScoredFinding[] = [];
+  const areaScores: Record<string, AreaScore> = {};
+  let totalEconomicExposure = 0;
 
-  // Score each finding
-  const scoredFindings: ScoredFinding[] = activeFindingsAll.map((f) => {
+  const areaSumsBest: Record<string, { total: number; count: number }> = {};
+  const areaSumsWorst: Record<string, { total: number; count: number }> = {};
+
+  // Single O(N) pass to gather all required metrics
+  for (const f of findings) {
+    const hitl = f.hitl_decision?.toLowerCase();
+    if (hitl === 'reject' || hitl === 'rejected') {
+      continue;
+    }
+
+    totalEconomicExposure += f.economic_impact_amount ?? 0;
+
     const areaCode = f.area_code?.toUpperCase() || 'GENERAL';
-    const rawScore = scoreFinding(f);
     const areaWeight = weights[areaCode] ?? weights['GENERAL'] ?? 0.5;
+
+    const rawScore = scoreFinding(f);
     const weightedScore = rawScore * areaWeight;
-    return {
+    const isDealBreakerFinding = isDealBreaker(f);
+
+    const scoredFinding: ScoredFinding = {
       id: f.id,
       title: f.title,
       raw_score: Math.round(rawScore * 100) / 100,
       weighted_score: Math.round(weightedScore * 100) / 100,
-      is_deal_breaker: isDealBreaker(f),
+      is_deal_breaker: isDealBreakerFinding,
       area_code: areaCode,
     };
-  });
+    scoredFindings.push(scoredFinding);
 
-  // Group by area
-  const areaScores: Record<string, AreaScore> = {};
-  for (const sf of scoredFindings) {
-    if (!areaScores[sf.area_code]) {
-      areaScores[sf.area_code] = { score: 0, finding_count: 0, critical_count: 0 };
+    if (isDealBreakerFinding) {
+      dealBreakers.push(scoredFinding);
     }
-    const area = areaScores[sf.area_code];
-    area.score += sf.weighted_score;
+
+    if (!areaScores[areaCode]) {
+      areaScores[areaCode] = { score: 0, finding_count: 0, critical_count: 0 };
+    }
+    const area = areaScores[areaCode];
+    area.score += weightedScore;
     area.finding_count += 1;
-    // Check original severity from the input
-    const original = activeFindingsAll.find((f) => f.id === sf.id);
-    if (original?.severity?.toLowerCase() === 'critical') {
+    if (f.severity?.toLowerCase() === 'critical') {
       area.critical_count += 1;
     }
+
+    // Accumulate for best case sensitivity scenario (probability = remote)
+    const rawBest = scoreFindingWithProbability(f, 'remote');
+    const weightedBest = rawBest * areaWeight;
+    if (!areaSumsBest[areaCode]) areaSumsBest[areaCode] = { total: 0, count: 0 };
+    areaSumsBest[areaCode].total += weightedBest;
+    areaSumsBest[areaCode].count += 1;
+
+    // Accumulate for worst case sensitivity scenario (probability = certain)
+    const rawWorst = scoreFindingWithProbability(f, 'certain');
+    const weightedWorst = rawWorst * areaWeight;
+    if (!areaSumsWorst[areaCode]) areaSumsWorst[areaCode] = { total: 0, count: 0 };
+    areaSumsWorst[areaCode].total += weightedWorst;
+    areaSumsWorst[areaCode].count += 1;
   }
 
-  // Normalize area scores: average per area (score / finding_count), then clamp 0-100
+  let totalWeightedScore = 0;
+  let totalWeight = 0;
+  let totalBestWeightedScore = 0;
+  let totalBestWeight = 0;
+  let totalWorstWeightedScore = 0;
+  let totalWorstWeight = 0;
+
+  // Process aggregated area data to compute final normalized scores
   for (const code of Object.keys(areaScores)) {
     const area = areaScores[code];
-    if (area.finding_count > 0) {
-      area.score = Math.round(clamp(area.score / area.finding_count, 0, 100) * 100) / 100;
+    area.score = Math.round(clamp(area.score / area.finding_count, 0, 100) * 100) / 100;
+
+    const w = weights[code] ?? weights['GENERAL'] ?? 0.5;
+
+    totalWeightedScore += area.score * w;
+    totalWeight += w;
+
+    const bestData = areaSumsBest[code];
+    if (bestData && bestData.count > 0) {
+      const bestAvg = clamp(bestData.total / bestData.count, 0, 100);
+      totalBestWeightedScore += bestAvg * w;
+      totalBestWeight += w;
+    }
+
+    const worstData = areaSumsWorst[code];
+    if (worstData && worstData.count > 0) {
+      const worstAvg = clamp(worstData.total / worstData.count, 0, 100);
+      totalWorstWeightedScore += worstAvg * w;
+      totalWorstWeight += w;
     }
   }
 
-  // Overall score: weighted average of area scores using area weights
-  let totalWeightedScore = 0;
-  let totalWeight = 0;
-  for (const [code, area] of Object.entries(areaScores)) {
-    const w = weights[code] ?? weights['GENERAL'] ?? 0.5;
-    totalWeightedScore += area.score * w;
-    totalWeight += w;
-  }
-  const overallScore = totalWeight > 0
-    ? Math.round(clamp(totalWeightedScore / totalWeight, 0, 100) * 100) / 100
-    : 0;
-
-  // Deal breakers
-  const dealBreakers = scoredFindings.filter((sf) => sf.is_deal_breaker);
+  const overallScore =
+    totalWeight > 0
+      ? Math.round(clamp(totalWeightedScore / totalWeight, 0, 100) * 100) / 100
+      : 0;
+  const bestCaseScore =
+    totalBestWeight > 0
+      ? Math.round(clamp(totalBestWeightedScore / totalBestWeight, 0, 100) * 100) / 100
+      : 0;
+  const worstCaseScore =
+    totalWorstWeight > 0
+      ? Math.round(clamp(totalWorstWeightedScore / totalWorstWeight, 0, 100) * 100) / 100
+      : 0;
 
   // Top 10 risks by weighted_score descending
   const topRisks = [...scoredFindings]
     .sort((a, b) => b.weighted_score - a.weighted_score)
     .slice(0, 10);
-
-  // Total economic exposure
-  const totalEconomicExposure = activeFindingsAll.reduce((sum, f) => {
-    return sum + (f.economic_impact_amount ?? 0);
-  }, 0);
-
-  // Sensitivity analysis: best, base, worst
-  const bestCaseScore = computeSensitivityScore(activeFindingsAll, weights, 'remote');
-  const worstCaseScore = computeSensitivityScore(activeFindingsAll, weights, 'certain');
 
   const recommendation = deriveRecommendation(overallScore);
 
@@ -264,46 +303,4 @@ export function calculateDealRiskScore(
     total_economic_exposure: Math.round(totalEconomicExposure * 100) / 100,
     scored_findings: scoredFindings,
   };
-}
-
-// ---------------------------------------------------------------------------
-// Sensitivity helper
-// ---------------------------------------------------------------------------
-
-/**
- * Compute a scenario score by overriding all findings' probability to a given value.
- */
-function computeSensitivityScore(
-  findings: ScoringInput[],
-  weights: Record<string, number>,
-  probabilityOverride: string,
-): number {
-  // Group scores by area
-  const areaSums: Record<string, { total: number; count: number }> = {};
-
-  for (const f of findings) {
-    const areaCode = f.area_code?.toUpperCase() || 'GENERAL';
-    const rawScore = scoreFindingWithProbability(f, probabilityOverride);
-    const areaWeight = weights[areaCode] ?? weights['GENERAL'] ?? 0.5;
-    const weightedScore = rawScore * areaWeight;
-
-    if (!areaSums[areaCode]) {
-      areaSums[areaCode] = { total: 0, count: 0 };
-    }
-    areaSums[areaCode].total += weightedScore;
-    areaSums[areaCode].count += 1;
-  }
-
-  // Average per area, then weighted average across areas
-  let totalWeightedScore = 0;
-  let totalWeight = 0;
-  for (const [code, data] of Object.entries(areaSums)) {
-    const areaAvg = data.count > 0 ? clamp(data.total / data.count, 0, 100) : 0;
-    const w = weights[code] ?? weights['GENERAL'] ?? 0.5;
-    totalWeightedScore += areaAvg * w;
-    totalWeight += w;
-  }
-
-  const score = totalWeight > 0 ? clamp(totalWeightedScore / totalWeight, 0, 100) : 0;
-  return Math.round(score * 100) / 100;
 }
