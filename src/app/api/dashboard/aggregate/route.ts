@@ -70,6 +70,41 @@ export async function GET(req: NextRequest) {
     const allScores = scoresRes.data || [];
     const allWorkflows = workflowsRes.data || [];
 
+    // O(1) Maps for O(N) single-pass lookups
+    const projectsMap = new Map((projectsRes.data || []).map(p => [p.id, p]));
+
+    // Scores are ordered DESC in query, preserve the first (latest) occurrence
+    const scoresMap = new Map();
+    for (const score of allScores) {
+      if (!scoresMap.has(score.project_id)) {
+        scoresMap.set(score.project_id, score);
+      }
+    }
+
+    // Aggregate tasks and workflows in O(N) passes
+    const projectTaskStats = new Map();
+    for (const task of allTasks) {
+      if (!projectTaskStats.has(task.project_id)) {
+        projectTaskStats.set(task.project_id, { total: 0, completed: 0, blocked: 0, pending: 0 });
+      }
+      const stats = projectTaskStats.get(task.project_id);
+      stats.total += 1;
+      if (task.state === 'done' || task.state === 'closed') {
+        stats.completed += 1;
+      } else if (task.state === 'blocked') {
+        stats.blocked += 1;
+      } else {
+        stats.pending += 1;
+      }
+    }
+
+    const projectWorkflowStats = new Map();
+    for (const wf of allWorkflows) {
+      if (wf.status === 'in_progress') {
+        projectWorkflowStats.set(wf.project_id, (projectWorkflowStats.get(wf.project_id) || 0) + 1);
+      }
+    }
+
     // 4. Look up the user's email for assigned_to matching
     let userEmail = '';
     try {
@@ -82,16 +117,9 @@ export async function GET(req: NextRequest) {
 
     // 5. Build per-project metrics
     const projects = (projectsRes.data || []).map(p => {
-      const pTasks = allTasks.filter(t => t.project_id === p.id);
-      const completed = pTasks.filter(t => t.state === 'done' || t.state === 'closed').length;
-      const blocked = pTasks.filter(t => t.state === 'blocked').length;
-      const pending = pTasks.filter(t => !['done', 'closed', 'blocked'].includes(t.state)).length;
-
-      // Latest score for this project (scores are ordered by created_at DESC)
-      const score = allScores.find(s => s.project_id === p.id);
-
-      // Active workflows for this project
-      const activeWf = allWorkflows.filter(w => w.project_id === p.id && w.status === 'in_progress').length;
+      const pTaskStats = projectTaskStats.get(p.id) || { total: 0, completed: 0, blocked: 0, pending: 0 };
+      const score = scoresMap.get(p.id);
+      const activeWf = projectWorkflowStats.get(p.id) || 0;
 
       return {
         id: p.id,
@@ -102,11 +130,11 @@ export async function GET(req: NextRequest) {
         deadline: p.deadline,
         user_role: roleMap.get(p.id) || 'unknown',
         metrics: {
-          total_tasks: pTasks.length,
-          pending_tasks: pending,
-          blocked_tasks: blocked,
-          completed_tasks: completed,
-          completion_pct: pTasks.length > 0 ? Math.round((completed / pTasks.length) * 100) : 0,
+          total_tasks: pTaskStats.total,
+          pending_tasks: pTaskStats.pending,
+          blocked_tasks: pTaskStats.blocked,
+          completed_tasks: pTaskStats.completed,
+          completion_pct: pTaskStats.total > 0 ? Math.round((pTaskStats.completed / pTaskStats.total) * 100) : 0,
         },
         risk_score: score?.overall_score ?? null,
         risk_recommendation: score?.recommendation ?? null,
@@ -122,7 +150,7 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4))
       .slice(0, 20)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projectsMap.get(t.project_id);
         return {
           id: t.id,
           title: t.title,
@@ -146,7 +174,7 @@ export async function GET(req: NextRequest) {
       })
       .slice(0, 10)
       .map(t => {
-        const proj = (projectsRes.data || []).find(p => p.id === t.project_id);
+        const proj = projectsMap.get(t.project_id);
         const daysInState = Math.floor((now - new Date(t.entered_state_at).getTime()) / 86400000);
         return {
           type: t.state === 'blocked' ? 'blocker' : 'stale_task',
