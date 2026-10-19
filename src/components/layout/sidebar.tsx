@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useId } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -232,6 +232,7 @@ function groupHasActiveItem(group: NavGroup, pathname: string): boolean {
 /* ------------------------------------------------------------------ */
 
 export default function Sidebar() {
+    const baseId = useId();
     const [collapsed, setCollapsed] = useState(false);
     const pathname = usePathname();
     const { sections, projectGroups, projectId } = useResolvedNav(pathname);
@@ -348,13 +349,14 @@ export default function Sidebar() {
         const isGroupCollapsed = !!collapsedGroups[group.id];
         const hasActive = groupHasActiveItem(group, pathname);
         const GroupIcon = group.icon;
+        const panelId = `${baseId}-${group.id}-panel`;
 
         return (
             <div key={group.id} style={{ marginTop: '4px' }}>
                 {/* Group header button */}
                 <button
                     onClick={() => toggle(group.id)}
-                    className="w-full flex items-center gap-2 transition-all"
+                    className="w-full flex items-center gap-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-bright"
                     style={{
                         padding: '6px 12px',
                         borderRadius: 'var(--g-radius-md)',
@@ -364,6 +366,7 @@ export default function Sidebar() {
                         borderLeft: hasActive ? '2px solid var(--g-brand-bright)' : '2px solid transparent',
                     }}
                     aria-expanded={!isGroupCollapsed}
+                    aria-controls={isGroupCollapsed || collapsed ? undefined : panelId}
                     aria-label={`${group.header} grupo`}
                 >
                     <GroupIcon
@@ -417,6 +420,7 @@ export default function Sidebar() {
                 {/* Group items */}
                 {!isGroupCollapsed && !collapsed && (
                     <div
+                        id={panelId}
                         style={{
                             display: 'flex',
                             flexDirection: 'column',
@@ -593,7 +597,7 @@ export default function Sidebar() {
             {/* AI Assist */}
             <div className="px-3 pb-3">
                 <button
-                    className="w-full flex items-center gap-3 px-3 py-2 transition-all hover:opacity-90"
+                    className="w-full flex items-center gap-3 px-3 py-2 transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-bright"
                     style={{
                         borderRadius: 'var(--g-radius-md)',
                         backgroundColor: 'var(--g-brand-bright)',
@@ -611,7 +615,7 @@ export default function Sidebar() {
             {/* Collapse toggle */}
             <button
                 onClick={() => setCollapsed(!collapsed)}
-                className="flex items-center justify-center h-10 border-t transition-colors shrink-0"
+                className="flex items-center justify-center h-10 border-t transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-bright"
                 style={{
                     color: 'var(--g-text-inverse)',
                     borderColor: 'var(--g-sidebar-border)',

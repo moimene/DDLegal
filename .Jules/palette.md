@@ -1,0 +1,3 @@
+## 2024-05-14 - Missing aria-controls in Sidebar Nav Groups
+**Learning:** The custom collapsible project groups in the sidebar (`src/components/layout/sidebar.tsx`) are missing unique IDs and the `aria-controls` attribute on their toggle buttons. Furthermore, focus styles like `focus-visible:ring-2` should be added to interactive elements to improve keyboard accessibility.
+**Action:** Use `useId` from React to generate unique IDs for each collapsible panel. Assign the generated ID to the panel container and add `aria-controls` mapping to the corresponding toggle button when the panel is expanded. Also, implement `focus-visible` styles on these interactive toggle buttons.
