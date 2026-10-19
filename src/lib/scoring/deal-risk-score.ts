@@ -179,13 +179,18 @@ export function calculateDealRiskScore(
     (f) => f.hitl_decision?.toLowerCase() !== 'reject' && f.hitl_decision?.toLowerCase() !== 'rejected',
   );
 
-  // Score each finding
-  const scoredFindings: ScoredFinding[] = activeFindingsAll.map((f) => {
+  // Group by area
+  const areaScores: Record<string, AreaScore> = {};
+  // Score each finding and group by area in a single pass to eliminate O(N^2) complexity
+  const scoredFindings: ScoredFinding[] = [];
+
+  for (const f of activeFindingsAll) {
     const areaCode = f.area_code?.toUpperCase() || 'GENERAL';
     const rawScore = scoreFinding(f);
     const areaWeight = weights[areaCode] ?? weights['GENERAL'] ?? 0.5;
     const weightedScore = rawScore * areaWeight;
-    return {
+
+    const sf: ScoredFinding = {
       id: f.id,
       title: f.title,
       raw_score: Math.round(rawScore * 100) / 100,
@@ -193,20 +198,17 @@ export function calculateDealRiskScore(
       is_deal_breaker: isDealBreaker(f),
       area_code: areaCode,
     };
-  });
+    scoredFindings.push(sf);
 
-  // Group by area
-  const areaScores: Record<string, AreaScore> = {};
-  for (const sf of scoredFindings) {
-    if (!areaScores[sf.area_code]) {
-      areaScores[sf.area_code] = { score: 0, finding_count: 0, critical_count: 0 };
+    if (!areaScores[areaCode]) {
+      areaScores[areaCode] = { score: 0, finding_count: 0, critical_count: 0 };
     }
-    const area = areaScores[sf.area_code];
+    const area = areaScores[areaCode];
     area.score += sf.weighted_score;
     area.finding_count += 1;
-    // Check original severity from the input
-    const original = activeFindingsAll.find((f) => f.id === sf.id);
-    if (original?.severity?.toLowerCase() === 'critical') {
+
+    // Check original severity from the input directly from the loop variable
+    if (f.severity?.toLowerCase() === 'critical') {
       area.critical_count += 1;
     }
   }
