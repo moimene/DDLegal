@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Play,
   CheckCircle2,
@@ -150,6 +150,7 @@ export default function EventFeed({
   collapsed: controlledCollapsed,
   onToggleCollapse,
 }: EventFeedProps) {
+  const feedContentId = React.useId();
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [newCount, setNewCount] = useState(0);
@@ -283,6 +284,8 @@ export default function EventFeed({
       {/* Header */}
       <button
         onClick={toggleCollapse}
+        aria-expanded={!collapsed}
+        aria-controls={feedContentId}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -335,10 +338,15 @@ export default function EventFeed({
       </button>
 
       {/* Feed body */}
-      {!collapsed && (
-        <div style={{ position: 'relative' }}>
-          {/* New events badge */}
-          {newCount > 0 && (
+      <div
+        id={feedContentId}
+        style={{
+          position: 'relative',
+          display: collapsed ? 'none' : 'block'
+        }}
+      >
+        {/* New events badge */}
+        {newCount > 0 && (
             <button
               onClick={jumpToLatest}
               style={{
@@ -510,9 +518,8 @@ export default function EventFeed({
                 Cargar mas eventos
               </button>
             </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Spin keyframe (injected once) */}
       <style>{`
