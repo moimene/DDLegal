@@ -1,0 +1,3 @@
+## 2024-05-24 - Single Pass Optimization in Scoring Engine
+**Learning:** In calculation-heavy functions like `calculateDealRiskScore`, separating array operations into `.map()`, `for` loops, `.filter()`, and `.reduce()` can create significant overhead, especially if the `for` loop contains a nested `.find()` which turns an O(N) process into an O(N²) bottleneck. Combining all these aggregations into a single pass is highly performant.
+**Action:** When aggregating or grouping large lists of items across different derived dimensions (e.g. scores, deals breakers, metrics), use a single `for...of` loop to compute and collect all metrics in O(N) instead of multiple array traversal methods.
