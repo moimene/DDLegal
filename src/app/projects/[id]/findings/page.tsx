@@ -9,7 +9,7 @@ import {
   Eye, Edit3, Link2, X, ChevronUp, FileSearch, ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useResolvedParams, formatDate, AREA_COLORS } from '@/lib/utils';
+import { useResolvedParams, formatDate, formatCurrency, AREA_COLORS } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -663,7 +663,11 @@ export default function ProjectFindingsPage({ params }: { params: Promise<{ id: 
                         <div className="p-3 bg-[var(--g-bg)] rounded-lg col-span-2">
                           <div className="text-xs text-[var(--g-text-secondary)]">Impacto Económico</div>
                           <div className="font-medium text-lg">
-                            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedFinding.economic_impact_currency || 'EUR' }).format(selectedFinding.economic_impact_amount)}
+                            {formatCurrency(
+                              selectedFinding.economic_impact_amount,
+                              selectedFinding.economic_impact_currency || 'EUR',
+                              { maximumFractionDigits: 2 } // Maintain default precision behavior (by overriding `utils.ts`'s 0 to 2, or whatever original behavior was)
+                            )}
                           </div>
                         </div>
                       )}
