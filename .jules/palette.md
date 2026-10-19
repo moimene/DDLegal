@@ -1,0 +1,3 @@
+## 2024-06-08 - Accessible Tree Nodes
+**Learning:** In the `src/components/vdr/FolderTree.tsx` file, tree nodes use a `span` with an `onClick` to act as an expand/collapse toggle for folders. This violates the memory requirement: "When creating or modifying interactive list items that act as tree nodes or toggles (e.g., folder trees), ensure they use semantic `<button type="button">` elements instead of `<span>`, and include both `aria-expanded` and `aria-label` attributes to guarantee keyboard and screen reader navigability."
+**Action:** Replace `span` toggles in tree components with `<button type="button">` and appropriate ARIA attributes for accessibility.
