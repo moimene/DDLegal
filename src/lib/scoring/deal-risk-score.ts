@@ -71,6 +71,7 @@ export interface ScoredFinding {
   weighted_score: number;
   is_deal_breaker: boolean;
   area_code: string;
+  original_severity?: string;
 }
 
 export interface AreaScore {
@@ -192,6 +193,7 @@ export function calculateDealRiskScore(
       weighted_score: Math.round(weightedScore * 100) / 100,
       is_deal_breaker: isDealBreaker(f),
       area_code: areaCode,
+      original_severity: f.severity,
     };
   });
 
@@ -205,8 +207,7 @@ export function calculateDealRiskScore(
     area.score += sf.weighted_score;
     area.finding_count += 1;
     // Check original severity from the input
-    const original = activeFindingsAll.find((f) => f.id === sf.id);
-    if (original?.severity?.toLowerCase() === 'critical') {
+    if (sf.original_severity?.toLowerCase() === 'critical') {
       area.critical_count += 1;
     }
   }
