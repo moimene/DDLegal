@@ -295,6 +295,8 @@ export default function EventFeed({
           width: '100%',
           textAlign: 'left',
         }}
+        aria-expanded={!collapsed}
+        aria-controls="event-feed-body"
       >
         {collapsed ? (
           <ChevronRight style={{ width: 14, height: 14, color: 'var(--g-text-muted)' }} />
@@ -336,7 +338,7 @@ export default function EventFeed({
 
       {/* Feed body */}
       {!collapsed && (
-        <div style={{ position: 'relative' }}>
+        <div id="event-feed-body" style={{ position: 'relative' }}>
           {/* New events badge */}
           {newCount > 0 && (
             <button
@@ -360,6 +362,7 @@ export default function EventFeed({
                 cursor: 'pointer',
                 boxShadow: 'var(--g-shadow-dropdown)',
               }}
+              aria-label={`Volver a los ${newCount} ${newCount === 1 ? 'nuevo evento' : 'nuevos eventos'} mas recientes`}
             >
               <RefreshCw style={{ width: 10, height: 10 }} />
               {newCount} {newCount === 1 ? 'nuevo evento' : 'nuevos eventos'}

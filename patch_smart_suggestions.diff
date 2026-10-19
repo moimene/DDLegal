@@ -1,0 +1,26 @@
+--- src/components/events/SmartSuggestions.tsx
++++ src/components/events/SmartSuggestions.tsx
+@@ -275,6 +275,7 @@
+             opacity: refreshing ? 0.5 : 1,
+           }}
+           title="Actualizar sugerencias"
++          aria-label="Actualizar sugerencias"
+         >
+           <RefreshCw
+             style={{
+@@ -323,6 +324,7 @@
+                 fontWeight: 500,
+                 marginTop: 'var(--g-space-2)',
+               }}
++              aria-label="Mostrar sugerencias descartadas"
+             >
+               Mostrar descartadas
+             </button>
+@@ -462,6 +464,7 @@
+                     transition: 'var(--g-transition-fast)',
+                   }}
+                   title="Descartar sugerencia"
++                  aria-label="Descartar sugerencia"
+                 >
+                   <X style={{ width: 12, height: 12, color: 'var(--g-text-muted)' }} />
+                 </button>

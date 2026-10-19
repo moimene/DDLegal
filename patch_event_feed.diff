@@ -1,0 +1,36 @@
+--- src/components/events/EventFeed.tsx
++++ src/components/events/EventFeed.tsx
+@@ -292,6 +292,8 @@
+           cursor: 'pointer',
+           width: '100%',
+           textAlign: 'left',
+         }}
++        aria-expanded={!collapsed}
++        aria-controls="event-feed-body"
+       >
+         {collapsed ? (
+@@ -336,7 +338,7 @@
+
+       {/* Feed body */}
+       {!collapsed && (
+-        <div style={{ position: 'relative' }}>
++        <div id="event-feed-body" style={{ position: 'relative' }}>
+           {/* New events badge */}
+           {newCount > 0 && (
+             <button
+@@ -357,6 +359,7 @@
+                 border: 'none',
+                 cursor: 'pointer',
+                 boxShadow: 'var(--g-shadow-dropdown)',
+               }}
++              aria-label="Volver a los eventos mas recientes"
+             >
+               <RefreshCw style={{ width: 10, height: 10 }} />
+@@ -507,6 +510,7 @@
+                   fontWeight: 500,
+                   padding: 'var(--g-space-1) var(--g-space-2)',
+                 }}
++                aria-label="Cargar mas eventos"
+               >
+                 Cargar mas eventos
+               </button>
