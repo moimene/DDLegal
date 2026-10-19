@@ -97,11 +97,13 @@ function relativeTime(dateStr: string): string {
     if (diffHour < 24) return `hace ${diffHour}h`;
     if (diffDay === 1) return 'ayer';
     if (diffDay < 7) return `hace ${diffDay} dias`;
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit',
-        month: 'short',
-    }).format(new Date(dateStr));
+    return dateFormatter.format(new Date(dateStr));
 }
+
+const dateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+});
 
 function extractProjectId(pathname: string): string | null {
     const match = pathname.match(/\/projects\/([^/]+)/);

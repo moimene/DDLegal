@@ -187,6 +187,8 @@ const AUDIT_LABEL: Record<AuditEntry['action'], string> = {
     update: 'Actualizacion',
 };
 
+const dateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short' });
+
 function formatTimestamp(ts: string): string {
     const d = new Date(ts);
     const now = new Date();
@@ -197,7 +199,7 @@ function formatTimestamp(ts: string): string {
     if (diffHours < 24) return `hace ${diffHours}h`;
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `hace ${diffDays}d`;
-    return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short' }).format(d);
+    return dateFormatter.format(d);
 }
 
 type SortKey = 'area_code' | 'name' | 'category' | 'is_mandatory' | 'review_depth' | 'status';
