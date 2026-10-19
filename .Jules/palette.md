@@ -1,0 +1,3 @@
+## 2024-05-18 - Binding collapsible elements with useId and aria-controls
+**Learning:** React's `useId` is an excellent tool for reliably generating unique IDs necessary for `aria-controls` on custom collapsible panels/dropdowns without risking hydration mismatches. Missing `aria-controls` limits screen reader context.
+**Action:** Always add `aria-expanded` and `aria-controls` bindings with matching `id` attributes to custom collapsible panels/components. Use React's `useId()` hook to generate unique IDs. Use standard React conditional rendering (unmounting) for the content rather than CSS visibility toggling (`display: none`) to prevent DOM bloat. When rendering multiple groups, dynamically scope IDs like `${baseId}-${group.id}-panel`.
