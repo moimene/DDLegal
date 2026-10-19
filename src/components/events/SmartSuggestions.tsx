@@ -260,6 +260,7 @@ export default function SmartSuggestions({
         <button
           onClick={() => fetchSuggestions(true)}
           disabled={refreshing}
+          aria-label="Actualizar sugerencias"
           style={{
             background: 'none',
             border: 'none',
@@ -449,6 +450,7 @@ export default function SmartSuggestions({
                 {/* Dismiss button */}
                 <button
                   onClick={() => handleDismiss(suggestion.id)}
+                  aria-label="Descartar sugerencia"
                   style={{
                     position: 'absolute',
                     top: 'var(--g-space-2)',

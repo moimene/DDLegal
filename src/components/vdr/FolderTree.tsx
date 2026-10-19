@@ -333,6 +333,8 @@ export default function FolderTree({
                     onDragOver={(e) => handleDragOver(e, folder.id)}
                     onDragLeave={() => handleDragLeave(folder.id)}
                     onDrop={(e) => handleDrop(e, folder.id)}
+                    aria-expanded={hasChildren ? isExpanded : undefined}
+                    aria-label={`Carpeta ${folder.name}`}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -356,12 +358,17 @@ export default function FolderTree({
                         color: 'var(--g-text-primary)',
                     }}
                 >
-                    <span
+                    <button
+                        type="button"
+                        aria-label={`Alternar carpeta ${folder.name}`}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (hasChildren) handleToggle(folder.id);
                         }}
                         style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -377,7 +384,7 @@ export default function FolderTree({
                         ) : (
                             <ChevronRight style={{ width: 12, height: 12, color: 'var(--g-text-secondary)' }} />
                         )}
-                    </span>
+                    </button>
 
                     {isExpanded ? (
                         <FolderOpen style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--g-brand-3308)' }} />
