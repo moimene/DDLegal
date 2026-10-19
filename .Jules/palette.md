@@ -1,0 +1,3 @@
+## 2026-05-12 - Precise aria-controls bindings for conditionally unmounted components
+**Learning:** When setting `aria-controls` to `undefined` for conditionally unmounted content, the condition must perfectly mirror all state variables that dictate the content's unmounting (e.g., `!isGroupCollapsed && !collapsed`) to avoid having the screen reader reference non-existent DOM elements.
+**Action:** When working on collapsible components, check if the content panel is removed from the DOM. If so, bind `aria-controls` with a ternary that checks the *exact* same truth conditions used for the unmount.
