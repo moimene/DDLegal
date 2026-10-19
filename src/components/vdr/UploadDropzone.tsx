@@ -316,6 +316,7 @@ export default function UploadDropzone({ folderId, areaCode, onUpload }: UploadD
                                     onClick={() => removeFile(qf.id)}
                                     disabled={isUploading}
                                     title="Eliminar"
+                                    aria-label={`Eliminar ${qf.file.name}`}
                                     style={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
@@ -347,6 +348,7 @@ export default function UploadDropzone({ folderId, areaCode, onUpload }: UploadD
                                         value={qf.category}
                                         onChange={(e) => updateCategory(qf.id, e.target.value)}
                                         disabled={isUploading}
+                                        aria-label={`Categoria para ${qf.file.name}`}
                                         style={{
                                             width: '100%',
                                             height: 28,
