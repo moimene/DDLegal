@@ -245,6 +245,7 @@ export default function ReportCompare({
                 <p style={{ fontSize: '13px', color: 'var(--status-error)' }}>{error}</p>
                 <button
                     onClick={onClose}
+                    aria-label="Cerrar error de comparacion"
                     style={{
                         padding: '6px 16px',
                         fontSize: '12px',
@@ -288,6 +289,7 @@ export default function ReportCompare({
                 </div>
                 <button
                     onClick={onClose}
+                    aria-label="Cerrar comparacion de versiones"
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
