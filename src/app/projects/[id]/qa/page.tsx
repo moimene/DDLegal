@@ -47,6 +47,9 @@ const SENDER: Record<string, { label: string; color: string }> = {
     ai: { label: 'IA', color: 'var(--status-info)' },
 };
 
+const dateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+const formatDate = (d: string) => dateFormatter.format(new Date(d));
+
 export default function QAPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = useResolvedParams(params);
     const [threads, setThreads] = useState<QAThread[]>([]);
@@ -116,8 +119,6 @@ export default function QAPage({ params }: { params: Promise<{ id: string }> }) 
         fetchThread(selectedThread.id);
         fetchThreads();
     };
-
-    const formatDate = (d: string) => new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(d));
 
     const getSlaIndicator = (thread: QAThread) => {
         if (thread.status === 'closed') return { color: 'var(--g-text-secondary)', icon: CheckCircle2 };

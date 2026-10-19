@@ -63,6 +63,9 @@ const CATEGORY_OPTIONS = [
     'nomina', 'poliza', 'licencia', 'sentencia', 'informe', 'certificado',
 ];
 
+const dateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+const formatDate = (d: string) => dateFormatter.format(new Date(d));
+
 export default function VDRPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = useResolvedParams(params);
     const [folders, setFolders] = useState<VDRFolder[]>([]);
@@ -207,8 +210,6 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
-
-    const formatDate = (d: string) => new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(d));
 
     const rootFolders = folders.filter(f => !f.parent_id);
     const getChildFolders = (parentId: string) => folders.filter(f => f.parent_id === parentId);
