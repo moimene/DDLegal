@@ -17,6 +17,7 @@ import {
     Upload,
     Brain,
 } from 'lucide-react';
+import { getDateTimeFormatter } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -110,7 +111,7 @@ function formatGroupDate(dateStr: string): string {
 
     if (diffDays === 0) return 'Hoy';
     if (diffDays === 1) return 'Ayer';
-    return new Intl.DateTimeFormat('es-ES', {
+    return getDateTimeFormatter({
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -118,7 +119,7 @@ function formatGroupDate(dateStr: string): string {
 }
 
 function formatTime(dateStr: string): string {
-    return new Intl.DateTimeFormat('es-ES', {
+    return getDateTimeFormatter({
         hour: '2-digit',
         minute: '2-digit',
     }).format(new Date(dateStr));

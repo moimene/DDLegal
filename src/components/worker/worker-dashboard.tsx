@@ -31,6 +31,7 @@ import {
   Timer,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getDateTimeFormatter } from '@/lib/utils';
 import { useWorkerStatus } from '@/hooks/use-worker-status';
 import { CoverageChart } from '@/components/worker/coverage-chart';
 import type { WorkerStatus } from '@/lib/worker/worker-controller';
@@ -123,7 +124,7 @@ function formatDuration(ms: number): string {
 
 function formatDate(date: string | null): string {
   if (!date) return '-';
-  return new Intl.DateTimeFormat('es-ES', {
+  return getDateTimeFormatter({
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
