@@ -283,6 +283,8 @@ export default function EventFeed({
       {/* Header */}
       <button
         onClick={toggleCollapse}
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? 'Expandir eventos' : 'Colapsar eventos'}
         style={{
           display: 'flex',
           alignItems: 'center',
