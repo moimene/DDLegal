@@ -13,18 +13,30 @@ export function cn(...classes: (string | boolean | undefined | null)[]): string 
     return classes.filter(Boolean).join(' ');
 }
 
+// Optimization: extract Intl.DateTimeFormat out of helper function
+const dateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit', month: 'short', year: 'numeric'
+});
+
 export function formatDate(date: string | null): string {
     if (!date) return '—';
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit', month: 'short', year: 'numeric'
-    }).format(new Date(date));
+    return dateFormatter.format(new Date(date));
+}
+
+// Optimization: Cache Intl.NumberFormat instances by currency
+const currencyFormatterCache = new Map<string, Intl.NumberFormat>();
+function getCurrencyFormatter(currency: string): Intl.NumberFormat {
+    if (!currencyFormatterCache.has(currency)) {
+        currencyFormatterCache.set(currency, new Intl.NumberFormat('es-ES', {
+            style: 'currency', currency, maximumFractionDigits: 0
+        }));
+    }
+    return currencyFormatterCache.get(currency)!;
 }
 
 export function formatCurrency(amount: number | null, currency = 'EUR'): string {
     if (amount === null) return '—';
-    return new Intl.NumberFormat('es-ES', {
-        style: 'currency', currency, maximumFractionDigits: 0
-    }).format(amount);
+    return getCurrencyFormatter(currency).format(amount);
 }
 
 export const AREA_COLORS: Record<string, string> = {
