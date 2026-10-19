@@ -1,0 +1,3 @@
+## 2026-05-03 - Replace nested O(N^2) loops with a single pass
+**Learning:** Found a performance bottleneck in `calculateDealRiskScore` caused by using `.find()` inside a grouping loop, along with multiple array passes (`map`, `filter`, `reduce`). When iterating through large lists to group or score items, using nested lookups causes an O(N²) complexity, which slows down the processing significantly.
+**Action:** Combine operations (scoring, filtering, aggregating, grouping) into a single pass loop to achieve O(N) complexity and avoid nested lookups, leading to cleaner and much faster code execution.
