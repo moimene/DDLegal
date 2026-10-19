@@ -283,6 +283,8 @@ export default function EventFeed({
       {/* Header */}
       <button
         onClick={toggleCollapse}
+        aria-expanded={!collapsed}
+        aria-controls="event-feed-body"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -336,7 +338,7 @@ export default function EventFeed({
 
       {/* Feed body */}
       {!collapsed && (
-        <div style={{ position: 'relative' }}>
+        <div id="event-feed-body" style={{ position: 'relative' }}>
           {/* New events badge */}
           {newCount > 0 && (
             <button
