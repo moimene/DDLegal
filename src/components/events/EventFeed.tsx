@@ -283,6 +283,9 @@ export default function EventFeed({
       {/* Header */}
       <button
         onClick={toggleCollapse}
+        aria-expanded={!collapsed}
+        aria-controls={collapsed ? undefined : "event-feed-body"}
+        aria-label={collapsed ? 'Expandir panel de actividad' : 'Colapsar panel de actividad'}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -336,7 +339,7 @@ export default function EventFeed({
 
       {/* Feed body */}
       {!collapsed && (
-        <div style={{ position: 'relative' }}>
+        <div id="event-feed-body" style={{ position: 'relative' }}>
           {/* New events badge */}
           {newCount > 0 && (
             <button
