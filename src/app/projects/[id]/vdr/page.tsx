@@ -505,7 +505,7 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
                 <div className="col-span-3 g-card p-4" style={{ borderRadius: 'var(--g-radius-lg)' }}>
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="font-bold text-sm" style={{ color: 'var(--g-text-primary)' }}>Carpetas</h3>
-                        <button onClick={() => setShowNewFolder(true)} className="p-1 hover:opacity-70" style={{ color: 'var(--g-text-secondary)' }}>
+                        <button onClick={() => setShowNewFolder(true)} className="p-1 hover:opacity-70" style={{ color: 'var(--g-text-secondary)' }} aria-label="Nueva carpeta">
                             <FolderPlus className="h-4 w-4" />
                         </button>
                     </div>
@@ -924,7 +924,7 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
                         <>
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="font-bold text-sm" style={{ color: 'var(--g-text-primary)' }}>Detalle</h3>
-                                <button onClick={() => { setSelectedDoc(null); setVersions([]); }} className="p-1" style={{ color: 'var(--g-text-secondary)' }}>
+                                <button onClick={() => { setSelectedDoc(null); setVersions([]); }} className="p-1" style={{ color: 'var(--g-text-secondary)' }} aria-label="Cerrar detalle">
                                     <ChevronRight className="h-4 w-4" />
                                 </button>
                             </div>
@@ -1064,6 +1064,7 @@ export default function VDRPage({ params }: { params: Promise<{ id: string }> })
                         className="p-1"
                         style={{ color: 'var(--g-text-secondary)', cursor: 'pointer', background: 'none', border: 'none' }}
                         title="Deseleccionar todo"
+                        aria-label="Deseleccionar todo"
                     >
                         <X className="h-4 w-4" />
                     </button>
