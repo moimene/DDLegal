@@ -171,6 +171,8 @@ export default function EventFeed({
     }
   }, [onToggleCollapse]);
 
+  const contentId = `event-feed-content-${projectId || 'default'}`;
+
   // ── Load initial events ─────────────────────────────────
   const loadInitialEvents = useCallback(async () => {
     setLoading(true);
@@ -283,6 +285,8 @@ export default function EventFeed({
       {/* Header */}
       <button
         onClick={toggleCollapse}
+        aria-expanded={!collapsed}
+        aria-controls={contentId}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -336,11 +340,12 @@ export default function EventFeed({
 
       {/* Feed body */}
       {!collapsed && (
-        <div style={{ position: 'relative' }}>
+        <div id={contentId} style={{ position: 'relative' }}>
           {/* New events badge */}
           {newCount > 0 && (
             <button
               onClick={jumpToLatest}
+              aria-label={`Ver ${newCount} ${newCount === 1 ? 'nuevo evento' : 'nuevos eventos'}`}
               style={{
                 position: 'absolute',
                 top: 'var(--g-space-2)',
