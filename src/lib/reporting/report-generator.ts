@@ -179,14 +179,21 @@ export async function generateWorkflowReport(
     }
 
     // Build report findings with evidence
+    // Optimization: Hoist evidenceRefs extraction outside the loop to avoid redundant flatMap per finding
+    const evidenceRefs = phaseTasks
+      .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
+      .slice(0, 10);
+
+    // Optimization: Create an O(1) map for HITL decisions by finding_title
+    const hitlDecisionMap = new Map<string, string>();
+    for (const h of phaseHitl) {
+      if (h.finding_title && !hitlDecisionMap.has(h.finding_title)) {
+        hitlDecisionMap.set(h.finding_title, h.status);
+      }
+    }
+
     const reportFindings: ReportFinding[] = phaseFindings.map(f => {
-      const evidenceRefs = phaseTasks
-        .flatMap(t => (t.evidence_refs ?? []) as Array<{ source_id: string; snippet?: string; document_name?: string }>)
-        .slice(0, 10);
-
       if (evidenceRefs.length > 0) findingsWithEvidence++;
-
-      const hitlDecision = phaseHitl.find(h => h.finding_title === f.title);
 
       return {
         title: f.title,
@@ -195,14 +202,19 @@ export async function generateWorkflowReport(
         timing: f.timing,
         mitigation: f.mitigation,
         evidence_refs: evidenceRefs,
-        hitl_decision: hitlDecision?.status,
+        hitl_decision: hitlDecisionMap.get(f.title),
       };
     });
 
     // Count totals
     totalFindings += reportFindings.length;
-    criticalCount += reportFindings.filter(f => f.severity === 'critical').length;
-    highCount += reportFindings.filter(f => f.severity === 'high').length;
+
+    // Optimization: Consolidate severity counts into a single loop
+    for (const f of reportFindings) {
+      if (f.severity === 'critical') criticalCount++;
+      else if (f.severity === 'high') highCount++;
+    }
+
     hitlPending += phaseHitl.filter(h => h.status === 'pending_review').length;
     totalEvidence += phaseTasks.reduce((acc, t) => acc + ((t.evidence_refs as unknown[])?.length ?? 0), 0);
 
